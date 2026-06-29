@@ -1,6 +1,6 @@
 # ASSIST-AI
 
-ASSIST-AI is a calm, step-by-step practice app for everyday situations. This first foundation includes a React scenario catalogue and a small FastAPI backend with static scenario data.
+ASSIST-AI is a multilingual practice platform that helps learners build confidence in everyday situations through simple, step-by-step scenario guidance. This first foundation includes a polished React landing experience, a scenario catalogue preview, six-language frontend text support, and a small FastAPI backend with static scenario data.
 
 ## Tech Stack
 
@@ -15,8 +15,9 @@ Step 1 - Scenario catalogue foundation
 This version includes:
 
 - Landing page
-- Scenario catalogue page with category filters
+- Scenario catalogue preview page
 - Scenario detail placeholder page
+- Six-language frontend UI support
 - `GET /health`
 - `GET /api/scenarios`
 
