@@ -22,6 +22,10 @@ type TranslationKey =
   | "fullName"
   | "email"
   | "password"
+  | "confirmPassword"
+  | "passwordMismatch"
+  | "showPassword"
+  | "hidePassword"
   | "preferredLanguage"
   | "userCategory"
   | "personalUser"
@@ -82,6 +86,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Full name",
     email: "Email",
     password: "Password",
+    confirmPassword: "Confirm password",
+    passwordMismatch: "Passwords do not match.",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     preferredLanguage: "Preferred language",
     userCategory: "User category",
     personalUser: "Personal User",
@@ -130,6 +138,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Nombre completo",
     email: "Correo electronico",
     password: "Contrasena",
+    confirmPassword: "Confirmar contrasena",
+    passwordMismatch: "Las contrasenas no coinciden.",
+    showPassword: "Mostrar contrasena",
+    hidePassword: "Ocultar contrasena",
     preferredLanguage: "Idioma preferido",
     userCategory: "Categoria de usuario",
     personalUser: "Usuario personal",
@@ -178,6 +190,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Vollstandiger Name",
     email: "E-Mail",
     password: "Passwort",
+    confirmPassword: "Passwort bestatigen",
+    passwordMismatch: "Die Passworter stimmen nicht uberein.",
+    showPassword: "Passwort anzeigen",
+    hidePassword: "Passwort verbergen",
     preferredLanguage: "Bevorzugte Sprache",
     userCategory: "Nutzerkategorie",
     personalUser: "Privatperson",
@@ -226,6 +242,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Ad soyad",
     email: "E-posta",
     password: "Sifre",
+    confirmPassword: "Sifreyi onayla",
+    passwordMismatch: "Sifreler eslesmiyor.",
+    showPassword: "Sifreyi goster",
+    hidePassword: "Sifreyi gizle",
     preferredLanguage: "Tercih edilen dil",
     userCategory: "Kullanici kategorisi",
     personalUser: "Kisisel kullanici",
@@ -274,6 +294,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Nome completo",
     email: "E-mail",
     password: "Senha",
+    confirmPassword: "Confirmar senha",
+    passwordMismatch: "As senhas nao correspondem.",
+    showPassword: "Mostrar senha",
+    hidePassword: "Ocultar senha",
     preferredLanguage: "Idioma preferido",
     userCategory: "Categoria de usuario",
     personalUser: "Usuario pessoal",
@@ -322,6 +346,10 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     fullName: "Nom complet",
     email: "E-mail",
     password: "Mot de passe",
+    confirmPassword: "Confirmer le mot de passe",
+    passwordMismatch: "Les mots de passe ne correspondent pas.",
+    showPassword: "Afficher le mot de passe",
+    hidePassword: "Masquer le mot de passe",
     preferredLanguage: "Langue preferee",
     userCategory: "Categorie d'utilisateur",
     personalUser: "Utilisateur personnel",

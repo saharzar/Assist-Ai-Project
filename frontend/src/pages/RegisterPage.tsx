@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { languages, useTranslation } from "../i18n";
+import { useTranslation } from "../i18n";
 import type { UserCategory } from "../services/authService";
 
 const categoryOptions: Array<{ value: UserCategory; labelKey: "personalUser" | "familyCaregiver" | "institution" | "professional" }> = [
@@ -15,11 +15,13 @@ const categoryOptions: Array<{ value: UserCategory; labelKey: "personalUser" | "
 export function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const { language, t } = useTranslation();
+  const { t } = useTranslation();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [preferredLanguage, setPreferredLanguage] = useState<string>(language);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userCategory, setUserCategory] = useState<UserCategory>("personal");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,6 +29,12 @@ export function RegisterPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
+
+    if (password !== confirmPassword) {
+      setErrorMessage(t("passwordMismatch"));
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -34,7 +42,6 @@ export function RegisterPage() {
         full_name: fullName,
         email,
         password,
-        preferred_language: preferredLanguage,
         user_category: userCategory,
       });
       navigate("/scenarios");
@@ -72,33 +79,28 @@ export function RegisterPage() {
           />
         </label>
 
-        <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("password")}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
-            required
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
-          />
-          <span className="mt-2 block text-sm text-slate-500">{t("passwordHelp")}</span>
-        </label>
+        <PasswordField
+          label={t("password")}
+          value={password}
+          onChange={setPassword}
+          isVisible={showPassword}
+          onToggle={() => setShowPassword((current) => !current)}
+          showLabel={t("showPassword")}
+          hideLabel={t("hidePassword")}
+          minLength={8}
+        />
+        <span className="-mt-3 block text-sm text-slate-500">{t("passwordHelp")}</span>
 
-        <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("preferredLanguage")}</span>
-          <select
-            value={preferredLanguage}
-            onChange={(event) => setPreferredLanguage(event.target.value)}
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
-          >
-            {languages.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PasswordField
+          label={t("confirmPassword")}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          isVisible={showConfirmPassword}
+          onToggle={() => setShowConfirmPassword((current) => !current)}
+          showLabel={t("showPassword")}
+          hideLabel={t("hidePassword")}
+          minLength={8}
+        />
 
         <label className="block">
           <span className="text-sm font-bold text-slate-700">{t("userCategory")}</span>
@@ -130,5 +132,71 @@ export function RegisterPage() {
         </button>
       </form>
     </section>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  isVisible,
+  onToggle,
+  showLabel,
+  hideLabel,
+  minLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  isVisible: boolean;
+  onToggle: () => void;
+  showLabel: string;
+  hideLabel: string;
+  minLength: number;
+}) {
+  const toggleLabel = isVisible ? hideLabel : showLabel;
+
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-slate-700">{label}</span>
+      <span className="relative mt-2 block">
+        <input
+          type={isVisible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          minLength={minLength}
+          required
+          className="min-h-[52px] w-full rounded-lg border border-slate-300 px-4 pr-14 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={toggleLabel}
+          title={toggleLabel}
+          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        >
+          <EyeIcon isOff={isVisible} />
+        </button>
+      </span>
+    </label>
+  );
+}
+
+function EyeIcon({ isOff }: { isOff: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {isOff && <path d="M4 4l16 16" />}
+    </svg>
   );
 }
