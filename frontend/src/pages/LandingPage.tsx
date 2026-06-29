@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { useTranslation } from "../i18n";
 
 export function LandingPage() {
@@ -14,24 +16,30 @@ export function LandingPage() {
           {t("heroSubtitle")}
         </p>
         <div className="mx-auto mt-10 flex w-full max-w-md flex-col gap-4">
-          <button
-            type="button"
-            className="min-h-[60px] rounded-lg bg-slate-900 px-6 py-4 text-lg font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+          <Link
+            to="/register"
+            className="flex min-h-[60px] items-center justify-center rounded-lg bg-slate-900 px-6 py-4 text-lg font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
           >
             {t("createAccount")}
-          </button>
-          <button
-            type="button"
-            className="min-h-[60px] rounded-lg border-2 border-slate-200 bg-white px-6 py-4 text-lg font-bold text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          </Link>
+          <Link
+            to="/login"
+            className="flex min-h-[60px] items-center justify-center rounded-lg border-2 border-slate-200 bg-white px-6 py-4 text-lg font-bold text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             {t("login")}
-          </button>
-          <button
-            type="button"
-            className="min-h-[54px] rounded-lg px-6 py-3 text-base font-bold text-teal-700 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          </Link>
+          <Link
+            to="/guest"
+            className="flex min-h-[54px] items-center justify-center rounded-lg px-6 py-3 text-base font-bold text-teal-700 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             {t("continueAsGuest")}
-          </button>
+          </Link>
+          <Link
+            to="/scenarios"
+            className="flex min-h-[54px] items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-6 py-3 text-base font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            {t("viewScenarios")}
+          </Link>
         </div>
       </div>
     </section>

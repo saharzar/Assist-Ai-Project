@@ -1,9 +1,12 @@
 import { Link, Outlet } from "react-router-dom";
 
+import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation } from "../i18n";
 
 export function PageShell() {
   const { language, setLanguage, t } = useTranslation();
+  const { isAuthenticated, isGuest, logout } = useAuth();
+  const hasSession = isAuthenticated || isGuest;
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-teal-100 selection:text-slate-900">
@@ -40,12 +43,30 @@ export function PageShell() {
                 </option>
               ))}
             </select>
-            <Link
-              to="/"
-              className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-            >
-              {t("login")}
-            </Link>
+            {hasSession ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                >
+                  {t("profile")}
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="hidden min-h-[44px] rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:inline-flex sm:items-center"
+                >
+                  {t("logout")}
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+              >
+                {t("login")}
+              </Link>
+            )}
           </div>
         </nav>
       </header>
