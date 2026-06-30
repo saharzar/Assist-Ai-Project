@@ -82,14 +82,6 @@ export function PageShell() {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8 sm:py-10">
         <Outlet />
       </main>
-      <footer className="border-t border-slate-200 bg-white px-5 py-4 text-sm text-slate-500">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            <span className="font-bold text-slate-800">ASSIST-AI</span> {t("stepFoundation")}
-          </p>
-          <span>{t("footerStatus")}</span>
-        </div>
-      </footer>
     </div>
   );
 }
