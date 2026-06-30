@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AtmAssistantMessage } from "../../components/atm/AtmAssistantMessage";
@@ -10,11 +10,74 @@ import { AtmNameScreen } from "../../components/atm/AtmNameScreen";
 import { AtmPinScreen } from "../../components/atm/AtmPinScreen";
 import { AtmSuccessScreen } from "../../components/atm/AtmSuccessScreen";
 import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
+import { SoundToggle } from "../../components/atm/SoundToggle";
 import { atmReducer, initialAtmState } from "../../lib/atmStateMachine";
+import {
+  createSpeechRecognizer,
+  isSpeechRecognitionSupported,
+} from "../../services/speechRecognitionService";
+import {
+  playSuccessSound,
+  speakAssistantMessage,
+  stopAssistantSpeech,
+} from "../../services/speechSynthesisService";
+
+const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
 export function AtmScenarioPage() {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(atmReducer, initialAtmState);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const storedValue = localStorage.getItem(SOUND_STORAGE_KEY);
+    return storedValue === null ? true : storedValue === "true";
+  });
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [speechError, setSpeechError] = useState("");
+  const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
+  const successSoundPlayedRef = useRef(false);
+  const speechRecognitionSupported = isSpeechRecognitionSupported();
+
+  const assistantMessage = useMemo(() => {
+    if (state.status === "confirm_name" && state.fullName) {
+      return `I heard your name as ${state.fullName}. Is this correct?`;
+    }
+    if (state.status === "enter_name") {
+      return "Please say your full name.";
+    }
+    if (state.status === "success") {
+      return "Well done. You entered the correct password.";
+    }
+    return state.assistantMessage;
+  }, [state.assistantMessage, state.fullName, state.status]);
+
+  const speakCurrentMessage = useCallback(() => {
+    if (!soundEnabled) {
+      return;
+    }
+    speakAssistantMessage(assistantMessage, {
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, [assistantMessage, soundEnabled]);
+
+  const stopSpeech = useCallback(() => {
+    stopAssistantSpeech();
+    setIsSpeaking(false);
+  }, []);
+
+  const toggleSound = () => {
+    setSoundEnabled((current) => {
+      const nextValue = !current;
+      localStorage.setItem(SOUND_STORAGE_KEY, String(nextValue));
+      if (!nextValue) {
+        stopSpeech();
+      }
+      return nextValue;
+    });
+  };
 
   useEffect(() => {
     if (state.status !== "lockout" || state.lockoutSecondsRemaining === 0) {
@@ -29,6 +92,69 @@ export function AtmScenarioPage() {
     return () => window.clearTimeout(timer);
   }, [state.lockoutSecondsRemaining, state.status]);
 
+  useEffect(() => {
+    if (!soundEnabled) {
+      stopSpeech();
+      return;
+    }
+    speakCurrentMessage();
+  }, [assistantMessage, soundEnabled, speakCurrentMessage, stopSpeech]);
+
+  useEffect(() => {
+    if (state.status !== "success") {
+      successSoundPlayedRef.current = false;
+      return;
+    }
+
+    if (soundEnabled && !successSoundPlayedRef.current) {
+      successSoundPlayedRef.current = true;
+      playSuccessSound();
+    }
+  }, [soundEnabled, state.status]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+      recognizerRef.current?.stop();
+    };
+  }, [stopSpeech]);
+
+  const startListening = () => {
+    setSpeechError("");
+    setTranscript("");
+
+    const recognizer = createSpeechRecognizer({
+      onResult: (nextTranscript) => {
+        setTranscript(nextTranscript);
+      },
+      onError: (message) => {
+        setSpeechError(message);
+      },
+      onEnd: () => {
+        setIsListening(false);
+      },
+    });
+
+    if (!recognizer) {
+      setSpeechError("Voice input is not supported in this browser. Please type your name.");
+      return;
+    }
+
+    recognizerRef.current = recognizer;
+    try {
+      setIsListening(true);
+      recognizer.start();
+    } catch {
+      setIsListening(false);
+      setSpeechError("Voice input could not start. Please try again or type your name.");
+    }
+  };
+
+  const stopListening = () => {
+    recognizerRef.current?.stop();
+    setIsListening(false);
+  };
+
   const screen = (() => {
     switch (state.status) {
       case "welcome":
@@ -38,6 +164,12 @@ export function AtmScenarioPage() {
         return (
           <AtmNameScreen
             errorMessage={state.errorMessage}
+            transcript={transcript}
+            speechError={speechError}
+            isListening={isListening}
+            isVoiceSupported={speechRecognitionSupported}
+            onStartListening={startListening}
+            onStopListening={stopListening}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
           />
         );
@@ -47,7 +179,11 @@ export function AtmScenarioPage() {
           <AtmConfirmNameScreen
             fullName={state.fullName}
             onConfirm={() => dispatch({ type: "NAME_CONFIRMED" })}
-            onRetry={() => dispatch({ type: "NAME_RETRY" })}
+            onRetry={() => {
+              setTranscript("");
+              setSpeechError("");
+              dispatch({ type: "NAME_RETRY" });
+            }}
           />
         );
 
@@ -89,7 +225,11 @@ export function AtmScenarioPage() {
         return (
           <AtmSuccessScreen
             onFinish={() => navigate("/scenarios")}
-            onTryAgain={() => dispatch({ type: "RESET" })}
+            onTryAgain={() => {
+              setTranscript("");
+              setSpeechError("");
+              dispatch({ type: "RESET" });
+            }}
           />
         );
 
@@ -99,7 +239,18 @@ export function AtmScenarioPage() {
   })();
 
   return (
-    <AtmFrame assistantMessage={<AtmAssistantMessage message={state.assistantMessage} />}>
+    <AtmFrame
+      soundControls={<SoundToggle isEnabled={soundEnabled} onToggle={toggleSound} />}
+      assistantMessage={
+        <AtmAssistantMessage
+          message={assistantMessage}
+          soundEnabled={soundEnabled}
+          isSpeaking={isSpeaking}
+          onRepeat={speakCurrentMessage}
+          onStop={stopSpeech}
+        />
+      }
+    >
       {screen}
     </AtmFrame>
   );

@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 
 export function AtmFrame({
   assistantMessage,
+  soundControls,
   children,
 }: {
   assistantMessage: ReactNode;
+  soundControls: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -35,6 +37,7 @@ export function AtmFrame({
             </div>
 
             <aside className="flex flex-col gap-4 rounded-xl border border-slate-600 bg-slate-800 p-4">
+              {soundControls}
               <div className="rounded-lg bg-slate-950 p-3">
                 <div className="h-3 rounded-full bg-slate-600" aria-hidden="true" />
                 <p className="mt-3 text-center text-xs font-bold uppercase tracking-wide text-slate-300">

@@ -11,7 +11,7 @@ export function AtmConfirmNameScreen({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-          Your name is:
+          I heard:
         </h1>
         <p className="mt-4 rounded-lg border border-slate-200 bg-white p-5 text-2xl font-bold text-slate-950">
           {fullName}
