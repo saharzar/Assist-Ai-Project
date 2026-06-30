@@ -19,3 +19,9 @@ export function denyUser(userId: number, rejectionReason?: string) {
     body: JSON.stringify({ rejection_reason: rejectionReason || null }),
   });
 }
+
+export function suspendUser(userId: number) {
+  return apiRequest<User>(`/admin/users/${userId}/suspend`, {
+    method: "POST",
+  });
+}

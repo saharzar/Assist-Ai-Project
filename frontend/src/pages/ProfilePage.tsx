@@ -13,6 +13,7 @@ const statusLabelKeys = {
   pending: "pending",
   approved: "approved",
   denied: "denied",
+  suspended: "suspended",
 } as const;
 
 export function ProfilePage() {
