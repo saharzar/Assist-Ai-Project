@@ -26,13 +26,17 @@ export function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = isAuthenticated && user?.role === "admin";
 
-  const loadUsers = async (status: AdminUserStatusFilter) => {
+  const loadUsers = async (status: AdminUserStatusFilter, clearSuccess = true) => {
     setIsLoading(true);
     setErrorMessage("");
+    if (clearSuccess) {
+      setSuccessMessage("");
+    }
     try {
       setUsers(await fetchAdminUsers(status));
     } catch {
@@ -62,12 +66,14 @@ export function AdminUsersPage() {
 
   const handleApprove = async (targetUser: User) => {
     await approveUser(targetUser.id);
-    await loadUsers(statusFilter);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userApprovedEmailProcessed"));
   };
 
   const handleDeny = async (targetUser: User) => {
     await denyUser(targetUser.id, rejectionReasons[targetUser.id]);
-    await loadUsers(statusFilter);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userDeniedEmailProcessed"));
   };
 
   return (
@@ -103,6 +109,12 @@ export function AdminUsersPage() {
       {errorMessage && (
         <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-5 font-semibold text-amber-900">
           {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mt-8 rounded-lg border border-teal-200 bg-teal-50 p-5 font-semibold text-teal-900">
+          {successMessage}
         </div>
       )}
 

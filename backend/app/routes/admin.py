@@ -8,7 +8,8 @@ from app.core.security import get_current_admin
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import AdminUserRead, DenyUserRequest
-from app.services.email_service import send_account_approved_email, send_account_denied_email
+from app.core.config import get_settings
+from app.services.email_service import send_account_approved_email, send_account_denied_email, send_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -90,3 +91,20 @@ def deny_user(
 
     send_account_denied_email(user, reason)
     return user
+
+
+@router.post("/email/test")
+def send_test_email(
+    current_admin: User = Depends(get_current_admin),
+) -> dict[str, str]:
+    settings = get_settings()
+    send_email(
+        settings.admin_notification_email,
+        "ASSIST-AI Test Email",
+        (
+            "This is a test email from ASSIST-AI.\n\n"
+            "If you received this message, the email notification pipeline was processed.\n\n"
+            "ASSIST-AI System"
+        ),
+    )
+    return {"message": "Test email processed."}

@@ -60,6 +60,8 @@ type TranslationKey =
   | "all"
   | "approve"
   | "deny"
+  | "userApprovedEmailProcessed"
+  | "userDeniedEmailProcessed"
   | "rejectionReason"
   | "viewPendingAccounts"
   | "passwordHelp"
@@ -140,6 +142,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "All",
     approve: "Approve",
     deny: "Deny",
+    userApprovedEmailProcessed: "User approved and notification email processed.",
+    userDeniedEmailProcessed: "User denied and notification email processed.",
     rejectionReason: "Rejection reason",
     viewPendingAccounts: "View pending accounts",
     passwordHelp: "Use at least 8 characters.",
@@ -208,6 +212,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "Todos",
     approve: "Aprobar",
     deny: "Denegar",
+    userApprovedEmailProcessed: "Usuario aprobado y correo de notificacion procesado.",
+    userDeniedEmailProcessed: "Usuario denegado y correo de notificacion procesado.",
     rejectionReason: "Motivo de rechazo",
     viewPendingAccounts: "Ver cuentas pendientes",
     passwordHelp: "Usa al menos 8 caracteres.",
@@ -276,6 +282,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "Alle",
     approve: "Genehmigen",
     deny: "Ablehnen",
+    userApprovedEmailProcessed: "Benutzer genehmigt und Benachrichtigungs-E-Mail verarbeitet.",
+    userDeniedEmailProcessed: "Benutzer abgelehnt und Benachrichtigungs-E-Mail verarbeitet.",
     rejectionReason: "Ablehnungsgrund",
     viewPendingAccounts: "Ausstehende Konten anzeigen",
     passwordHelp: "Verwende mindestens 8 Zeichen.",
@@ -344,6 +352,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "Tumu",
     approve: "Onayla",
     deny: "Reddet",
+    userApprovedEmailProcessed: "Kullanici onaylandi ve bildirim e-postasi islendi.",
+    userDeniedEmailProcessed: "Kullanici reddedildi ve bildirim e-postasi islendi.",
     rejectionReason: "Red nedeni",
     viewPendingAccounts: "Bekleyen hesaplari gor",
     passwordHelp: "En az 8 karakter kullan.",
@@ -412,6 +422,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "Todos",
     approve: "Aprovar",
     deny: "Negar",
+    userApprovedEmailProcessed: "Usuario aprovado e email de notificacao processado.",
+    userDeniedEmailProcessed: "Usuario negado e email de notificacao processado.",
     rejectionReason: "Motivo da rejeicao",
     viewPendingAccounts: "Ver contas pendentes",
     passwordHelp: "Use pelo menos 8 caracteres.",
@@ -480,6 +492,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     all: "Tous",
     approve: "Approuver",
     deny: "Refuser",
+    userApprovedEmailProcessed: "Utilisateur approuve et e-mail de notification traite.",
+    userDeniedEmailProcessed: "Utilisateur refuse et e-mail de notification traite.",
     rejectionReason: "Raison du refus",
     viewPendingAccounts: "Voir les comptes en attente",
     passwordHelp: "Utilise au moins 8 caracteres.",
