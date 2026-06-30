@@ -15,6 +15,16 @@ export function stopAssistantSpeech() {
   window.speechSynthesis.cancel();
 }
 
+function getEnglishVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  return (
+    voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us")) ??
+    voices.find((voice) => voice.lang.toLowerCase().startsWith("en-gb")) ??
+    voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
+    null
+  );
+}
+
 export function speakAssistantMessage(message: string, callbacks: SpeechCallbacks = {}) {
   if (!isSpeechSynthesisSupported() || !message.trim()) {
     callbacks.onEnd?.();
@@ -26,6 +36,8 @@ export function speakAssistantMessage(message: string, callbacks: SpeechCallback
   utterance.rate = 0.9;
   utterance.pitch = 1;
   utterance.volume = 1;
+  utterance.lang = "en-US";
+  utterance.voice = getEnglishVoice();
   utterance.onstart = () => callbacks.onStart?.();
   utterance.onend = () => callbacks.onEnd?.();
   utterance.onerror = () => {

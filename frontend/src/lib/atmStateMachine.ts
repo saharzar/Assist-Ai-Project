@@ -1,24 +1,32 @@
 import type { AtmAction, AtmState, ParsedAtmName } from "../types/atm";
 
-const DEMO_PIN = "2580";
 const PIN_LENGTH = 4;
 const LOCKOUT_SECONDS = 10;
 
-export const initialAtmState: AtmState = {
-  status: "welcome",
-  fullName: "",
-  firstName: "",
-  lastName: "",
-  expectedSecondLetter: "",
-  expectedLastLetter: "",
-  currentPinInput: "",
-  pinAttemptCount: 0,
-  letterInput: "",
-  identityVerified: false,
-  lockoutSecondsRemaining: LOCKOUT_SECONDS,
-  errorMessage: "",
-  assistantMessage: "Welcome to the ATM practice. Press start when you are ready.",
-};
+function createDemoPin() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+export function createInitialAtmState(): AtmState {
+  return {
+    status: "welcome",
+    fullName: "",
+    firstName: "",
+    lastName: "",
+    expectedSecondLetter: "",
+    expectedLastLetter: "",
+    demoPin: createDemoPin(),
+    currentPinInput: "",
+    pinAttemptCount: 0,
+    letterInput: "",
+    identityVerified: false,
+    lockoutSecondsRemaining: LOCKOUT_SECONDS,
+    errorMessage: "",
+    assistantMessage: "Welcome to the ATM practice. Press start when you are ready.",
+  };
+}
+
+export const initialAtmState: AtmState = createInitialAtmState();
 
 export function parseAtmName(value: string): ParsedAtmName | null {
   const parts = value.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
@@ -117,7 +125,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       };
 
     case "PIN_SUBMIT": {
-      if (state.currentPinInput === DEMO_PIN) {
+      if (state.currentPinInput === state.demoPin) {
         return {
           ...state,
           status: "success",
@@ -235,7 +243,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       };
 
     case "RESET":
-      return initialAtmState;
+      return createInitialAtmState();
 
     default:
       return state;

@@ -43,6 +43,18 @@ export function isSpeechRecognitionSupported() {
   return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+export function cleanSpokenNameTranscript(transcript: string) {
+  return transcript
+    .trim()
+    .replace(/[.?!]+$/g, "")
+    .replace(
+      /^(my full name is|my name is|the name is|name is|i am|i'm|call me|it is|it's)\s+/i,
+      "",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function createSpeechRecognizer(callbacks: SpeechRecognitionCallbacks) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -56,7 +68,7 @@ export function createSpeechRecognizer(callbacks: SpeechRecognitionCallbacks) {
 
   recognition.onresult = (event) => {
     const lastResult = event.results[event.results.length - 1];
-    callbacks.onResult(lastResult[0].transcript.trim());
+    callbacks.onResult(cleanSpokenNameTranscript(lastResult[0].transcript));
   };
 
   recognition.onerror = (event) => {

@@ -14,6 +14,7 @@ export type AtmState = {
   lastName: string;
   expectedSecondLetter: string;
   expectedLastLetter: string;
+  demoPin: string;
   currentPinInput: string;
   pinAttemptCount: number;
   letterInput: string;

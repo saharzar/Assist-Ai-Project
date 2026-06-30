@@ -1,6 +1,7 @@
 import { NumericKeypad } from "./NumericKeypad";
 
 export function AtmPinScreen({
+  demoPin,
   pinInput,
   errorMessage,
   onDigit,
@@ -8,6 +9,7 @@ export function AtmPinScreen({
   onBackspace,
   onSubmit,
 }: {
+  demoPin: string;
   pinInput: string;
   errorMessage: string;
   onDigit: (digit: string) => void;
@@ -22,7 +24,16 @@ export function AtmPinScreen({
           Please enter the ATM password.
         </h1>
         <p className="mt-3 text-lg leading-8 text-slate-700">
-          Use the keypad below.
+          Read the practice password, then enter it with the keypad.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-teal-200 bg-teal-50 p-4">
+        <p className="text-sm font-bold uppercase tracking-wide text-teal-900">
+          Practice password
+        </p>
+        <p className="mt-2 text-4xl font-bold tracking-[0.25em] text-slate-950">
+          {demoPin}
         </p>
       </div>
 
@@ -32,7 +43,7 @@ export function AtmPinScreen({
           aria-label="Masked PIN input"
           className="mt-2 flex min-h-[64px] items-center rounded-lg border border-slate-300 bg-white px-4 text-3xl font-bold tracking-widest text-slate-950"
         >
-          {pinInput ? "•".repeat(pinInput.length) : "----"}
+          {pinInput ? "*".repeat(pinInput.length) : "----"}
         </div>
       </div>
 

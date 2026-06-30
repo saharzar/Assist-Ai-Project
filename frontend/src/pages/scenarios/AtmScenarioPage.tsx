@@ -37,6 +37,7 @@ export function AtmScenarioPage() {
   const [speechError, setSpeechError] = useState("");
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const successSoundPlayedRef = useRef(false);
+  const isListeningRef = useRef(false);
   const speechRecognitionSupported = isSpeechRecognitionSupported();
 
   const assistantMessage = useMemo(() => {
@@ -49,8 +50,18 @@ export function AtmScenarioPage() {
     if (state.status === "success") {
       return "Well done. You entered the correct password.";
     }
+    if (state.status === "pin_attempt" && !state.errorMessage && !state.identityVerified) {
+      return `Please enter the ATM password. The practice password is ${state.demoPin}.`;
+    }
     return state.assistantMessage;
-  }, [state.assistantMessage, state.fullName, state.status]);
+  }, [
+    state.assistantMessage,
+    state.demoPin,
+    state.errorMessage,
+    state.fullName,
+    state.identityVerified,
+    state.status,
+  ]);
 
   const speakCurrentMessage = useCallback(() => {
     if (!soundEnabled) {
@@ -119,7 +130,11 @@ export function AtmScenarioPage() {
     };
   }, [stopSpeech]);
 
-  const startListening = () => {
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  const startListening = useCallback(() => {
     setSpeechError("");
     setTranscript("");
 
@@ -148,12 +163,52 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError("Voice input could not start. Please try again or type your name.");
     }
-  };
+  }, []);
 
-  const stopListening = () => {
+  const stopListening = useCallback(() => {
     recognizerRef.current?.stop();
     setIsListening(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (state.status !== "enter_name" || !speechRecognitionSupported) {
+      return;
+    }
+
+    const isTextInputTarget = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      return Boolean(
+        element?.closest("input, textarea, select, button") ||
+          element?.isContentEditable,
+      );
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat || isTextInputTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      if (!isListeningRef.current) {
+        startListening();
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isTextInputTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      stopListening();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [speechRecognitionSupported, startListening, state.status, stopListening]);
 
   const screen = (() => {
     switch (state.status) {
@@ -190,6 +245,7 @@ export function AtmScenarioPage() {
       case "pin_attempt":
         return (
           <AtmPinScreen
+            demoPin={state.demoPin}
             pinInput={state.currentPinInput}
             errorMessage={state.errorMessage}
             onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}

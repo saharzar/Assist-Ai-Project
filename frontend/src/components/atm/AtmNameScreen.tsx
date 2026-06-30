@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { VoiceInputButton } from "./VoiceInputButton";
 
@@ -23,6 +23,12 @@ export function AtmNameScreen({
 }) {
   const [fullName, setFullName] = useState("");
 
+  useEffect(() => {
+    if (transcript) {
+      setFullName(transcript);
+    }
+  }, [transcript]);
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     onSubmit(fullName);
@@ -41,6 +47,9 @@ export function AtmNameScreen({
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
         <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Voice input</p>
+        <p className="text-sm font-semibold text-slate-600">
+          Hold Space to speak. Release Space to stop.
+        </p>
         <VoiceInputButton
           isSupported={isVoiceSupported}
           isListening={isListening}
