@@ -125,6 +125,16 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       };
 
     case "PIN_SUBMIT": {
+      if (state.pinAttemptCount === 0) {
+        return {
+          ...state,
+          currentPinInput: "",
+          pinAttemptCount: 1,
+          errorMessage: "There seems to be a problem. Please try again.",
+          assistantMessage: "There seems to be a problem. Please try again.",
+        };
+      }
+
       if (state.currentPinInput === state.demoPin) {
         return {
           ...state,
@@ -143,16 +153,6 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           lockoutSecondsRemaining: LOCKOUT_SECONDS,
           errorMessage: "",
           assistantMessage: "The ATM has a temporary problem. Please wait calmly.",
-        };
-      }
-
-      if (state.pinAttemptCount === 0) {
-        return {
-          ...state,
-          currentPinInput: "",
-          pinAttemptCount: 1,
-          errorMessage: "There seems to be a problem. Please try again.",
-          assistantMessage: "There seems to be a problem. Please try again.",
         };
       }
 

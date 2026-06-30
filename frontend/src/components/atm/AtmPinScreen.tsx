@@ -26,6 +26,9 @@ export function AtmPinScreen({
         <p className="mt-3 text-lg leading-8 text-slate-700">
           Read the practice password, then enter it with the keypad.
         </p>
+        <p className="mt-2 text-base font-semibold leading-7 text-slate-600">
+          In this practice, the first try may show a system problem. Stay calm and try again.
+        </p>
       </div>
 
       <div className="rounded-lg border border-teal-200 bg-teal-50 p-4">
