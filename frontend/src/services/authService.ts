@@ -2,7 +2,7 @@ import { apiRequest } from "./api";
 
 export type UserCategory = "personal" | "family_caregiver" | "institution" | "professional";
 export type UserRole = "user" | "admin";
-export type ApprovalStatus = "pending" | "approved" | "denied";
+export type ApprovalStatus = "pending" | "approved" | "denied" | "suspended";
 
 export type User = {
   id: number;
@@ -32,6 +32,7 @@ export type RegisterPayload = {
   email: string;
   password: string;
   user_category: UserCategory;
+  preferred_language?: string;
 };
 
 export type RegisterResponse = {
