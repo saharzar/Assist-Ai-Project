@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
+import { ApiError } from "../services/api";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -21,8 +22,18 @@ export function LoginPage() {
     try {
       await login({ email, password });
       navigate("/scenarios");
-    } catch {
-      setErrorMessage(t("authFormError"));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        if (error.message.includes("waiting")) {
+          setErrorMessage(t("pendingApprovalMessage"));
+        } else if (error.message.includes("not approved")) {
+          setErrorMessage(t("deniedAccountMessage"));
+        } else {
+          setErrorMessage(error.message);
+        }
+      } else {
+        setErrorMessage(t("authFormError"));
+      }
     } finally {
       setIsSubmitting(false);
     }

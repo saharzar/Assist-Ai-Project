@@ -1,6 +1,4 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import type { UserCategory } from "../services/authService";
@@ -13,7 +11,6 @@ const categoryOptions: Array<{ value: UserCategory; labelKey: "personalUser" | "
 ];
 
 export function RegisterPage() {
-  const navigate = useNavigate();
   const { register } = useAuth();
   const { t } = useTranslation();
   const [fullName, setFullName] = useState("");
@@ -24,11 +21,13 @@ export function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userCategory, setUserCategory] = useState<UserCategory>("personal");
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
+    setSuccessMessage("");
 
     if (password !== confirmPassword) {
       setErrorMessage(t("passwordMismatch"));
@@ -44,7 +43,11 @@ export function RegisterPage() {
         password,
         user_category: userCategory,
       });
-      navigate("/scenarios");
+      setSuccessMessage(t("accountRequestSent"));
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
     } catch {
       setErrorMessage(t("authFormError"));
     } finally {
@@ -120,6 +123,12 @@ export function RegisterPage() {
         {errorMessage && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900">
             {errorMessage}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="rounded-lg border border-teal-300 bg-teal-50 p-4 font-semibold text-teal-900">
+            {successMessage}
           </div>
         )}
 

@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
     frontend_origin: str = "http://127.0.0.1:5173"
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_full_name: str = "ASSIST-AI Admin"
+    admin_notification_email: str = ""
+    app_frontend_url: str = "http://localhost:5173"
+    email_enabled: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

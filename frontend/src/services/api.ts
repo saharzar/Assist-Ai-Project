@@ -5,8 +5,11 @@ type ApiRequestOptions = RequestInit & {
 };
 
 export class ApiError extends Error {
-  constructor(message = "Something went wrong. Please try again.") {
+  status: number;
+
+  constructor(message = "Something went wrong. Please try again.", status = 0) {
     super(message);
+    this.status = status;
   }
 }
 
@@ -29,7 +32,16 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   });
 
   if (!response.ok) {
-    throw new ApiError();
+    let message = "Something went wrong. Please try again.";
+    try {
+      const data = (await response.json()) as { detail?: string };
+      if (data.detail) {
+        message = data.detail;
+      }
+    } catch {
+      // Keep friendly fallback.
+    }
+    throw new ApiError(message, response.status);
   }
 
   return response.json() as Promise<T>;

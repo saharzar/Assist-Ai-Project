@@ -4,6 +4,7 @@ import { PageShell } from "./components/PageShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { TranslationProvider } from "./i18n";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { GuestConsentPage } from "./pages/GuestConsentPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -23,6 +24,7 @@ export function App() {
             <Route path="login" element={<LoginPage />} />
             <Route path="guest" element={<GuestConsentPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="admin/users" element={<AdminUsersPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="scenarios" element={<ScenarioCataloguePage />} />
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />

@@ -19,7 +19,7 @@ type AuthContextValue = {
   guestSessionToken: string | null;
   preferredLanguage: string;
   login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<string>;
   continueAsGuest: (saveProgress: boolean, preferredLanguage: string) => Promise<void>;
   logout: () => void;
 };
@@ -85,12 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       register: async (payload) => {
         const response = await registerUser(payload);
-        localStorage.setItem(TOKEN_KEY, response.access_token);
-        localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
         localStorage.removeItem(GUEST_KEY);
-        setToken(response.access_token);
-        setUser(response.user);
+        setToken(null);
+        setUser(null);
         setGuestSession(null);
+        return response.message;
       },
       continueAsGuest: async (saveProgress, preferredLanguage) => {
         const response = await createGuestSession({

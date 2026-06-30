@@ -18,6 +18,7 @@ type TranslationKey =
   | "viewScenarios"
   | "scenarios"
   | "profile"
+  | "role"
   | "logout"
   | "fullName"
   | "email"
@@ -46,6 +47,21 @@ type TranslationKey =
   | "yes"
   | "no"
   | "authFormError"
+  | "accountRequestSent"
+  | "pendingApprovalMessage"
+  | "deniedAccountMessage"
+  | "accessDenied"
+  | "adminUsers"
+  | "approvalStatus"
+  | "createdDate"
+  | "pending"
+  | "approved"
+  | "denied"
+  | "all"
+  | "approve"
+  | "deny"
+  | "rejectionReason"
+  | "viewPendingAccounts"
   | "passwordHelp"
   | "loginRequired"
   | "heroTitle"
@@ -82,6 +98,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "View Scenarios",
     scenarios: "Scenarios",
     profile: "Profile",
+    role: "Role",
     logout: "Logout",
     fullName: "Full name",
     email: "Email",
@@ -110,6 +127,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Yes",
     no: "No",
     authFormError: "Please check your information and try again.",
+    accountRequestSent: "Your account request has been sent for admin approval. You will receive a notification after review.",
+    pendingApprovalMessage: "Your account is waiting for admin approval.",
+    deniedAccountMessage: "Your account request was not approved.",
+    accessDenied: "Access denied.",
+    adminUsers: "Admin users",
+    approvalStatus: "Approval status",
+    createdDate: "Created date",
+    pending: "Pending",
+    approved: "Approved",
+    denied: "Denied",
+    all: "All",
+    approve: "Approve",
+    deny: "Deny",
+    rejectionReason: "Rejection reason",
+    viewPendingAccounts: "View pending accounts",
     passwordHelp: "Use at least 8 characters.",
     loginRequired: "Please log in or continue as guest to access scenarios.",
     heroTitle: "Build confidence for everyday situations",
@@ -134,6 +166,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "Ver escenarios",
     scenarios: "Escenarios",
     profile: "Perfil",
+    role: "Rol",
     logout: "Cerrar sesion",
     fullName: "Nombre completo",
     email: "Correo electronico",
@@ -162,6 +195,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Si",
     no: "No",
     authFormError: "Revisa tu informacion e intentalo de nuevo.",
+    accountRequestSent: "Tu solicitud de cuenta fue enviada para aprobacion del administrador. Recibiras una notificacion despues de la revision.",
+    pendingApprovalMessage: "Tu cuenta esta esperando aprobacion del administrador.",
+    deniedAccountMessage: "Tu solicitud de cuenta no fue aprobada.",
+    accessDenied: "Acceso denegado.",
+    adminUsers: "Usuarios admin",
+    approvalStatus: "Estado de aprobacion",
+    createdDate: "Fecha de creacion",
+    pending: "Pendiente",
+    approved: "Aprobado",
+    denied: "Denegado",
+    all: "Todos",
+    approve: "Aprobar",
+    deny: "Denegar",
+    rejectionReason: "Motivo de rechazo",
+    viewPendingAccounts: "Ver cuentas pendientes",
     passwordHelp: "Usa al menos 8 caracteres.",
     loginRequired: "Inicia sesion o continua como invitado para acceder a los escenarios.",
     heroTitle: "Desarrolla confianza para situaciones cotidianas",
@@ -186,6 +234,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "Szenarien ansehen",
     scenarios: "Szenarien",
     profile: "Profil",
+    role: "Rolle",
     logout: "Abmelden",
     fullName: "Vollstandiger Name",
     email: "E-Mail",
@@ -214,6 +263,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Ja",
     no: "Nein",
     authFormError: "Bitte prufe deine Angaben und versuche es erneut.",
+    accountRequestSent: "Deine Kontoanfrage wurde zur Admin-Freigabe gesendet. Du erhaltst nach der Prufung eine Benachrichtigung.",
+    pendingApprovalMessage: "Dein Konto wartet auf Admin-Freigabe.",
+    deniedAccountMessage: "Deine Kontoanfrage wurde nicht genehmigt.",
+    accessDenied: "Zugriff verweigert.",
+    adminUsers: "Admin-Benutzer",
+    approvalStatus: "Freigabestatus",
+    createdDate: "Erstellt am",
+    pending: "Ausstehend",
+    approved: "Genehmigt",
+    denied: "Abgelehnt",
+    all: "Alle",
+    approve: "Genehmigen",
+    deny: "Ablehnen",
+    rejectionReason: "Ablehnungsgrund",
+    viewPendingAccounts: "Ausstehende Konten anzeigen",
     passwordHelp: "Verwende mindestens 8 Zeichen.",
     loginRequired: "Bitte melde dich an oder fahre als Gast fort, um Szenarien zu offnen.",
     heroTitle: "Mehr Sicherheit in Alltagssituationen aufbauen",
@@ -238,6 +302,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "Senaryolari gor",
     scenarios: "Senaryolar",
     profile: "Profil",
+    role: "Rol",
     logout: "Cikis yap",
     fullName: "Ad soyad",
     email: "E-posta",
@@ -266,6 +331,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Evet",
     no: "Hayir",
     authFormError: "Lutfen bilgilerini kontrol edip tekrar dene.",
+    accountRequestSent: "Hesap istegin admin onayina gonderildi. Incelemeden sonra bildirim alacaksin.",
+    pendingApprovalMessage: "Hesabin admin onayi bekliyor.",
+    deniedAccountMessage: "Hesap istegin onaylanmadi.",
+    accessDenied: "Erisim reddedildi.",
+    adminUsers: "Admin kullanicilari",
+    approvalStatus: "Onay durumu",
+    createdDate: "Olusturma tarihi",
+    pending: "Beklemede",
+    approved: "Onaylandi",
+    denied: "Reddedildi",
+    all: "Tumu",
+    approve: "Onayla",
+    deny: "Reddet",
+    rejectionReason: "Red nedeni",
+    viewPendingAccounts: "Bekleyen hesaplari gor",
     passwordHelp: "En az 8 karakter kullan.",
     loginRequired: "Senaryolara erismek icin giris yap veya misafir olarak devam et.",
     heroTitle: "Gunluk durumlar icin ozguven kazan",
@@ -290,6 +370,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "Ver cenarios",
     scenarios: "Cenarios",
     profile: "Perfil",
+    role: "Funcao",
     logout: "Sair",
     fullName: "Nome completo",
     email: "E-mail",
@@ -318,6 +399,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Sim",
     no: "Nao",
     authFormError: "Verifique suas informacoes e tente novamente.",
+    accountRequestSent: "Sua solicitacao de conta foi enviada para aprovacao do admin. Voce recebera uma notificacao apos a revisao.",
+    pendingApprovalMessage: "Sua conta esta aguardando aprovacao do admin.",
+    deniedAccountMessage: "Sua solicitacao de conta nao foi aprovada.",
+    accessDenied: "Acesso negado.",
+    adminUsers: "Usuarios admin",
+    approvalStatus: "Status de aprovacao",
+    createdDate: "Data de criacao",
+    pending: "Pendente",
+    approved: "Aprovado",
+    denied: "Negado",
+    all: "Todos",
+    approve: "Aprovar",
+    deny: "Negar",
+    rejectionReason: "Motivo da rejeicao",
+    viewPendingAccounts: "Ver contas pendentes",
     passwordHelp: "Use pelo menos 8 caracteres.",
     loginRequired: "Entre ou continue como convidado para acessar os cenarios.",
     heroTitle: "Crie confianca para situacoes do dia a dia",
@@ -342,6 +438,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     viewScenarios: "Voir les scenarios",
     scenarios: "Scenarios",
     profile: "Profil",
+    role: "Role",
     logout: "Deconnexion",
     fullName: "Nom complet",
     email: "E-mail",
@@ -370,6 +467,21 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     yes: "Oui",
     no: "Non",
     authFormError: "Verifie tes informations puis reessaie.",
+    accountRequestSent: "Ta demande de compte a ete envoyee pour approbation admin. Tu recevras une notification apres examen.",
+    pendingApprovalMessage: "Ton compte attend l'approbation admin.",
+    deniedAccountMessage: "Ta demande de compte n'a pas ete approuvee.",
+    accessDenied: "Acces refuse.",
+    adminUsers: "Utilisateurs admin",
+    approvalStatus: "Statut d'approbation",
+    createdDate: "Date de creation",
+    pending: "En attente",
+    approved: "Approuve",
+    denied: "Refuse",
+    all: "Tous",
+    approve: "Approuver",
+    deny: "Refuser",
+    rejectionReason: "Raison du refus",
+    viewPendingAccounts: "Voir les comptes en attente",
     passwordHelp: "Utilise au moins 8 caracteres.",
     loginRequired: "Connecte-toi ou continue comme invite pour acceder aux scenarios.",
     heroTitle: "Gagner en confiance dans les situations du quotidien",

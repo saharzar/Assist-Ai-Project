@@ -1,6 +1,8 @@
 import { apiRequest } from "./api";
 
 export type UserCategory = "personal" | "family_caregiver" | "institution" | "professional";
+export type UserRole = "user" | "admin";
+export type ApprovalStatus = "pending" | "approved" | "denied";
 
 export type User = {
   id: number;
@@ -8,6 +10,12 @@ export type User = {
   full_name: string;
   user_category: UserCategory;
   preferred_language: string;
+  role: UserRole;
+  approval_status: ApprovalStatus;
+  approved_by: number | null;
+  approved_at: string | null;
+  denied_at: string | null;
+  rejection_reason: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -26,13 +34,18 @@ export type RegisterPayload = {
   user_category: UserCategory;
 };
 
+export type RegisterResponse = {
+  message: string;
+  approval_status: ApprovalStatus;
+};
+
 export type LoginPayload = {
   email: string;
   password: string;
 };
 
 export function registerUser(payload: RegisterPayload) {
-  return apiRequest<AuthResponse>("/auth/register", {
+  return apiRequest<RegisterResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
     auth: false,

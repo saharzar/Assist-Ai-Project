@@ -9,6 +9,11 @@ const categoryLabelKeys = {
   institution: "institution",
   professional: "professional",
 } as const;
+const statusLabelKeys = {
+  pending: "pending",
+  approved: "approved",
+  denied: "denied",
+} as const;
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -34,6 +39,8 @@ export function ProfilePage() {
           <ProfileRow label={t("email")} value={user.email} />
           <ProfileRow label={t("userCategory")} value={t(categoryLabelKeys[user.user_category])} />
           <ProfileRow label={t("preferredLanguage")} value={user.preferred_language.toUpperCase()} />
+          <ProfileRow label={t("role")} value={user.role} />
+          <ProfileRow label={t("approvalStatus")} value={t(statusLabelKeys[user.approval_status])} />
         </div>
       )}
 

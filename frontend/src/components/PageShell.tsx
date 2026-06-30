@@ -5,8 +5,9 @@ import { languages, useTranslation } from "../i18n";
 
 export function PageShell() {
   const { language, setLanguage, t } = useTranslation();
-  const { isAuthenticated, isGuest, logout } = useAuth();
+  const { user, isAuthenticated, isGuest, logout } = useAuth();
   const hasSession = isAuthenticated || isGuest;
+  const isAdmin = isAuthenticated && user?.role === "admin";
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-teal-100 selection:text-slate-900">
@@ -45,6 +46,14 @@ export function PageShell() {
             </select>
             {hasSession ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to="/admin/users"
+                    className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 md:inline-flex"
+                  >
+                    {t("adminUsers")}
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
