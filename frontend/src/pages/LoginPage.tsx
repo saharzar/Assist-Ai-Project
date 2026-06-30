@@ -20,14 +20,16 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
-      navigate("/scenarios");
+      const loggedInUser = await login({ email, password });
+      navigate(loggedInUser.role === "admin" ? "/admin/users" : "/scenarios");
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         if (error.message.includes("waiting")) {
           setErrorMessage(t("pendingApprovalMessage"));
         } else if (error.message.includes("not approved")) {
           setErrorMessage(t("deniedAccountMessage"));
+        } else if (error.message.includes("suspended")) {
+          setErrorMessage(t("suspendedAccountMessage"));
         } else {
           setErrorMessage(error.message);
         }

@@ -3,10 +3,17 @@ import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
-import { approveUser, denyUser, fetchAdminUsers, type AdminUserStatusFilter } from "../../services/adminService";
+import {
+  activateUser,
+  approveUser,
+  denyUser,
+  fetchAdminUsers,
+  suspendUser,
+  type AdminUserStatusFilter,
+} from "../../services/adminService";
 import type { User } from "../../services/authService";
 
-const filters: AdminUserStatusFilter[] = ["pending", "approved", "denied", "all"];
+const filters: AdminUserStatusFilter[] = ["pending", "approved", "denied", "suspended", "all"];
 const categoryLabelKeys = {
   personal: "personalUser",
   family_caregiver: "familyCaregiver",
@@ -17,6 +24,7 @@ const statusLabelKeys = {
   pending: "pending",
   approved: "approved",
   denied: "denied",
+  suspended: "suspended",
 } as const;
 
 export function AdminUsersPage() {
@@ -25,14 +33,19 @@ export function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState<AdminUserStatusFilter>("pending");
   const [users, setUsers] = useState<User[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
+  const [userToDeny, setUserToDeny] = useState<User | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = isAuthenticated && user?.role === "admin";
 
-  const loadUsers = async (status: AdminUserStatusFilter) => {
+  const loadUsers = async (status: AdminUserStatusFilter, clearSuccess = true) => {
     setIsLoading(true);
     setErrorMessage("");
+    if (clearSuccess) {
+      setSuccessMessage("");
+    }
     try {
       setUsers(await fetchAdminUsers(status));
     } catch {
@@ -62,12 +75,27 @@ export function AdminUsersPage() {
 
   const handleApprove = async (targetUser: User) => {
     await approveUser(targetUser.id);
-    await loadUsers(statusFilter);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userApprovedEmailProcessed"));
+  };
+
+  const handleActivate = async (targetUser: User) => {
+    await activateUser(targetUser.id);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userActivatedEmailProcessed"));
   };
 
   const handleDeny = async (targetUser: User) => {
     await denyUser(targetUser.id, rejectionReasons[targetUser.id]);
-    await loadUsers(statusFilter);
+    await loadUsers(statusFilter, false);
+    setUserToDeny(null);
+    setSuccessMessage(t("userDeniedEmailProcessed"));
+  };
+
+  const handleSuspend = async (targetUser: User) => {
+    await suspendUser(targetUser.id);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userSuspendedEmailProcessed"));
   };
 
   return (
@@ -106,6 +134,12 @@ export function AdminUsersPage() {
         </div>
       )}
 
+      {successMessage && (
+        <div className="mt-8 rounded-lg border border-teal-200 bg-teal-50 p-5 font-semibold text-teal-900">
+          {successMessage}
+        </div>
+      )}
+
       {!isLoading && !errorMessage && (
         <div className="mt-8 grid gap-5">
           {users.map((item) => (
@@ -138,15 +172,74 @@ export function AdminUsersPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleDeny(item)}
+                    onClick={() => setUserToDeny(item)}
                     className="min-h-[48px] rounded-lg border border-rose-200 bg-rose-50 px-5 py-2 font-bold text-rose-800 hover:bg-rose-100"
                   >
                     {t("deny")}
                   </button>
                 </div>
               )}
+
+              {item.approval_status === "approved" && (
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleSuspend(item)}
+                    className="min-h-[48px] rounded-lg border border-amber-200 bg-amber-50 px-5 py-2 font-bold text-amber-900 hover:bg-amber-100"
+                  >
+                    {t("suspend")}
+                  </button>
+                </div>
+              )}
+
+              {item.approval_status === "suspended" && (
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleActivate(item)}
+                    className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                  >
+                    {t("activate")}
+                  </button>
+                </div>
+              )}
             </article>
           ))}
+        </div>
+      )}
+
+      {userToDeny && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-5">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deny-user-title"
+            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl"
+          >
+            <h2 id="deny-user-title" className="text-2xl font-bold text-slate-950">
+              {t("confirmDenyTitle")}
+            </h2>
+            <p className="mt-3 leading-7 text-slate-600">{t("confirmDenyBody")}</p>
+            <p className="mt-4 rounded-lg bg-slate-50 p-3 font-semibold text-slate-900">
+              {userToDeny.full_name}
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setUserToDeny(null)}
+                className="min-h-[48px] rounded-lg border border-slate-200 bg-white px-5 py-2 font-bold text-slate-700 hover:bg-slate-50"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeny(userToDeny)}
+                className="min-h-[48px] rounded-lg bg-rose-700 px-5 py-2 font-bold text-white hover:bg-rose-800"
+              >
+                {t("confirmDeny")}
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </section>

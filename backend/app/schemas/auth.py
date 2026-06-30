@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 UserCategory = Literal["personal", "family_caregiver", "institution", "professional"]
 UserRole = Literal["user", "admin"]
-ApprovalStatus = Literal["pending", "approved", "denied"]
+ApprovalStatus = Literal["pending", "approved", "denied", "suspended"]
 
 
 class UserBase(BaseModel):

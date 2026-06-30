@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     admin_notification_email: str = ""
     app_frontend_url: str = "http://localhost:5173"
     email_enabled: bool = False
+    email_backend: str = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "ASSIST-AI"
+    smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
+    smtp_timeout_seconds: int = 10
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

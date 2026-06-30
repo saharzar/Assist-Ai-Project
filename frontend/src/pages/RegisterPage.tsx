@@ -12,7 +12,7 @@ const categoryOptions: Array<{ value: UserCategory; labelKey: "personalUser" | "
 
 export function RegisterPage() {
   const { register } = useAuth();
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +42,7 @@ export function RegisterPage() {
         email,
         password,
         user_category: userCategory,
+        preferred_language: language,
       });
       setSuccessMessage(t("accountRequestSent"));
       setFullName("");

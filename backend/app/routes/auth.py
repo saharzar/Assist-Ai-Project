@@ -67,6 +67,12 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> AuthToken:
             detail="Your account request was not approved.",
         )
 
+    if user.approval_status == "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is suspended.",
+        )
+
     if not user.is_active or user.approval_status != "approved":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
