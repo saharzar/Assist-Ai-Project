@@ -2,12 +2,17 @@ import { Link, useParams } from "react-router-dom";
 
 import { scenarios } from "../data/scenarios";
 import { useTranslation } from "../i18n";
+import { AtmScenarioPage } from "./scenarios/AtmScenarioPage";
 
 export function ScenarioDetailPage() {
   const { t, translateScenario } = useTranslation();
   const { slug } = useParams();
   const scenario = scenarios.find((item) => item.slug === slug);
   const translatedScenario = scenario ? translateScenario(scenario) : null;
+
+  if (slug === "atm-withdrawal") {
+    return <AtmScenarioPage />;
+  }
 
   if (!translatedScenario) {
     return (
