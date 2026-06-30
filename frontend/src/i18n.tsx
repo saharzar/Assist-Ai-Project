@@ -61,9 +61,11 @@ type TranslationKey =
   | "suspended"
   | "all"
   | "approve"
+  | "activate"
   | "deny"
   | "suspend"
   | "userApprovedEmailProcessed"
+  | "userActivatedEmailProcessed"
   | "userDeniedEmailProcessed"
   | "userSuspendedEmailProcessed"
   | "confirmDenyTitle"
@@ -151,9 +153,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Suspended",
     all: "All",
     approve: "Approve",
+    activate: "Activate",
     deny: "Deny",
     suspend: "Suspend",
     userApprovedEmailProcessed: "User approved and notification email processed.",
+    userActivatedEmailProcessed: "User activated and notification email processed.",
     userDeniedEmailProcessed: "User denied and notification email processed.",
     userSuspendedEmailProcessed: "User suspended and notification email processed.",
     confirmDenyTitle: "Deny this user?",
@@ -229,9 +233,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Suspendido",
     all: "Todos",
     approve: "Aprobar",
+    activate: "Activar",
     deny: "Denegar",
     suspend: "Suspender",
     userApprovedEmailProcessed: "Usuario aprobado y correo de notificacion procesado.",
+    userActivatedEmailProcessed: "Usuario activado y correo de notificacion procesado.",
     userDeniedEmailProcessed: "Usuario denegado y correo de notificacion procesado.",
     userSuspendedEmailProcessed: "Usuario suspendido y correo de notificacion procesado.",
     confirmDenyTitle: "Denegar este usuario?",
@@ -307,9 +313,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Gesperrt",
     all: "Alle",
     approve: "Genehmigen",
+    activate: "Aktivieren",
     deny: "Ablehnen",
     suspend: "Sperren",
     userApprovedEmailProcessed: "Benutzer genehmigt und Benachrichtigungs-E-Mail verarbeitet.",
+    userActivatedEmailProcessed: "Benutzer aktiviert und Benachrichtigungs-E-Mail verarbeitet.",
     userDeniedEmailProcessed: "Benutzer abgelehnt und Benachrichtigungs-E-Mail verarbeitet.",
     userSuspendedEmailProcessed: "Benutzer gesperrt und Benachrichtigungs-E-Mail verarbeitet.",
     confirmDenyTitle: "Diesen Benutzer ablehnen?",
@@ -385,9 +393,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Askida",
     all: "Tumu",
     approve: "Onayla",
+    activate: "Etkinlestir",
     deny: "Reddet",
     suspend: "Askiya al",
     userApprovedEmailProcessed: "Kullanici onaylandi ve bildirim e-postasi islendi.",
+    userActivatedEmailProcessed: "Kullanici etkinlestirildi ve bildirim e-postasi islendi.",
     userDeniedEmailProcessed: "Kullanici reddedildi ve bildirim e-postasi islendi.",
     userSuspendedEmailProcessed: "Kullanici askiya alindi ve bildirim e-postasi islendi.",
     confirmDenyTitle: "Bu kullanici reddedilsin mi?",
@@ -463,9 +473,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Suspenso",
     all: "Todos",
     approve: "Aprovar",
+    activate: "Ativar",
     deny: "Negar",
     suspend: "Suspender",
     userApprovedEmailProcessed: "Usuario aprovado e email de notificacao processado.",
+    userActivatedEmailProcessed: "Usuario ativado e email de notificacao processado.",
     userDeniedEmailProcessed: "Usuario negado e email de notificacao processado.",
     userSuspendedEmailProcessed: "Usuario suspenso e email de notificacao processado.",
     confirmDenyTitle: "Negar este usuario?",
@@ -541,9 +553,11 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     suspended: "Suspendu",
     all: "Tous",
     approve: "Approuver",
+    activate: "Activer",
     deny: "Refuser",
     suspend: "Suspendre",
     userApprovedEmailProcessed: "Utilisateur approuve et e-mail de notification traite.",
+    userActivatedEmailProcessed: "Utilisateur active et e-mail de notification traite.",
     userDeniedEmailProcessed: "Utilisateur refuse et e-mail de notification traite.",
     userSuspendedEmailProcessed: "Utilisateur suspendu et e-mail de notification traite.",
     confirmDenyTitle: "Refuser cet utilisateur ?",

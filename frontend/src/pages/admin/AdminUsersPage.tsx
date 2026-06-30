@@ -3,7 +3,14 @@ import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
-import { approveUser, denyUser, fetchAdminUsers, suspendUser, type AdminUserStatusFilter } from "../../services/adminService";
+import {
+  activateUser,
+  approveUser,
+  denyUser,
+  fetchAdminUsers,
+  suspendUser,
+  type AdminUserStatusFilter,
+} from "../../services/adminService";
 import type { User } from "../../services/authService";
 
 const filters: AdminUserStatusFilter[] = ["pending", "approved", "denied", "suspended", "all"];
@@ -70,6 +77,12 @@ export function AdminUsersPage() {
     await approveUser(targetUser.id);
     await loadUsers(statusFilter, false);
     setSuccessMessage(t("userApprovedEmailProcessed"));
+  };
+
+  const handleActivate = async (targetUser: User) => {
+    await activateUser(targetUser.id);
+    await loadUsers(statusFilter, false);
+    setSuccessMessage(t("userActivatedEmailProcessed"));
   };
 
   const handleDeny = async (targetUser: User) => {
@@ -175,6 +188,18 @@ export function AdminUsersPage() {
                     className="min-h-[48px] rounded-lg border border-amber-200 bg-amber-50 px-5 py-2 font-bold text-amber-900 hover:bg-amber-100"
                   >
                     {t("suspend")}
+                  </button>
+                </div>
+              )}
+
+              {item.approval_status === "suspended" && (
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleActivate(item)}
+                    className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                  >
+                    {t("activate")}
                   </button>
                 </div>
               )}

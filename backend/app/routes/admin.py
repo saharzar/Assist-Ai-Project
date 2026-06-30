@@ -12,6 +12,7 @@ from app.schemas.auth import AdminUserRead, DenyUserRequest
 from app.services.email_service import (
     send_account_approved_email,
     send_account_denied_email,
+    send_account_reactivated_email,
     send_account_suspended_email,
     send_email,
 )
@@ -118,6 +119,33 @@ def suspend_user(
     db.refresh(user)
 
     send_account_suspended_email(user)
+    return user
+
+
+@router.post("/users/{user_id}/activate", response_model=AdminUserRead)
+def activate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    if user.role == "admin":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin users cannot be activated here.")
+    if user.approval_status != "suspended":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only suspended users can be activated.")
+
+    user.approval_status = "approved"
+    user.is_active = True
+    user.approved_by = current_admin.id
+    user.approved_at = datetime.now(timezone.utc)
+    user.denied_at = None
+    user.rejection_reason = None
+    db.commit()
+    db.refresh(user)
+
+    send_account_reactivated_email(user)
     return user
 
 

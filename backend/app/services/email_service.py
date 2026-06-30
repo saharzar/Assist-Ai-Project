@@ -57,6 +57,15 @@ EMAIL_COPY = {
             "Thank you,\n"
             "ASSIST-AI Team"
         ),
+        "reactivated_subject": "ASSIST-AI Account Reactivated",
+        "reactivated_body": (
+            "Hello {full_name},\n\n"
+            "Your ASSIST-AI account has been reactivated.\n\n"
+            "You can now log in here:\n"
+            "{login_url}\n\n"
+            "Thank you,\n"
+            "ASSIST-AI Team"
+        ),
     },
     "es": {
         "request_subject": "Solicitud de cuenta ASSIST-AI recibida",
@@ -101,6 +110,15 @@ EMAIL_COPY = {
             "Hola {full_name},\n\n"
             "Tu cuenta ASSIST-AI fue suspendida.\n\n"
             "Contacta al administrador del sistema si necesitas ayuda.\n\n"
+            "Gracias,\n"
+            "Equipo ASSIST-AI"
+        ),
+        "reactivated_subject": "Cuenta ASSIST-AI reactivada",
+        "reactivated_body": (
+            "Hola {full_name},\n\n"
+            "Tu cuenta ASSIST-AI fue reactivada.\n\n"
+            "Ahora puedes iniciar sesion aqui:\n"
+            "{login_url}\n\n"
             "Gracias,\n"
             "Equipo ASSIST-AI"
         ),
@@ -151,6 +169,15 @@ EMAIL_COPY = {
             "Vielen Dank,\n"
             "ASSIST-AI Team"
         ),
+        "reactivated_subject": "ASSIST-AI Konto reaktiviert",
+        "reactivated_body": (
+            "Hallo {full_name},\n\n"
+            "Dein ASSIST-AI Konto wurde reaktiviert.\n\n"
+            "Du kannst dich jetzt hier anmelden:\n"
+            "{login_url}\n\n"
+            "Vielen Dank,\n"
+            "ASSIST-AI Team"
+        ),
     },
     "tr": {
         "request_subject": "ASSIST-AI hesap istegi alindi",
@@ -195,6 +222,15 @@ EMAIL_COPY = {
             "Merhaba {full_name},\n\n"
             "ASSIST-AI hesabin askiya alindi.\n\n"
             "Yardima ihtiyacin varsa lutfen sistem yoneticisiyle iletisime gec.\n\n"
+            "Tesekkurler,\n"
+            "ASSIST-AI Ekibi"
+        ),
+        "reactivated_subject": "ASSIST-AI hesabi yeniden etkinlestirildi",
+        "reactivated_body": (
+            "Merhaba {full_name},\n\n"
+            "ASSIST-AI hesabin yeniden etkinlestirildi.\n\n"
+            "Artik buradan giris yapabilirsin:\n"
+            "{login_url}\n\n"
             "Tesekkurler,\n"
             "ASSIST-AI Ekibi"
         ),
@@ -245,6 +281,15 @@ EMAIL_COPY = {
             "Obrigado,\n"
             "Equipe ASSIST-AI"
         ),
+        "reactivated_subject": "Conta ASSIST-AI reativada",
+        "reactivated_body": (
+            "Ola {full_name},\n\n"
+            "Sua conta ASSIST-AI foi reativada.\n\n"
+            "Agora voce pode entrar aqui:\n"
+            "{login_url}\n\n"
+            "Obrigado,\n"
+            "Equipe ASSIST-AI"
+        ),
     },
     "fr": {
         "request_subject": "Demande de compte ASSIST-AI recue",
@@ -289,6 +334,15 @@ EMAIL_COPY = {
             "Bonjour {full_name},\n\n"
             "Ton compte ASSIST-AI a ete suspendu.\n\n"
             "Contacte l'administrateur du systeme si tu as besoin d'aide.\n\n"
+            "Merci,\n"
+            "Equipe ASSIST-AI"
+        ),
+        "reactivated_subject": "Compte ASSIST-AI reactive",
+        "reactivated_body": (
+            "Bonjour {full_name},\n\n"
+            "Ton compte ASSIST-AI a ete reactive.\n\n"
+            "Tu peux maintenant te connecter ici:\n"
+            "{login_url}\n\n"
             "Merci,\n"
             "Equipe ASSIST-AI"
         ),
@@ -413,7 +467,7 @@ def send_account_request_received_email(user: User) -> None:
 
 def send_admin_new_account_notification(user: User) -> None:
     settings = get_settings()
-    copy = _copy_for_user(user)
+    copy = EMAIL_COPY["en"]
     body = copy["admin_body"].format(
         full_name=user.full_name,
         email=user.email,
@@ -451,3 +505,13 @@ def send_account_suspended_email(user: User) -> None:
     copy = _copy_for_user(user)
     body = copy["suspended_body"].format(full_name=user.full_name)
     send_email(user.email, copy["suspended_subject"], body)
+
+
+def send_account_reactivated_email(user: User) -> None:
+    settings = get_settings()
+    copy = _copy_for_user(user)
+    body = copy["reactivated_body"].format(
+        full_name=user.full_name,
+        login_url=f"{settings.app_frontend_url}/login",
+    )
+    send_email(user.email, copy["reactivated_subject"], body)

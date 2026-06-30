@@ -13,6 +13,12 @@ export function approveUser(userId: number) {
   });
 }
 
+export function activateUser(userId: number) {
+  return apiRequest<User>(`/admin/users/${userId}/activate`, {
+    method: "POST",
+  });
+}
+
 export function denyUser(userId: number, rejectionReason?: string) {
   return apiRequest<User>(`/admin/users/${userId}/deny`, {
     method: "POST",
