@@ -1,3 +1,5 @@
+import applauseSoundUrl from "../assets/audio/applause.mp3";
+
 type SpeechCallbacks = {
   onStart?: () => void;
   onEnd?: () => void;
@@ -48,6 +50,20 @@ export function speakAssistantMessage(message: string, callbacks: SpeechCallback
 }
 
 export function playSuccessSound() {
+  try {
+    const applause = new Audio(applauseSoundUrl);
+    applause.loop = false;
+    applause.volume = 0.75;
+    applause.play().catch(() => {
+      playFallbackSuccessTone();
+    });
+    return;
+  } catch {
+    playFallbackSuccessTone();
+  }
+}
+
+function playFallbackSuccessTone() {
   const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextConstructor) {
     return;
