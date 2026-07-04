@@ -142,69 +142,73 @@ export function AdminUsersPage() {
 
       {!isLoading && !errorMessage && (
         <div className="mt-8 grid gap-5">
-          {users.map((item) => (
-            <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Info label={t("fullName")} value={item.full_name} />
-                <Info label={t("email")} value={item.email} />
-                <Info label={t("userCategory")} value={t(categoryLabelKeys[item.user_category])} />
-                <Info label={t("preferredLanguage")} value={item.preferred_language.toUpperCase()} />
-                <Info label={t("approvalStatus")} value={t(statusLabelKeys[item.approval_status])} />
-                <Info label={t("createdDate")} value={new Date(item.created_at).toLocaleDateString()} />
-              </div>
+          {users.map((item) => {
+            const canManageAccount = item.role !== "admin";
 
-              {item.approval_status === "pending" && (
-                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                  <input
-                    value={rejectionReasons[item.id] ?? ""}
-                    onChange={(event) =>
-                      setRejectionReasons((current) => ({ ...current, [item.id]: event.target.value }))
-                    }
-                    placeholder={t("rejectionReason")}
-                    className="min-h-[48px] rounded-lg border border-slate-300 px-4 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleApprove(item)}
-                    className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
-                  >
-                    {t("approve")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUserToDeny(item)}
-                    className="min-h-[48px] rounded-lg border border-rose-200 bg-rose-50 px-5 py-2 font-bold text-rose-800 hover:bg-rose-100"
-                  >
-                    {t("deny")}
-                  </button>
+            return (
+              <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <Info label={t("fullName")} value={item.full_name} />
+                  <Info label={t("email")} value={item.email} />
+                  <Info label={t("userCategory")} value={t(categoryLabelKeys[item.user_category])} />
+                  <Info label={t("preferredLanguage")} value={item.preferred_language.toUpperCase()} />
+                  <Info label={t("approvalStatus")} value={t(statusLabelKeys[item.approval_status])} />
+                  <Info label={t("createdDate")} value={new Date(item.created_at).toLocaleDateString()} />
                 </div>
-              )}
 
-              {item.approval_status === "approved" && (
-                <div className="mt-5 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleSuspend(item)}
-                    className="min-h-[48px] rounded-lg border border-amber-200 bg-amber-50 px-5 py-2 font-bold text-amber-900 hover:bg-amber-100"
-                  >
-                    {t("suspend")}
-                  </button>
-                </div>
-              )}
+                {canManageAccount && item.approval_status === "pending" && (
+                  <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                    <input
+                      value={rejectionReasons[item.id] ?? ""}
+                      onChange={(event) =>
+                        setRejectionReasons((current) => ({ ...current, [item.id]: event.target.value }))
+                      }
+                      placeholder={t("rejectionReason")}
+                      className="min-h-[48px] rounded-lg border border-slate-300 px-4 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleApprove(item)}
+                      className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                    >
+                      {t("approve")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserToDeny(item)}
+                      className="min-h-[48px] rounded-lg border border-rose-200 bg-rose-50 px-5 py-2 font-bold text-rose-800 hover:bg-rose-100"
+                    >
+                      {t("deny")}
+                    </button>
+                  </div>
+                )}
 
-              {item.approval_status === "suspended" && (
-                <div className="mt-5 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleActivate(item)}
-                    className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
-                  >
-                    {t("activate")}
-                  </button>
-                </div>
-              )}
-            </article>
-          ))}
+                {canManageAccount && item.approval_status === "approved" && (
+                  <div className="mt-5 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleSuspend(item)}
+                      className="min-h-[48px] rounded-lg border border-amber-200 bg-amber-50 px-5 py-2 font-bold text-amber-900 hover:bg-amber-100"
+                    >
+                      {t("suspend")}
+                    </button>
+                  </div>
+                )}
+
+                {canManageAccount && item.approval_status === "suspended" && (
+                  <div className="mt-5 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleActivate(item)}
+                      className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                    >
+                      {t("activate")}
+                    </button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
 

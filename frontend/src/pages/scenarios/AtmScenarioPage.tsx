@@ -38,6 +38,7 @@ export function AtmScenarioPage() {
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const successSoundPlayedRef = useRef(false);
   const isListeningRef = useRef(false);
+  const stopListeningTimerRef = useRef<number | null>(null);
   const speechRecognitionSupported = isSpeechRecognitionSupported();
 
   const assistantMessage = useMemo(() => {
@@ -45,13 +46,13 @@ export function AtmScenarioPage() {
       return `I heard your name as ${state.fullName}. Is this correct?`;
     }
     if (state.status === "enter_name") {
-      return "Please say your full name.";
+      return "Please hold Space and say your full name, or type it in the box.";
     }
     if (state.status === "success") {
       return "Well done. You entered the correct password.";
     }
     if (state.status === "pin_attempt" && !state.errorMessage && !state.identityVerified) {
-      return `Please enter the ATM password. The practice password is ${state.demoPin}.`;
+      return `Please enter the ATM password. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`;
     }
     return state.assistantMessage;
   }, [
@@ -126,6 +127,9 @@ export function AtmScenarioPage() {
   useEffect(() => {
     return () => {
       stopSpeech();
+      if (stopListeningTimerRef.current) {
+        window.clearTimeout(stopListeningTimerRef.current);
+      }
       recognizerRef.current?.stop();
     };
   }, [stopSpeech]);
@@ -134,21 +138,24 @@ export function AtmScenarioPage() {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  const startListening = useCallback(() => {
+  const startNameListening = useCallback(() => {
     setSpeechError("");
     setTranscript("");
 
-    const recognizer = createSpeechRecognizer({
-      onResult: (nextTranscript) => {
-        setTranscript(nextTranscript);
+    const recognizer = createSpeechRecognizer(
+      {
+        onResult: (nextTranscript) => {
+          setTranscript(nextTranscript);
+        },
+        onError: (message) => {
+          setSpeechError(message);
+        },
+        onEnd: () => {
+          setIsListening(false);
+        },
       },
-      onError: (message) => {
-        setSpeechError(message);
-      },
-      onEnd: () => {
-        setIsListening(false);
-      },
-    });
+      "name",
+    );
 
     if (!recognizer) {
       setSpeechError("Voice input is not supported in this browser. Please type your name.");
@@ -165,13 +172,52 @@ export function AtmScenarioPage() {
     }
   }, []);
 
+  const startPinListening = useCallback(() => {
+    setSpeechError("");
+
+    const recognizer = createSpeechRecognizer(
+      {
+        onResult: (nextTranscript) => {
+          dispatch({ type: "PIN_REPLACE", value: nextTranscript });
+        },
+        onError: (message) => {
+          setSpeechError(message);
+        },
+        onEnd: () => {
+          setIsListening(false);
+        },
+      },
+      "pin",
+    );
+
+    if (!recognizer) {
+      setSpeechError("Voice input is not supported in this browser. Please use the keypad.");
+      return;
+    }
+
+    recognizerRef.current = recognizer;
+    try {
+      setIsListening(true);
+      recognizer.start();
+    } catch {
+      setIsListening(false);
+      setSpeechError("Voice input could not start. Please try again or use the keypad.");
+    }
+  }, []);
+
   const stopListening = useCallback(() => {
-    recognizerRef.current?.stop();
-    setIsListening(false);
+    if (stopListeningTimerRef.current) {
+      window.clearTimeout(stopListeningTimerRef.current);
+    }
+    stopListeningTimerRef.current = window.setTimeout(() => {
+      recognizerRef.current?.stop();
+      setIsListening(false);
+      stopListeningTimerRef.current = null;
+    }, 250);
   }, []);
 
   useEffect(() => {
-    if (state.status !== "enter_name" || !speechRecognitionSupported) {
+    if (!["enter_name", "pin_attempt"].includes(state.status) || !speechRecognitionSupported) {
       return;
     }
 
@@ -189,7 +235,13 @@ export function AtmScenarioPage() {
       }
       event.preventDefault();
       if (!isListeningRef.current) {
-        startListening();
+        stopSpeech();
+        if (state.status === "enter_name") {
+          startNameListening();
+        }
+        if (state.status === "pin_attempt") {
+          startPinListening();
+        }
       }
     };
 
@@ -208,7 +260,7 @@ export function AtmScenarioPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [speechRecognitionSupported, startListening, state.status, stopListening]);
+  }, [speechRecognitionSupported, startNameListening, startPinListening, state.status, stopListening]);
 
   const screen = (() => {
     switch (state.status) {
@@ -223,8 +275,6 @@ export function AtmScenarioPage() {
             speechError={speechError}
             isListening={isListening}
             isVoiceSupported={speechRecognitionSupported}
-            onStartListening={startListening}
-            onStopListening={stopListening}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
           />
         );
@@ -245,9 +295,11 @@ export function AtmScenarioPage() {
       case "pin_attempt":
         return (
           <AtmPinScreen
-            demoPin={state.demoPin}
             pinInput={state.currentPinInput}
             errorMessage={state.errorMessage}
+            speechError={speechError}
+            isListening={isListening}
+            isVoiceSupported={speechRecognitionSupported}
             onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}
             onClear={() => dispatch({ type: "PIN_CLEAR" })}
             onBackspace={() => dispatch({ type: "PIN_BACKSPACE" })}

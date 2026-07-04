@@ -14,7 +14,7 @@ export function ScenarioDetailPage() {
     return <AtmScenarioPage />;
   }
 
-  if (!translatedScenario) {
+  if (!translatedScenario || scenario) {
     return (
       <section className="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-7 shadow-soft">
         <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("scenarioNotFound")}</h1>

@@ -5,6 +5,8 @@ import { ScenarioCard } from "../components/ScenarioCard";
 import { useTranslation } from "../i18n";
 import type { Scenario } from "../types/scenario";
 
+const ACTIVE_SCENARIO_SLUG = "atm-withdrawal";
+
 export function ScenarioCataloguePage() {
   const { t, translateScenario } = useTranslation();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
@@ -65,7 +67,11 @@ export function ScenarioCataloguePage() {
       {!isLoading && !errorMessage && (
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {translatedScenarios.map((scenario) => (
-            <ScenarioCard key={scenario.id} scenario={scenario} />
+            <ScenarioCard
+              key={scenario.id}
+              scenario={scenario}
+              isAvailable={scenario.slug === ACTIVE_SCENARIO_SLUG}
+            />
           ))}
         </div>
       )}
