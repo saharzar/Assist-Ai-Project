@@ -6,7 +6,11 @@ import { AtmConfirmNameScreen } from "../../components/atm/AtmConfirmNameScreen"
 import { AtmFrame } from "../../components/atm/AtmFrame";
 import { AtmLetterCheckScreen } from "../../components/atm/AtmLetterCheckScreen";
 import { AtmLockoutScreen } from "../../components/atm/AtmLockoutScreen";
-import { AtmNameScreen } from "../../components/atm/AtmNameScreen";
+import {
+  AtmNameScreen,
+  type AtmNameInputEvent,
+  type AtmNameInputEventPayload,
+} from "../../components/atm/AtmNameScreen";
 import { AtmPinScreen } from "../../components/atm/AtmPinScreen";
 import { AtmSuccessScreen } from "../../components/atm/AtmSuccessScreen";
 import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
@@ -35,6 +39,7 @@ export function AtmScenarioPage() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [speechError, setSpeechError] = useState("");
+  const [nameInputEvent, setNameInputEvent] = useState<AtmNameInputEvent | null>(null);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const successSoundPlayedRef = useRef(false);
   const isListeningRef = useRef(false);
@@ -262,6 +267,20 @@ export function AtmScenarioPage() {
     };
   }, [speechRecognitionSupported, startNameListening, startPinListening, state.status, stopListening]);
 
+  const emitNameInputEvent = (event: AtmNameInputEventPayload) => {
+    setNameInputEvent({
+      ...event,
+      id: Date.now(),
+    });
+  };
+
+  const keypadMode =
+    state.status === "pin_attempt"
+      ? "numeric"
+      : ["enter_name", "letter_check"].includes(state.status)
+        ? "letters"
+        : "none";
+
   const screen = (() => {
     switch (state.status) {
       case "welcome":
@@ -275,6 +294,7 @@ export function AtmScenarioPage() {
             speechError={speechError}
             isListening={isListening}
             isVoiceSupported={speechRecognitionSupported}
+            inputEvent={nameInputEvent}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
           />
         );
@@ -300,10 +320,6 @@ export function AtmScenarioPage() {
             speechError={speechError}
             isListening={isListening}
             isVoiceSupported={speechRecognitionSupported}
-            onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}
-            onClear={() => dispatch({ type: "PIN_CLEAR" })}
-            onBackspace={() => dispatch({ type: "PIN_BACKSPACE" })}
-            onSubmit={() => dispatch({ type: "PIN_SUBMIT" })}
           />
         );
 
@@ -314,10 +330,6 @@ export function AtmScenarioPage() {
             errorMessage={state.errorMessage}
             firstName={state.firstName}
             lastName={state.lastName}
-            onLetter={(letter) => dispatch({ type: "LETTER_INPUT", letter })}
-            onClear={() => dispatch({ type: "LETTER_CLEAR" })}
-            onBackspace={() => dispatch({ type: "LETTER_BACKSPACE" })}
-            onSubmit={() => dispatch({ type: "LETTER_SUBMIT" })}
           />
         );
 
@@ -349,6 +361,49 @@ export function AtmScenarioPage() {
   return (
     <AtmFrame
       soundControls={<SoundToggle isEnabled={soundEnabled} onToggle={toggleSound} />}
+      keypadMode={keypadMode}
+      onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}
+      onLetter={(letter) => {
+        if (state.status === "enter_name") {
+          emitNameInputEvent({ type: "letter", value: letter });
+        }
+        if (state.status === "letter_check" && letter.trim()) {
+          dispatch({ type: "LETTER_INPUT", letter });
+        }
+      }}
+      onClear={() => {
+        if (state.status === "enter_name") {
+          emitNameInputEvent({ type: "clear" });
+        }
+        if (state.status === "pin_attempt") {
+          dispatch({ type: "PIN_CLEAR" });
+        }
+        if (state.status === "letter_check") {
+          dispatch({ type: "LETTER_CLEAR" });
+        }
+      }}
+      onBackspace={() => {
+        if (state.status === "enter_name") {
+          emitNameInputEvent({ type: "backspace" });
+        }
+        if (state.status === "pin_attempt") {
+          dispatch({ type: "PIN_BACKSPACE" });
+        }
+        if (state.status === "letter_check") {
+          dispatch({ type: "LETTER_BACKSPACE" });
+        }
+      }}
+      onEnter={() => {
+        if (state.status === "enter_name") {
+          emitNameInputEvent({ type: "submit" });
+        }
+        if (state.status === "pin_attempt") {
+          dispatch({ type: "PIN_SUBMIT" });
+        }
+        if (state.status === "letter_check") {
+          dispatch({ type: "LETTER_SUBMIT" });
+        }
+      }}
       assistantMessage={
         <AtmAssistantMessage
           message={assistantMessage}

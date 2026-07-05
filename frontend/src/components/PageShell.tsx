@@ -79,7 +79,7 @@ export function PageShell() {
           </div>
         </nav>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8 sm:py-10">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 py-8 sm:py-10">
         <Outlet />
       </main>
     </div>
