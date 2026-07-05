@@ -6,8 +6,19 @@ type SpeechCallbacks = {
   onError?: () => void;
 };
 
+type SpeechLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
+
 let currentSuccessAudio: HTMLAudioElement | null = null;
 let currentSuccessToneContext: AudioContext | null = null;
+
+const speechSynthesisLocales: Record<SpeechLanguage, string> = {
+  en: "en-US",
+  es: "es-ES",
+  de: "de-DE",
+  tr: "tr-TR",
+  pt: "pt-PT",
+  fr: "fr-FR",
+};
 
 export function isSpeechSynthesisSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -20,17 +31,23 @@ export function stopAssistantSpeech() {
   window.speechSynthesis.cancel();
 }
 
-function getEnglishVoice() {
+function getVoiceForLanguage(language: SpeechLanguage) {
   const voices = window.speechSynthesis.getVoices();
+  const locale = speechSynthesisLocales[language].toLowerCase();
+  const languagePrefix = locale.split("-")[0];
+
   return (
-    voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us")) ??
-    voices.find((voice) => voice.lang.toLowerCase().startsWith("en-gb")) ??
-    voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
+    voices.find((voice) => voice.lang.toLowerCase() === locale) ??
+    voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix)) ??
     null
   );
 }
 
-export function speakAssistantMessage(message: string, callbacks: SpeechCallbacks = {}) {
+export function speakAssistantMessage(
+  message: string,
+  callbacks: SpeechCallbacks = {},
+  language: SpeechLanguage = "en",
+) {
   if (!isSpeechSynthesisSupported() || !message.trim()) {
     callbacks.onEnd?.();
     return;
@@ -41,8 +58,8 @@ export function speakAssistantMessage(message: string, callbacks: SpeechCallback
   utterance.rate = 0.9;
   utterance.pitch = 1;
   utterance.volume = 1;
-  utterance.lang = "en-US";
-  utterance.voice = getEnglishVoice();
+  utterance.lang = speechSynthesisLocales[language];
+  utterance.voice = getVoiceForLanguage(language);
   utterance.onstart = () => callbacks.onStart?.();
   utterance.onend = () => callbacks.onEnd?.();
   utterance.onerror = () => {

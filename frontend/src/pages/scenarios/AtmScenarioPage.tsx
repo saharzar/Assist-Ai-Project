@@ -15,7 +15,9 @@ import { AtmPinScreen } from "../../components/atm/AtmPinScreen";
 import { AtmSuccessScreen } from "../../components/atm/AtmSuccessScreen";
 import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
 import { SoundToggle } from "../../components/atm/SoundToggle";
+import { useTranslation } from "../../i18n";
 import { atmReducer, initialAtmState } from "../../lib/atmStateMachine";
+import { atmTranslations } from "../../lib/atmTranslations";
 import {
   createSpeechRecognizer,
   isSpeechRecognitionSupported,
@@ -31,6 +33,8 @@ const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
 export function AtmScenarioPage() {
   const navigate = useNavigate();
+  const { language } = useTranslation();
+  const text = atmTranslations[language];
   const [state, dispatch] = useReducer(atmReducer, initialAtmState);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const storedValue = localStorage.getItem(SOUND_STORAGE_KEY);
@@ -49,26 +53,57 @@ export function AtmScenarioPage() {
 
   const assistantMessage = useMemo(() => {
     if (state.status === "confirm_name" && state.fullName) {
-      return `I heard your name as ${state.fullName}. Is this correct? Press Enter to continue, or press Cancel, Clear, or Back to write it again.`;
+      return text.confirmNameAssistant(state.fullName);
     }
     if (state.status === "enter_name") {
-      return "Please hold Space and say your full name, or type it in the box.";
+      return state.errorMessage ? text.invalidNameAssistant : text.enterNameAssistant;
     }
     if (state.status === "success") {
-      return "Well done. You entered the correct password.";
+      return text.successAssistant;
     }
-    if (state.status === "pin_attempt" && !state.errorMessage && !state.identityVerified) {
-      return `Enter the ATM password now. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`;
+    if (state.status === "pin_attempt") {
+      if (state.errorMessage) {
+        return text.systemProblemAssistant(state.demoPin);
+      }
+      if (state.identityVerified) {
+        return text.retryPinAfterLettersAssistant(state.demoPin);
+      }
+      return text.pinAssistant(state.demoPin);
     }
-    return state.assistantMessage;
+    if (state.status === "letter_check") {
+      return state.errorMessage ? text.letterIncompleteAssistant : text.letterCheckAssistant;
+    }
+    if (state.status === "lockout") {
+      return text.lockoutAssistant;
+    }
+    return text.welcomeAssistant;
   }, [
-    state.assistantMessage,
     state.demoPin,
     state.errorMessage,
     state.fullName,
     state.identityVerified,
     state.status,
+    text,
   ]);
+
+  const displayedErrorMessage = useMemo(() => {
+    if (!state.errorMessage) {
+      return "";
+    }
+    if (state.status === "enter_name") {
+      return text.invalidNameError;
+    }
+    if (state.status === "pin_attempt") {
+      if (state.errorMessage.toLowerCase().includes("four")) {
+        return text.incompletePinError;
+      }
+      return text.systemProblemError;
+    }
+    if (state.status === "letter_check") {
+      return text.letterIncompleteError;
+    }
+    return state.errorMessage;
+  }, [state.currentPinInput.length, state.errorMessage, state.status, text]);
 
   const speakCurrentMessage = useCallback(() => {
     if (!soundEnabled) {
@@ -78,8 +113,8 @@ export function AtmScenarioPage() {
       onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false),
-    });
-  }, [assistantMessage, soundEnabled]);
+    }, language);
+  }, [assistantMessage, language, soundEnabled]);
 
   const stopSpeech = useCallback(() => {
     stopAssistantSpeech();
@@ -163,10 +198,15 @@ export function AtmScenarioPage() {
         },
       },
       "name",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+      },
     );
 
     if (!recognizer) {
-      setSpeechError("Voice input is not supported in this browser. Please type your name.");
+      setSpeechError(text.speechNameUnsupported);
       return;
     }
 
@@ -176,9 +216,9 @@ export function AtmScenarioPage() {
       recognizer.start();
     } catch {
       setIsListening(false);
-      setSpeechError("Voice input could not start. Please try again or type your name.");
+      setSpeechError(text.speechNameStartError);
     }
-  }, []);
+  }, [language, text]);
 
   const startPinListening = useCallback(() => {
     setSpeechError("");
@@ -196,10 +236,15 @@ export function AtmScenarioPage() {
         },
       },
       "pin",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+      },
     );
 
     if (!recognizer) {
-      setSpeechError("Voice input is not supported in this browser. Please use the keypad.");
+      setSpeechError(text.speechPinUnsupported);
       return;
     }
 
@@ -209,9 +254,9 @@ export function AtmScenarioPage() {
       recognizer.start();
     } catch {
       setIsListening(false);
-      setSpeechError("Voice input could not start. Please try again or use the keypad.");
+      setSpeechError(text.speechPinStartError);
     }
-  }, []);
+  }, [language, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
@@ -289,17 +334,39 @@ export function AtmScenarioPage() {
   const screen = (() => {
     switch (state.status) {
       case "welcome":
-        return <AtmWelcomeScreen onStart={() => dispatch({ type: "START" })} />;
+        return (
+          <AtmWelcomeScreen
+            labels={{
+              eyebrow: text.welcomeEyebrow,
+              title: text.welcomeTitle,
+              body: text.welcomeBody,
+              start: text.start,
+              startAria: text.startAria,
+            }}
+            onStart={() => dispatch({ type: "START" })}
+          />
+        );
 
       case "enter_name":
         return (
           <AtmNameScreen
-            errorMessage={state.errorMessage}
+            errorMessage={displayedErrorMessage}
             transcript={transcript}
             speechError={speechError}
             isListening={isListening}
             isVoiceSupported={speechRecognitionSupported}
             inputEvent={nameInputEvent}
+            labels={{
+              title: text.enterNameTitle,
+              hint: text.enterNameHint,
+              voiceInput: text.voiceInput,
+              voiceUnsupported: text.voiceUnsupportedName,
+              listening: text.listening,
+              heard: text.heardLabel,
+              fullName: text.fullNameLabel,
+              placeholder: text.fullNamePlaceholder,
+              pressEnter: text.pressEnterName,
+            }}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
           />
         );
@@ -308,6 +375,10 @@ export function AtmScenarioPage() {
         return (
           <AtmConfirmNameScreen
             fullName={state.fullName}
+            labels={{
+              heard: text.heardLabel,
+              hint: text.confirmNameHint,
+            }}
           />
         );
 
@@ -315,10 +386,20 @@ export function AtmScenarioPage() {
         return (
           <AtmPinScreen
             pinInput={state.currentPinInput}
-            errorMessage={state.errorMessage}
+            errorMessage={displayedErrorMessage}
             speechError={speechError}
             isListening={isListening}
             isVoiceSupported={speechRecognitionSupported}
+            labels={{
+              title: text.pinTitle,
+              hint: text.pinHint,
+              practiceHint: text.pinPracticeHint,
+              passwordInput: text.passwordInput,
+              pinAria: text.pinAria,
+              voiceInput: text.voiceInput,
+              voiceUnsupported: text.voiceUnsupportedPin,
+              listening: text.listening,
+            }}
           />
         );
 
@@ -326,9 +407,17 @@ export function AtmScenarioPage() {
         return (
           <AtmLetterCheckScreen
             letterInput={state.letterInput}
-            errorMessage={state.errorMessage}
+            errorMessage={displayedErrorMessage}
             firstName={state.firstName}
             lastName={state.lastName}
+            labels={{
+              title: text.letterTitle,
+              hint: text.letterHint,
+              firstName: text.firstName,
+              lastName: text.lastName,
+              lettersEntered: text.lettersEntered,
+              lettersAria: text.lettersAria,
+            }}
           />
         );
 
@@ -336,6 +425,14 @@ export function AtmScenarioPage() {
         return (
           <AtmLockoutScreen
             secondsRemaining={state.lockoutSecondsRemaining}
+            labels={{
+              title: text.lockoutTitle,
+              hint: text.lockoutHint,
+              waitTime: text.waitTime,
+              seconds: text.seconds,
+              tryAgain: text.tryAgain,
+              tryAgainAria: text.tryAgainAria,
+            }}
             onTryAgain={() => dispatch({ type: "TRY_AGAIN" })}
           />
         );
@@ -343,6 +440,14 @@ export function AtmScenarioPage() {
       case "success":
         return (
           <AtmSuccessScreen
+            labels={{
+              title: text.successTitle,
+              body: text.successBody,
+              finish: text.finish,
+              finishAria: text.finishAria,
+              tryAgain: text.tryAgain,
+              tryAgainAria: text.tryAgainAria,
+            }}
             onFinish={() => {
               stopSuccessSound();
               navigate("/scenarios");
@@ -363,7 +468,23 @@ export function AtmScenarioPage() {
 
   return (
     <AtmFrame
-      soundControls={<SoundToggle isEnabled={soundEnabled} onToggle={toggleSound} />}
+      labels={{
+        panelTitle: text.panelTitle,
+        practiceMode: text.practiceMode,
+        warning: text.warning,
+      }}
+      soundControls={
+        <SoundToggle
+          isEnabled={soundEnabled}
+          labels={{
+            soundOn: text.soundOn,
+            soundOff: text.soundOff,
+            turnSoundOn: text.turnSoundOn,
+            turnSoundOff: text.turnSoundOff,
+          }}
+          onToggle={toggleSound}
+        />
+      }
       keypadMode={keypadMode}
       onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}
       onLetter={(letter) => {
@@ -441,6 +562,8 @@ export function AtmScenarioPage() {
           message={assistantMessage}
           soundEnabled={soundEnabled}
           isSpeaking={isSpeaking}
+          repeatLabel={text.repeatAssistant}
+          stopLabel={text.stopVoice}
           onRepeat={speakCurrentMessage}
           onStop={stopSpeech}
         />

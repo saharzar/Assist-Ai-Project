@@ -1,11 +1,17 @@
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
 type SpeechRecognitionMode = "name" | "pin";
+type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 
 type SpeechRecognitionCallbacks = {
   onResult: SpeechRecognitionResultCallback;
   onError: (message: string) => void;
   onEnd: () => void;
+};
+
+type SpeechRecognitionErrorMessages = {
+  microphoneBlocked: string;
+  problem: string;
 };
 
 type BrowserSpeechRecognition = {
@@ -51,6 +57,15 @@ export function isSpeechRecognitionSupported() {
   return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+const speechRecognitionLocales: Record<SpeechRecognitionLanguage, string> = {
+  en: "en-US",
+  es: "es-ES",
+  de: "de-DE",
+  tr: "tr-TR",
+  pt: "pt-PT",
+  fr: "fr-FR",
+};
+
 export function cleanSpokenNameTranscript(transcript: string) {
   return transcript
     .trim()
@@ -65,21 +80,75 @@ export function cleanSpokenNameTranscript(transcript: string) {
 
 const spokenDigitMap: Record<string, string> = {
   zero: "0",
+  cero: "0",
+  null: "0",
+  sıfır: "0",
+  sifir: "0",
+  zéro: "0",
   oh: "0",
   o: "0",
   one: "1",
+  uno: "1",
+  eins: "1",
+  ein: "1",
+  bir: "1",
+  um: "1",
+  uma: "1",
+  un: "1",
+  une: "1",
   two: "2",
   to: "2",
   too: "2",
+  dos: "2",
+  zwei: "2",
+  iki: "2",
+  dois: "2",
+  duas: "2",
+  deux: "2",
   three: "3",
+  tres: "3",
+  drei: "3",
+  üç: "3",
+  uc: "3",
+  três: "3",
+  trois: "3",
   four: "4",
   for: "4",
+  cuatro: "4",
+  vier: "4",
+  dört: "4",
+  dort: "4",
+  quatro: "4",
+  quatre: "4",
   five: "5",
+  cinco: "5",
+  fünf: "5",
+  funf: "5",
+  beş: "5",
+  bes: "5",
+  cinq: "5",
   six: "6",
+  seis: "6",
+  sechs: "6",
   seven: "7",
+  siete: "7",
+  sieben: "7",
+  yedi: "7",
+  sete: "7",
+  sept: "7",
   eight: "8",
   ate: "8",
+  ocho: "8",
+  acht: "8",
+  sekiz: "8",
+  oito: "8",
+  huit: "8",
   nine: "9",
+  nueve: "9",
+  neun: "9",
+  dokuz: "9",
+  nove: "9",
+  neuf: "9",
 };
 
 export function cleanSpokenPinTranscript(transcript: string) {
@@ -126,6 +195,11 @@ function chooseBestPinTranscript(result: SpeechRecognitionEvent["results"][numbe
 export function createSpeechRecognizer(
   callbacks: SpeechRecognitionCallbacks,
   mode: SpeechRecognitionMode = "name",
+  language: SpeechRecognitionLanguage = "en",
+  errorMessages: SpeechRecognitionErrorMessages = {
+    microphoneBlocked: "Microphone access was blocked. Please type or use the keypad.",
+    problem: "Voice input had a problem. Please try again or type.",
+  },
 ) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -133,7 +207,7 @@ export function createSpeechRecognizer(
   }
 
   const recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
+  recognition.lang = speechRecognitionLocales[language];
   recognition.interimResults = mode === "name";
   recognition.continuous = false;
   recognition.maxAlternatives = 5;
@@ -150,8 +224,8 @@ export function createSpeechRecognizer(
   recognition.onerror = (event) => {
     const message =
       event.error === "not-allowed"
-        ? "Microphone access was blocked. Please type your name."
-        : "Voice input had a problem. Please try again or type your name.";
+        ? errorMessages.microphoneBlocked
+        : errorMessages.problem;
     callbacks.onError(message);
   };
 
