@@ -30,6 +30,7 @@ export type AtmAction =
   | { type: "NAME_CONFIRMED" }
   | { type: "NAME_RETRY" }
   | { type: "PIN_DIGIT"; digit: string }
+  | { type: "PIN_REPLACE"; value: string }
   | { type: "PIN_BACKSPACE" }
   | { type: "PIN_CLEAR" }
   | { type: "PIN_SUBMIT" }

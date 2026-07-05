@@ -6,6 +6,9 @@ type SpeechCallbacks = {
   onError?: () => void;
 };
 
+let currentSuccessAudio: HTMLAudioElement | null = null;
+let currentSuccessToneContext: AudioContext | null = null;
+
 export function isSpeechSynthesisSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
@@ -50,16 +53,40 @@ export function speakAssistantMessage(message: string, callbacks: SpeechCallback
 }
 
 export function playSuccessSound() {
+  stopSuccessSound();
+
   try {
     const applause = new Audio(applauseSoundUrl);
     applause.loop = false;
     applause.volume = 0.75;
+    currentSuccessAudio = applause;
+    applause.onended = () => {
+      if (currentSuccessAudio === applause) {
+        currentSuccessAudio = null;
+      }
+    };
     applause.play().catch(() => {
+      currentSuccessAudio = null;
       playFallbackSuccessTone();
     });
     return;
   } catch {
     playFallbackSuccessTone();
+  }
+}
+
+export function stopSuccessSound() {
+  if (currentSuccessAudio) {
+    currentSuccessAudio.pause();
+    currentSuccessAudio.currentTime = 0;
+    currentSuccessAudio = null;
+  }
+
+  if (currentSuccessToneContext) {
+    currentSuccessToneContext.close().catch(() => {
+      // The browser may already have closed this short audio context.
+    });
+    currentSuccessToneContext = null;
   }
 }
 
@@ -71,6 +98,7 @@ function playFallbackSuccessTone() {
 
   try {
     const audioContext = new AudioContextConstructor();
+    currentSuccessToneContext = audioContext;
     const notes = [523.25, 659.25, 783.99];
     const now = audioContext.currentTime;
 
@@ -85,11 +113,16 @@ function playFallbackSuccessTone() {
       gain.gain.setValueAtTime(0.0001, start);
       gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, end);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start(start);
-      oscillator.stop(end);
-    });
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start(start);
+        oscillator.stop(end);
+      });
+    window.setTimeout(() => {
+      if (currentSuccessToneContext === audioContext) {
+        currentSuccessToneContext = null;
+      }
+    }, 800);
   } catch {
     // Audio may be blocked by the browser. The visual success screen still works.
   }

@@ -1,6 +1,16 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { VoiceInputButton } from "./VoiceInputButton";
+export type AtmNameInputEvent =
+  | { id: number; type: "letter"; value: string }
+  | { id: number; type: "clear" }
+  | { id: number; type: "backspace" }
+  | { id: number; type: "submit" };
+
+export type AtmNameInputEventPayload =
+  | { type: "letter"; value: string }
+  | { type: "clear" }
+  | { type: "backspace" }
+  | { type: "submit" };
 
 export function AtmNameScreen({
   errorMessage,
@@ -8,8 +18,7 @@ export function AtmNameScreen({
   speechError,
   isListening,
   isVoiceSupported,
-  onStartListening,
-  onStopListening,
+  inputEvent,
   onSubmit,
 }: {
   errorMessage: string;
@@ -17,92 +26,109 @@ export function AtmNameScreen({
   speechError: string;
   isListening: boolean;
   isVoiceSupported: boolean;
-  onStartListening: () => void;
-  onStopListening: () => void;
+  inputEvent: AtmNameInputEvent | null;
   onSubmit: (fullName: string) => void;
 }) {
   const [fullName, setFullName] = useState("");
+  const fullNameRef = useRef("");
+  const handledInputEventIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    fullNameRef.current = fullName;
+  }, [fullName]);
 
   useEffect(() => {
     if (transcript) {
       setFullName(transcript);
+      fullNameRef.current = transcript;
     }
   }, [transcript]);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    onSubmit(fullName);
-  };
+  useEffect(() => {
+    if (!inputEvent) {
+      return;
+    }
+    if (handledInputEventIdRef.current === inputEvent.id) {
+      return;
+    }
+    handledInputEventIdRef.current = inputEvent.id;
+
+    if (inputEvent.type === "letter") {
+      setFullName((current) => {
+        const nextValue = `${current}${inputEvent.value}`;
+        fullNameRef.current = nextValue;
+        return nextValue;
+      });
+    }
+    if (inputEvent.type === "clear") {
+      setFullName("");
+      fullNameRef.current = "";
+    }
+    if (inputEvent.type === "backspace") {
+      setFullName((current) => {
+        const nextValue = current.slice(0, -1);
+        fullNameRef.current = nextValue;
+        return nextValue;
+      });
+    }
+    if (inputEvent.type === "submit") {
+      onSubmit(fullNameRef.current);
+    }
+  }, [inputEvent, onSubmit]);
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <div className="space-y-2">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-          Hello. What is your full name?
+        <h1 className="text-xl font-bold tracking-tight text-slate-950">
+          Enter your full name
         </h1>
-        <p className="mt-3 text-lg leading-8 text-slate-700">
-          Please say your full name, or type it below.
+        <p className="mt-1 text-sm font-semibold leading-5 text-slate-700">
+          Hold Space to speak, type, or use the ATM keyboard.
         </p>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-        <p className="text-sm font-bold uppercase tracking-wide text-slate-600">Voice input</p>
-        <p className="text-sm font-semibold text-slate-600">
-          Hold Space to speak. Release Space to stop.
-        </p>
-        <VoiceInputButton
-          isSupported={isVoiceSupported}
-          isListening={isListening}
-          onStart={onStartListening}
-          onStop={onStopListening}
-        />
+      <div className="space-y-1 rounded-lg border border-slate-200 bg-white p-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Voice input</p>
+        {!isVoiceSupported && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
+            Voice is not supported. Please type your name.
+          </div>
+        )}
         {isListening && (
-          <p className="font-semibold text-sky-800">Listening...</p>
+          <p className="text-sm font-semibold text-sky-800">Listening...</p>
         )}
         {transcript && (
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-sm font-bold text-slate-600">I heard:</p>
-            <p className="mt-1 text-lg font-bold text-slate-950">{transcript}</p>
-            <button
-              type="button"
-              aria-label="Use spoken name"
-              onClick={() => setFullName(transcript)}
-              className="mt-3 min-h-[44px] rounded-lg bg-teal-600 px-4 py-2 font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              Use this name
-            </button>
+          <div className="rounded-lg bg-slate-50 p-2">
+            <p className="text-xs font-bold text-slate-600">I heard:</p>
+            <p className="text-sm font-bold text-slate-950">{transcript}</p>
           </div>
         )}
         {speechError && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-900">
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
             {speechError}
           </div>
         )}
       </div>
 
       <label className="block">
-        <span className="text-sm font-bold text-slate-700">Or type your full name</span>
+        <span className="text-xs font-bold text-slate-700">Full name</span>
         <input
           value={fullName}
           onChange={(event) => setFullName(event.target.value)}
           placeholder="Write your full name"
-          className="mt-2 min-h-[56px] w-full rounded-lg border border-slate-300 px-4 text-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+          className="mt-1 min-h-[40px] w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
         />
       </label>
 
       {errorMessage && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
           {errorMessage}
         </div>
       )}
 
-      <button
-        type="submit"
-        aria-label="Continue with full name"
-        className="min-h-[56px] rounded-lg bg-teal-600 px-7 py-3 text-lg font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-      >
-        Continue
-      </button>
-    </form>
+      <p className="rounded-lg bg-teal-50 p-2 text-xs font-bold text-teal-900">
+        Press ENTER on the ATM keypad to continue.
+      </p>
+    </div>
   );
 }
