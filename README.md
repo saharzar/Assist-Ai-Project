@@ -1,6 +1,6 @@
 # ASSIST-AI
 
-ASSIST-AI is a multilingual practice platform that helps learners build confidence in everyday situations through simple, step-by-step scenario guidance. The current foundation includes a polished React landing experience, authentication, guest mode, user category selection, admin account approval, a PostgreSQL-backed FastAPI API, and a scenario catalogue preview.
+ASSIST-AI is an English practice platform that helps learners build confidence in everyday situations through simple, step-by-step scenario guidance. The current app includes a polished React frontend, authentication, guest mode, user category selection, admin account approval, SMTP email notifications, a PostgreSQL-backed FastAPI API, and an interactive ATM withdrawal practice scenario with voice guidance.
 
 ## Tech Stack
 
@@ -11,20 +11,20 @@ ASSIST-AI is a multilingual practice platform that helps learners build confiden
 
 ## Current Status
 
-Step 2 - Authentication and database foundation
+ASSIST-AI currently includes authentication, admin account management, and the ATM practice scenario.
 
 This version includes:
 
 - Landing page
 - Register, login, guest consent, and profile pages
 - JWT authentication
-- Admin account approval workflow
-- Console email logging or real SMTP notifications for account request, approval, and denial notices
+- Admin dashboard for user approvals, denials, suspension, and activation
+- Console email logging or real SMTP notifications for account request, approval, denial, suspension, and activation notices
 - PostgreSQL users and guest sessions
 - User category selection during sign up
-- Scenario catalogue preview page
-- Scenario detail placeholder page
-- Six-language frontend UI support
+- Scenario catalogue with the ATM scenario enabled
+- Realistic ATM practice interface with clickable keypad and keyboard overlays
+- Voice assistant prompts, speech input for supported steps, and applause feedback on success
 - `GET /health`
 - `GET /api/scenarios`
 - `POST /auth/register`
@@ -35,9 +35,11 @@ This version includes:
 - `GET /admin/users/pending`
 - `POST /admin/users/{user_id}/approve`
 - `POST /admin/users/{user_id}/deny`
+- `POST /admin/users/{user_id}/suspend`
+- `POST /admin/users/{user_id}/activate`
 - `POST /admin/email/test`
 
-It does not include Gemini, ElevenLabs, or detailed scenario flows yet.
+Other scenarios are visible as locked or disabled previews while the ATM scenario is the active practice flow.
 
 ## Run PostgreSQL
 
@@ -119,7 +121,7 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 The backend runs at `http://127.0.0.1:8000`.
@@ -141,7 +143,7 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 1. Start PostgreSQL with `docker compose up -d postgres` from `backend/`.
 2. Run `alembic upgrade head` from `backend/`.
 3. Create the first admin with `python scripts\create_admin.py`.
-4. Start the backend with `uvicorn app.main:app --reload`.
+4. Start the backend with `python -m uvicorn app.main:app --reload`.
 5. Start the frontend with `npm run dev` from `frontend/`.
 6. Register a normal user with the `Personal User` category.
 7. Confirm the backend logs console emails to the user and admin.
@@ -154,10 +156,4 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 14. Confirm the denied user cannot log in.
 15. Try `Continue as Guest`, choose whether to save progress, and confirm scenarios are accessible.
 
-To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, and denial with test users.
-
-## Next Steps
-
-1. Shopping scenario state-machine
-2. Avatar assistant
-3. Gemini/ElevenLabs integration
+To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
