@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type AtmNameInputEvent =
   | { id: number; type: "letter"; value: string }
@@ -76,13 +76,8 @@ export function AtmNameScreen({
     }
   }, [inputEvent, onSubmit]);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    onSubmit(fullName);
-  };
-
   return (
-    <form className="space-y-2" onSubmit={handleSubmit}>
+    <div className="space-y-2">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-950">
           Enter your full name
@@ -131,13 +126,9 @@ export function AtmNameScreen({
         </div>
       )}
 
-      <button
-        type="submit"
-        aria-label="Continue with full name"
-        className="min-h-[40px] rounded-lg bg-teal-600 px-5 py-2 text-sm font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-      >
-        Continue
-      </button>
-    </form>
+      <p className="rounded-lg bg-teal-50 p-2 text-xs font-bold text-teal-900">
+        Press ENTER on the ATM keypad to continue.
+      </p>
+    </div>
   );
 }

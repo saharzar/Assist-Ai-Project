@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
 
-type KeypadMode = "none" | "numeric" | "letters";
+type KeypadMode = "none" | "numeric" | "letters" | "confirm";
 
 type ATMRealisticShellProps = {
   children: ReactNode;
@@ -12,20 +12,23 @@ type ATMRealisticShellProps = {
   onClear?: () => void;
   onBackspace?: () => void;
   onEnter?: () => void;
+  onCancel?: () => void;
 };
 
 const numericKeys = [
-  { label: "1", value: "1", x: 14.9, y: 73.3 },
-  { label: "2", value: "2", x: 20.1, y: 73.4 },
-  { label: "3", value: "3", x: 25.2, y: 73.5 },
-  { label: "4", value: "4", x: 14.4, y: 78 },
-  { label: "5", value: "5", x: 19.6, y: 78.1 },
-  { label: "6", value: "6", x: 24.7, y: 78.2 },
-  { label: "7", value: "7", x: 13.9, y: 82.8 },
-  { label: "8", value: "8", x: 19.1, y: 82.9 },
-  { label: "9", value: "9", x: 24.2, y: 83 },
-  { label: "0", value: "0", x: 18.8, y: 87.8 },
+  { label: "1", value: "1", x: 15.4, y: 73.3 },
+  { label: "2", value: "2", x: 20.8, y: 73.3 },
+  { label: "3", value: "3", x: 27.4, y: 73.4 },
+  { label: "4", value: "4", x: 14.8, y: 78 },
+  { label: "5", value: "5", x: 20.2, y: 78 },
+  { label: "6", value: "6", x: 26.9, y: 78.1 },
+  { label: "7", value: "7", x: 14.2, y: 82.8 },
+  { label: "8", value: "8", x: 19.6, y: 82.8 },
+  { label: "9", value: "9", x: 26.3, y: 82.9 },
+  { label: "0", value: "0", x: 19, y: 87.7 },
 ];
+
+const cancelKey = { label: "Cancel", x: 33.3, y: 73.3, width: 9.2, height: 4.1 };
 
 const commandKeys = [
   { label: "Clear", x: 33.4, y: 78, action: "clear" },
@@ -50,7 +53,42 @@ export function ATMRealisticShell({
   onClear,
   onBackspace,
   onEnter,
+  onCancel,
 }: ATMRealisticShellProps) {
+  const commandOverlays = (
+    <>
+      <OverlayButton
+        label={cancelKey.label}
+        x={cancelKey.x}
+        y={cancelKey.y}
+        width={cancelKey.width}
+        height={cancelKey.height}
+        onClick={() => onCancel?.()}
+      />
+      {commandKeys.map((key) => (
+        <OverlayButton
+          key={key.label}
+          label={key.label}
+          x={key.x}
+          y={key.y}
+          width={9.2}
+          height={4.1}
+          onClick={() => {
+            if (key.action === "back") {
+              onBackspace?.();
+            }
+            if (key.action === "clear") {
+              onClear?.();
+            }
+            if (key.action === "enter") {
+              onEnter?.();
+            }
+          }}
+        />
+      ))}
+    </>
+  );
+
   return (
     <div className="rounded-2xl bg-slate-950 p-2 shadow-2xl">
       <div className="relative mx-auto aspect-[3/2] w-full">
@@ -73,87 +111,51 @@ export function ATMRealisticShell({
                 label={`Number ${key.label}`}
                 x={key.x}
                 y={key.y}
-                width={4.8}
+                width={4.7}
                 height={4}
                 onClick={() => onDigit?.(key.value)}
               />
             ))}
-            {commandKeys.map((key) => (
-              <OverlayButton
-                key={key.label}
-                label={key.label}
-                x={key.x}
-                y={key.y}
-                width={9.2}
-                height={4.1}
-                onClick={() => {
-                  if (key.action === "back") {
-                    onBackspace?.();
-                  }
-                  if (key.action === "clear") {
-                    onClear?.();
-                  }
-                  if (key.action === "enter") {
-                    onEnter?.();
-                  }
-                }}
-              />
-            ))}
+            {commandOverlays}
           </>
         )}
 
-        {keypadMode === "letters" && (
+        {(keypadMode === "letters" || keypadMode === "confirm") && (
           <>
-            {letterRows.flatMap((row) =>
-              row.letters.map((letter, index) => (
+            {keypadMode === "letters" && (
+              <>
+                {letterRows.flatMap((row) =>
+                  row.letters.map((letter, index) => (
+                    <OverlayButton
+                      key={letter}
+                      label={`Letter ${letter}`}
+                      x={row.startX + index * row.gap}
+                      y={row.y}
+                      width={3.25}
+                      height={4}
+                      onClick={() => onLetter?.(letter)}
+                    />
+                  )),
+                )}
                 <OverlayButton
-                  key={letter}
-                  label={`Letter ${letter}`}
-                  x={row.startX + index * row.gap}
-                  y={row.y}
-                  width={3.25}
-                  height={4}
-                  onClick={() => onLetter?.(letter)}
+                  label="Space"
+                  x={spaceKey.x}
+                  y={spaceKey.y}
+                  width={spaceKey.width}
+                  height={spaceKey.height}
+                  onClick={() => onLetter?.(" ")}
                 />
-              )),
+                <OverlayButton
+                  label="Back"
+                  x={letterBackKey.x}
+                  y={letterBackKey.y}
+                  width={letterBackKey.width}
+                  height={letterBackKey.height}
+                  onClick={() => onBackspace?.()}
+                />
+              </>
             )}
-            <OverlayButton
-              label="Space"
-              x={spaceKey.x}
-              y={spaceKey.y}
-              width={spaceKey.width}
-              height={spaceKey.height}
-              onClick={() => onLetter?.(" ")}
-            />
-            <OverlayButton
-              label="Back"
-              x={letterBackKey.x}
-              y={letterBackKey.y}
-              width={letterBackKey.width}
-              height={letterBackKey.height}
-              onClick={() => onBackspace?.()}
-            />
-            {commandKeys.map((key) => (
-              <OverlayButton
-                key={key.label}
-                label={key.label}
-                x={key.x}
-                y={key.y}
-                width={9.2}
-                height={4.1}
-                onClick={() => {
-                  if (key.action === "back") {
-                    onBackspace?.();
-                  }
-                  if (key.action === "clear") {
-                    onClear?.();
-                  }
-                  if (key.action === "enter") {
-                    onEnter?.();
-                  }
-                }}
-              />
-            ))}
+            {commandOverlays}
           </>
         )}
       </div>

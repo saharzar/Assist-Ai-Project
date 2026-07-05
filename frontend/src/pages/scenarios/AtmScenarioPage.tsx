@@ -24,6 +24,7 @@ import {
   playSuccessSound,
   speakAssistantMessage,
   stopAssistantSpeech,
+  stopSuccessSound,
 } from "../../services/speechSynthesisService";
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
@@ -48,7 +49,7 @@ export function AtmScenarioPage() {
 
   const assistantMessage = useMemo(() => {
     if (state.status === "confirm_name" && state.fullName) {
-      return `I heard your name as ${state.fullName}. Is this correct?`;
+      return `I heard your name as ${state.fullName}. Is this correct? Press Enter to continue, or press Cancel, Clear, or Back to write it again.`;
     }
     if (state.status === "enter_name") {
       return "Please hold Space and say your full name, or type it in the box.";
@@ -57,7 +58,7 @@ export function AtmScenarioPage() {
       return "Well done. You entered the correct password.";
     }
     if (state.status === "pin_attempt" && !state.errorMessage && !state.identityVerified) {
-      return `Please enter the ATM password. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`;
+      return `Enter the ATM password now. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`;
     }
     return state.assistantMessage;
   }, [
@@ -91,6 +92,7 @@ export function AtmScenarioPage() {
       localStorage.setItem(SOUND_STORAGE_KEY, String(nextValue));
       if (!nextValue) {
         stopSpeech();
+        stopSuccessSound();
       }
       return nextValue;
     });
@@ -132,6 +134,7 @@ export function AtmScenarioPage() {
   useEffect(() => {
     return () => {
       stopSpeech();
+      stopSuccessSound();
       if (stopListeningTimerRef.current) {
         window.clearTimeout(stopListeningTimerRef.current);
       }
@@ -277,6 +280,8 @@ export function AtmScenarioPage() {
   const keypadMode =
     state.status === "pin_attempt"
       ? "numeric"
+      : state.status === "confirm_name"
+        ? "confirm"
       : ["enter_name", "letter_check"].includes(state.status)
         ? "letters"
         : "none";
@@ -303,12 +308,6 @@ export function AtmScenarioPage() {
         return (
           <AtmConfirmNameScreen
             fullName={state.fullName}
-            onConfirm={() => dispatch({ type: "NAME_CONFIRMED" })}
-            onRetry={() => {
-              setTranscript("");
-              setSpeechError("");
-              dispatch({ type: "NAME_RETRY" });
-            }}
           />
         );
 
@@ -344,8 +343,12 @@ export function AtmScenarioPage() {
       case "success":
         return (
           <AtmSuccessScreen
-            onFinish={() => navigate("/scenarios")}
+            onFinish={() => {
+              stopSuccessSound();
+              navigate("/scenarios");
+            }}
             onTryAgain={() => {
+              stopSuccessSound();
               setTranscript("");
               setSpeechError("");
               dispatch({ type: "RESET" });
@@ -375,6 +378,11 @@ export function AtmScenarioPage() {
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "clear" });
         }
+        if (state.status === "confirm_name") {
+          setTranscript("");
+          setSpeechError("");
+          dispatch({ type: "NAME_RETRY" });
+        }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_CLEAR" });
         }
@@ -385,6 +393,11 @@ export function AtmScenarioPage() {
       onBackspace={() => {
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "backspace" });
+        }
+        if (state.status === "confirm_name") {
+          setTranscript("");
+          setSpeechError("");
+          dispatch({ type: "NAME_RETRY" });
         }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_BACKSPACE" });
@@ -397,11 +410,30 @@ export function AtmScenarioPage() {
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "submit" });
         }
+        if (state.status === "confirm_name") {
+          dispatch({ type: "NAME_CONFIRMED" });
+        }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_SUBMIT" });
         }
         if (state.status === "letter_check") {
           dispatch({ type: "LETTER_SUBMIT" });
+        }
+      }}
+      onCancel={() => {
+        if (state.status === "enter_name") {
+          emitNameInputEvent({ type: "clear" });
+        }
+        if (state.status === "confirm_name") {
+          setTranscript("");
+          setSpeechError("");
+          dispatch({ type: "NAME_RETRY" });
+        }
+        if (state.status === "pin_attempt") {
+          dispatch({ type: "PIN_CLEAR" });
+        }
+        if (state.status === "letter_check") {
+          dispatch({ type: "LETTER_CLEAR" });
         }
       }}
       assistantMessage={

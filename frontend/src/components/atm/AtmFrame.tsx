@@ -11,16 +11,18 @@ export function AtmFrame({
   onClear,
   onBackspace,
   onEnter,
+  onCancel,
   children,
 }: {
   assistantMessage: ReactNode;
   soundControls: ReactNode;
-  keypadMode: "none" | "numeric" | "letters";
+  keypadMode: "none" | "numeric" | "letters" | "confirm";
   onDigit?: (digit: string) => void;
   onLetter?: (letter: string) => void;
   onClear?: () => void;
   onBackspace?: () => void;
   onEnter?: () => void;
+  onCancel?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -33,6 +35,7 @@ export function AtmFrame({
           onClear={onClear}
           onBackspace={onBackspace}
           onEnter={onEnter}
+          onCancel={onCancel}
         >
           {children}
         </ATMRealisticShell>
