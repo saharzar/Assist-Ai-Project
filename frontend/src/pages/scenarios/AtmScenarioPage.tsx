@@ -44,6 +44,7 @@ export function AtmScenarioPage() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [speechError, setSpeechError] = useState("");
+  const [ttsError, setTtsError] = useState("");
   const [nameInputEvent, setNameInputEvent] = useState<AtmNameInputEvent | null>(null);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const successSoundPlayedRef = useRef(false);
@@ -109,10 +110,14 @@ export function AtmScenarioPage() {
     if (!soundEnabled) {
       return;
     }
+    setTtsError("");
     speakAssistantMessage(assistantMessage, {
       onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
+      onError: (message) => {
+        setIsSpeaking(false);
+        setTtsError(message);
+      },
     }, language);
   }, [assistantMessage, language, soundEnabled]);
 
@@ -178,10 +183,39 @@ export function AtmScenarioPage() {
   }, [stopSpeech]);
 
   useEffect(() => {
+    const stopAllScenarioAudio = () => {
+      stopSpeech();
+      stopSuccessSound();
+      recognizerRef.current?.stop();
+      setIsListening(false);
+    };
+
+    const handleNavigationClick = (event: MouseEvent) => {
+      const element = event.target as HTMLElement | null;
+      if (element?.closest("header a, header button")) {
+        stopAllScenarioAudio();
+      }
+    };
+
+    window.addEventListener("pagehide", stopAllScenarioAudio);
+    window.addEventListener("beforeunload", stopAllScenarioAudio);
+    window.addEventListener("popstate", stopAllScenarioAudio);
+    document.addEventListener("click", handleNavigationClick, true);
+
+    return () => {
+      window.removeEventListener("pagehide", stopAllScenarioAudio);
+      window.removeEventListener("beforeunload", stopAllScenarioAudio);
+      window.removeEventListener("popstate", stopAllScenarioAudio);
+      document.removeEventListener("click", handleNavigationClick, true);
+    };
+  }, [stopSpeech]);
+
+  useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
   const startNameListening = useCallback(() => {
+    stopSpeech();
     setSpeechError("");
     setTranscript("");
 
@@ -218,9 +252,10 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechNameStartError);
     }
-  }, [language, text]);
+  }, [language, stopSpeech, text]);
 
   const startPinListening = useCallback(() => {
+    stopSpeech();
     setSpeechError("");
 
     const recognizer = createSpeechRecognizer(
@@ -256,7 +291,7 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechPinStartError);
     }
-  }, [language, text]);
+  }, [language, stopSpeech, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
@@ -283,12 +318,15 @@ export function AtmScenarioPage() {
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || event.repeat || isTextInputTarget(event.target)) {
+      if (event.code !== "Space" || event.repeat) {
+        return;
+      }
+      stopSpeech();
+      if (isTextInputTarget(event.target)) {
         return;
       }
       event.preventDefault();
       if (!isListeningRef.current) {
-        stopSpeech();
         if (state.status === "enter_name") {
           startNameListening();
         }
@@ -343,7 +381,10 @@ export function AtmScenarioPage() {
               start: text.start,
               startAria: text.startAria,
             }}
-            onStart={() => dispatch({ type: "START" })}
+            onStart={() => {
+              stopSpeech();
+              dispatch({ type: "START" });
+            }}
           />
         );
 
@@ -433,7 +474,10 @@ export function AtmScenarioPage() {
               tryAgain: text.tryAgain,
               tryAgainAria: text.tryAgainAria,
             }}
-            onTryAgain={() => dispatch({ type: "TRY_AGAIN" })}
+            onTryAgain={() => {
+              stopSpeech();
+              dispatch({ type: "TRY_AGAIN" });
+            }}
           />
         );
 
@@ -449,10 +493,12 @@ export function AtmScenarioPage() {
               tryAgainAria: text.tryAgainAria,
             }}
             onFinish={() => {
+              stopSpeech();
               stopSuccessSound();
               navigate("/scenarios");
             }}
             onTryAgain={() => {
+              stopSpeech();
               stopSuccessSound();
               setTranscript("");
               setSpeechError("");
@@ -496,6 +542,7 @@ export function AtmScenarioPage() {
         }
       }}
       onClear={() => {
+        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "clear" });
         }
@@ -512,6 +559,7 @@ export function AtmScenarioPage() {
         }
       }}
       onBackspace={() => {
+        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "backspace" });
         }
@@ -528,6 +576,7 @@ export function AtmScenarioPage() {
         }
       }}
       onEnter={() => {
+        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "submit" });
         }
@@ -542,6 +591,7 @@ export function AtmScenarioPage() {
         }
       }}
       onCancel={() => {
+        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "clear" });
         }
@@ -564,6 +614,7 @@ export function AtmScenarioPage() {
           isSpeaking={isSpeaking}
           repeatLabel={text.repeatAssistant}
           stopLabel={text.stopVoice}
+          ttsError={ttsError}
           onRepeat={speakCurrentMessage}
           onStop={stopSpeech}
         />

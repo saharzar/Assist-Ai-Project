@@ -4,6 +4,7 @@ export function AtmAssistantMessage({
   isSpeaking,
   repeatLabel,
   stopLabel,
+  ttsError,
   onRepeat,
   onStop,
 }: {
@@ -12,12 +13,18 @@ export function AtmAssistantMessage({
   isSpeaking: boolean;
   repeatLabel: string;
   stopLabel: string;
+  ttsError: string;
   onRepeat: () => void;
   onStop: () => void;
 }) {
   return (
     <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-slate-900">
       <p className="text-base font-semibold leading-7">{message}</p>
+      {ttsError && (
+        <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
+          {ttsError}
+        </p>
+      )}
       <div className="mt-4 grid gap-2">
         <button
           type="button"
