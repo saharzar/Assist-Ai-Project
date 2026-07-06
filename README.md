@@ -7,7 +7,7 @@ ASSIST-AI is an English practice platform that helps learners build confidence i
 - Frontend: React, TypeScript, Vite, Tailwind CSS
 - Backend: FastAPI, SQLAlchemy, Alembic, JWT authentication
 - Database: PostgreSQL via Docker Compose
-- Data: Static typed scenario lists plus persisted users and guest sessions
+- Data: Static typed scenario lists plus persisted users, guest sessions, TTS usage, and cached TTS audio metadata
 
 ## Current Status
 
@@ -24,7 +24,9 @@ This version includes:
 - User category selection during sign up
 - Scenario catalogue with the ATM scenario enabled
 - Realistic ATM practice interface with clickable keypad and keyboard overlays
-- Voice assistant prompts, speech input for supported steps, and applause feedback on success
+- Azure Speech voice assistant prompts with per-user TTS character usage tracking
+- Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
+- Speech input for supported steps and applause feedback on success
 - `GET /health`
 - `GET /api/scenarios`
 - `POST /auth/register`
@@ -38,6 +40,8 @@ This version includes:
 - `POST /admin/users/{user_id}/suspend`
 - `POST /admin/users/{user_id}/activate`
 - `POST /admin/email/test`
+- `GET /api/tts/usage`
+- `POST /api/tts`
 
 Other scenarios are visible as locked or disabled previews while the ATM scenario is the active practice flow.
 
@@ -113,6 +117,41 @@ curl -X POST http://127.0.0.1:8000/admin/email/test -H "Authorization: Bearer YO
 
 The endpoint returns `{"message":"Test email processed."}` whether the message was handled by console mode or SMTP mode.
 
+## Azure Speech Voice Assistant
+
+ASSIST-AI uses Azure AI Speech for Text-To-Speech through the backend. The frontend never receives the Azure key. It calls `POST /api/tts`, and the backend:
+
+1. Confirms the user is logged in.
+2. Checks the user's TTS character limit.
+3. Looks for cached audio.
+4. Calls Azure only when needed.
+5. Updates PostgreSQL usage.
+6. Returns MP3 audio to the frontend.
+
+Add these values to `backend/.env`:
+
+```env
+AZURE_SPEECH_KEY=your_azure_speech_key
+AZURE_SPEECH_REGION=swedencentral
+TTS_DEFAULT_LIMIT_CHARACTERS=5000
+TTS_MAX_REQUEST_CHARACTERS=1000
+TTS_DEFAULT_VOICE=en-US-JennyNeural
+TTS_CACHE_DIR=media/tts-cache
+```
+
+The voice assistant supports the site languages with Azure neural voices:
+
+- English: `en-US-JennyNeural`
+- Spanish: `es-ES-ElviraNeural`
+- German: `de-DE-KatjaNeural`
+- Turkish: `tr-TR-EmelNeural`
+- Portuguese: `pt-PT-RaquelNeural`
+- French: `fr-FR-DeniseNeural`
+
+TTS billing is character-based, so ASSIST-AI tracks usage by characters, not tokens. The frontend shows the remaining voice allowance in the top navigation for logged-in users.
+
+Generated audio is cached under `backend/media/tts-cache`, and metadata is stored in PostgreSQL. The `backend/media/` folder is ignored by Git because cached audio is generated locally. Repeated prompts are returned from cache without using new TTS characters. PIN and name-confirmation prompts are split so fixed sentence parts can be cached while only the dynamic name or PIN part is generated when needed.
+
 ## Run the Backend
 
 ```bash
@@ -125,6 +164,8 @@ python -m uvicorn app.main:app --reload
 ```
 
 The backend runs at `http://127.0.0.1:8000`.
+
+If the frontend shows an Azure Speech configuration error, check that `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` are set in `backend/.env`, then restart the backend.
 
 ## Run the Frontend
 
@@ -157,3 +198,5 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 15. Try `Continue as Guest`, choose whether to save progress, and confirm scenarios are accessible.
 
 To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
+
+To test Azure TTS, set the Azure Speech variables in `backend/.env`, restart the backend, log in as an approved user, open the ATM scenario, and confirm the assistant speaks. The first time a prompt is spoken it may spend TTS characters; repeated cached prompts should reuse saved audio.
