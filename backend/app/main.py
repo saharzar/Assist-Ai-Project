@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routes import admin, auth, guests, users
+from app.routes import admin, auth, guests, tts, users
 from app.scenarios import SCENARIOS
 
 settings = get_settings()
@@ -18,12 +18,20 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        "X-TTS-Limit-Characters",
+        "X-TTS-Remaining-Characters",
+        "X-TTS-Used-Characters",
+        "X-TTS-Language",
+        "X-TTS-Cache",
+    ],
 )
 
 app.include_router(auth.router)
 app.include_router(guests.router)
 app.include_router(users.router)
 app.include_router(admin.router)
+app.include_router(tts.router)
 
 
 @app.get("/health")
