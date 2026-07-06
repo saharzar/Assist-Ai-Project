@@ -667,9 +667,22 @@ const scenarioTranslations: Record<LanguageCode, Record<string, ScenarioText>> =
 };
 
 const TranslationContext = createContext<TranslationContextValue | null>(null);
+const LANGUAGE_STORAGE_KEY = "assist_ai_language";
+
+function isLanguageCode(value: string | null): value is LanguageCode {
+  return languages.some((language) => language.code === value);
+}
 
 export function TranslationProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<LanguageCode>("en");
+  const [language, setLanguageState] = useState<LanguageCode>(() => {
+    const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return isLanguageCode(storedLanguage) ? storedLanguage : "en";
+  });
+
+  const setLanguage = (nextLanguage: LanguageCode) => {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    setLanguageState(nextLanguage);
+  };
 
   const value = useMemo<TranslationContextValue>(
     () => ({
