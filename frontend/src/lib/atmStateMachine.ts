@@ -22,7 +22,7 @@ export function createInitialAtmState(): AtmState {
     identityVerified: false,
     lockoutSecondsRemaining: LOCKOUT_SECONDS,
     errorMessage: "",
-    assistantMessage: "Welcome to the ATM practice. Press start when you are ready.",
+    assistantMessage: "Welcome to the ATM practice. Click start when you are ready.",
   };
 }
 
@@ -56,7 +56,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         ...state,
         status: "enter_name",
         errorMessage: "",
-        assistantMessage: "Please hold Space and say your full name, or type it in the box.",
+        assistantMessage: "Please say or type your full name clearly.",
       };
 
     case "NAME_SUBMITTED": {
@@ -65,7 +65,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         return {
           ...state,
           errorMessage: "Please write your first and last name.",
-          assistantMessage: "Please hold Space and say your full name, or type your first and last name.",
+          assistantMessage: "Please enter your first and last name so we can continue.",
         };
       }
 
@@ -74,7 +74,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         ...parsedName,
         status: "confirm_name",
         errorMessage: "",
-        assistantMessage: `I heard your name as ${parsedName.fullName}. Is this correct? Press Enter to continue, or press Cancel, Clear, or Back to write it again.`,
+        assistantMessage: `I heard your name as ${parsedName.fullName}. Please confirm if that is correct.`,
       };
     }
 
@@ -84,7 +84,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         status: "pin_attempt",
         currentPinInput: "",
         errorMessage: "",
-        assistantMessage: `Enter the ATM password now. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`,
+        assistantMessage: `Please enter the practice password ${state.demoPin}.`,
       };
 
     case "NAME_RETRY":
@@ -97,7 +97,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         expectedSecondLetter: "",
         expectedLastLetter: "",
         errorMessage: "",
-        assistantMessage: "Please hold Space and say your full name, or type it in the box.",
+        assistantMessage: "Please say or type your full name clearly.",
       };
 
     case "PIN_DIGIT":
@@ -139,8 +139,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         return {
           ...state,
           errorMessage: "Please enter all four numbers before continuing.",
-          assistantMessage:
-            "Please enter all four numbers before continuing. You can type them or hold Space and say them.",
+          assistantMessage: "Please enter all four numbers of the password.",
         };
       }
 
@@ -150,7 +149,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           currentPinInput: "",
           pinAttemptCount: 1,
           errorMessage: "The system has a problem, so please try again.",
-          assistantMessage: `The system has a problem, so please try again. Enter the password one more time. The practice password is ${state.demoPin}.`,
+          assistantMessage: `There is a temporary system problem. Please try again with password ${state.demoPin}.`,
         };
       }
 
@@ -160,7 +159,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           status: "success",
           currentPinInput: "",
           errorMessage: "",
-          assistantMessage: "Well done. You completed this step.",
+          assistantMessage: "Well done. You completed this ATM practice step successfully.",
         };
       }
 
@@ -171,7 +170,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           currentPinInput: "",
           lockoutSecondsRemaining: LOCKOUT_SECONDS,
           errorMessage: "",
-          assistantMessage: "The ATM has a temporary problem. Please wait calmly.",
+          assistantMessage: "There is a temporary problem. Please wait calmly before trying again.",
         };
       }
 
@@ -183,7 +182,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         letterInput: "",
         errorMessage: "",
         assistantMessage:
-          "Can you write the second letter of your first name and the last letter of your last name?",
+          "For a quick identity check, enter the second letter of your first name and the last letter of your last name.",
       };
     }
 
@@ -216,8 +215,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         return {
           ...state,
           errorMessage: "Please enter two letters.",
-          assistantMessage:
-            "Can you write the second letter of your first name and the last letter of your last name?",
+          assistantMessage: "Please enter both requested letters to continue.",
         };
       }
 
@@ -230,8 +228,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           letterInput: "",
           identityVerified: true,
           errorMessage: "",
-          assistantMessage:
-            `Thank you. Enter the ATM password one more time. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`,
+          assistantMessage: `Thank you. Please enter the practice password again: ${state.demoPin}.`,
         };
       }
 
@@ -241,7 +238,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         letterInput: "",
         lockoutSecondsRemaining: LOCKOUT_SECONDS,
         errorMessage: "",
-        assistantMessage: "The ATM has a temporary problem. Please wait calmly.",
+        assistantMessage: "There is a temporary problem. Please wait calmly before trying again.",
       };
     }
 
@@ -261,7 +258,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         identityVerified: false,
         lockoutSecondsRemaining: LOCKOUT_SECONDS,
         errorMessage: "",
-        assistantMessage: `Enter the ATM password now. The practice password is ${state.demoPin}. You can type the numbers or hold Space and say them.`,
+        assistantMessage: `Please enter the practice password ${state.demoPin}.`,
       };
 
     case "RESET":
