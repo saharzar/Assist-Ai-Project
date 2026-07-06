@@ -1,13 +1,52 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation } from "../i18n";
+import {
+  getTtsUsage,
+  TTS_USAGE_UPDATED_EVENT,
+  type TtsUsage,
+} from "../services/ttsUsageService";
 
 export function PageShell() {
   const { language, setLanguage, t } = useTranslation();
   const { user, isAuthenticated, isGuest, logout } = useAuth();
+  const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setTtsUsage(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    getTtsUsage()
+      .then((usage) => {
+        if (isMounted) {
+          setTtsUsage(usage);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setTtsUsage(null);
+        }
+      });
+
+    const handleUsageUpdate = (event: Event) => {
+      setTtsUsage((event as CustomEvent<TtsUsage>).detail);
+    };
+
+    window.addEventListener(TTS_USAGE_UPDATED_EVENT, handleUsageUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(TTS_USAGE_UPDATED_EVENT, handleUsageUpdate);
+    };
+  }, [isAuthenticated]);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 selection:bg-teal-100 selection:text-slate-900">
@@ -23,6 +62,17 @@ export function PageShell() {
             <span>ASSIST-AI</span>
           </Link>
           <div className="flex items-center gap-3">
+            {ttsUsage && (
+              <div
+                className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm lg:inline-flex"
+                aria-label={`${t("voiceCredits")}: ${ttsUsage.remaining} left from ${ttsUsage.limit}`}
+                title={`${t("voiceCredits")}: ${ttsUsage.used} used, ${ttsUsage.remaining} left, ${ttsUsage.limit} limit`}
+              >
+                <span className="mr-2 h-2 w-2 rounded-full bg-teal-400" aria-hidden="true" />
+                {t("voiceCredits")}: {ttsUsage.remaining.toLocaleString()} /{" "}
+                {ttsUsage.limit.toLocaleString()}
+              </div>
+            )}
             <Link
               to="/scenarios"
               className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"

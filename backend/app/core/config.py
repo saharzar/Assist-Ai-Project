@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = 10
+    azure_speech_key: str = ""
+    azure_speech_region: str = "swedencentral"
+    tts_default_limit_characters: int = 5000
+    tts_max_request_characters: int = 1000
+    tts_default_voice: str = "en-US-JennyNeural"
+    tts_cache_dir: str = "media/tts-cache"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

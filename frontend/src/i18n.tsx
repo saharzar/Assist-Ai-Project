@@ -89,6 +89,7 @@ type TranslationKey =
   | "scenarioNotFoundBody"
   | "scenarioNextStep"
   | "backToScenarios"
+  | "voiceCredits"
   | "language";
 
 type ScenarioText = Pick<Scenario, "title" | "description">;
@@ -181,6 +182,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "The scenario you requested is not available.",
     scenarioNextStep: "This scenario will be implemented in the next steps.",
     backToScenarios: "Back to scenarios",
+    voiceCredits: "Voice",
     language: "Language",
   },
   es: {
@@ -261,6 +263,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "El escenario solicitado no esta disponible.",
     scenarioNextStep: "Este escenario se implementara en los proximos pasos.",
     backToScenarios: "Volver a escenarios",
+    voiceCredits: "Voz",
     language: "Idioma",
   },
   de: {
@@ -341,6 +344,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Das angeforderte Szenario ist nicht verfugbar.",
     scenarioNextStep: "Dieses Szenario wird in den nachsten Schritten umgesetzt.",
     backToScenarios: "Zuruck zu den Szenarien",
+    voiceCredits: "Stimme",
     language: "Sprache",
   },
   tr: {
@@ -421,6 +425,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Istedigin senaryo kullanilamiyor.",
     scenarioNextStep: "Bu senaryo sonraki adimlarda uygulanacak.",
     backToScenarios: "Senaryolara don",
+    voiceCredits: "Ses",
     language: "Dil",
   },
   pt: {
@@ -501,6 +506,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "O cenario solicitado nao esta disponivel.",
     scenarioNextStep: "Este cenario sera implementado nas proximas etapas.",
     backToScenarios: "Voltar aos cenarios",
+    voiceCredits: "Voz",
     language: "Idioma",
   },
   fr: {
@@ -581,6 +587,7 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Le scenario demande n'est pas disponible.",
     scenarioNextStep: "Ce scenario sera implemente dans les prochaines etapes.",
     backToScenarios: "Retour aux scenarios",
+    voiceCredits: "Voix",
     language: "Langue",
   },
 };
