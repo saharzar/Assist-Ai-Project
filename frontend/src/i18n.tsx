@@ -90,6 +90,7 @@ type TranslationKey =
   | "scenarioNextStep"
   | "backToScenarios"
   | "voiceCredits"
+  | "speechCredits"
   | "language";
 
 type ScenarioText = Pick<Scenario, "title" | "description">;
@@ -182,7 +183,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "The scenario you requested is not available.",
     scenarioNextStep: "This scenario will be implemented in the next steps.",
     backToScenarios: "Back to scenarios",
-    voiceCredits: "Voice",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Language",
   },
   es: {
@@ -263,7 +265,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "El escenario solicitado no esta disponible.",
     scenarioNextStep: "Este escenario se implementara en los proximos pasos.",
     backToScenarios: "Volver a escenarios",
-    voiceCredits: "Voz",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Idioma",
   },
   de: {
@@ -344,7 +347,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Das angeforderte Szenario ist nicht verfugbar.",
     scenarioNextStep: "Dieses Szenario wird in den nachsten Schritten umgesetzt.",
     backToScenarios: "Zuruck zu den Szenarien",
-    voiceCredits: "Stimme",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Sprache",
   },
   tr: {
@@ -425,7 +429,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Istedigin senaryo kullanilamiyor.",
     scenarioNextStep: "Bu senaryo sonraki adimlarda uygulanacak.",
     backToScenarios: "Senaryolara don",
-    voiceCredits: "Ses",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Dil",
   },
   pt: {
@@ -506,7 +511,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "O cenario solicitado nao esta disponivel.",
     scenarioNextStep: "Este cenario sera implementado nas proximas etapas.",
     backToScenarios: "Voltar aos cenarios",
-    voiceCredits: "Voz",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Idioma",
   },
   fr: {
@@ -587,7 +593,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     scenarioNotFoundBody: "Le scenario demande n'est pas disponible.",
     scenarioNextStep: "Ce scenario sera implemente dans les prochaines etapes.",
     backToScenarios: "Retour aux scenarios",
-    voiceCredits: "Voix",
+    voiceCredits: "TTS",
+    speechCredits: "STT",
     language: "Langue",
   },
 };
@@ -667,9 +674,22 @@ const scenarioTranslations: Record<LanguageCode, Record<string, ScenarioText>> =
 };
 
 const TranslationContext = createContext<TranslationContextValue | null>(null);
+const LANGUAGE_STORAGE_KEY = "assist_ai_language";
+
+function isLanguageCode(value: string | null): value is LanguageCode {
+  return languages.some((language) => language.code === value);
+}
 
 export function TranslationProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<LanguageCode>("en");
+  const [language, setLanguageState] = useState<LanguageCode>(() => {
+    const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return isLanguageCode(storedLanguage) ? storedLanguage : "en";
+  });
+
+  const setLanguage = (nextLanguage: LanguageCode) => {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    setLanguageState(nextLanguage);
+  };
 
   const value = useMemo<TranslationContextValue>(
     () => ({

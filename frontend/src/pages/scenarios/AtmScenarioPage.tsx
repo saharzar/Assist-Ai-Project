@@ -22,6 +22,7 @@ import {
   createSpeechRecognizer,
   isSpeechRecognitionSupported,
 } from "../../services/speechRecognitionService";
+import { getSttUsage, type SttUsage } from "../../services/sttUsageService";
 import {
   playSuccessSound,
   speakAssistantMessage,
@@ -47,9 +48,13 @@ export function AtmScenarioPage() {
   const [ttsError, setTtsError] = useState("");
   const [nameInputEvent, setNameInputEvent] = useState<AtmNameInputEvent | null>(null);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
+  const sttUsageRef = useRef<SttUsage | null>(null);
+  const listeningStartedAtRef = useRef<number | null>(null);
   const successSoundPlayedRef = useRef(false);
   const isListeningRef = useRef(false);
+  const spaceIsHeldRef = useRef(false);
   const stopListeningTimerRef = useRef<number | null>(null);
+  const sttAutoStopTimerRef = useRef<number | null>(null);
   const speechRecognitionSupported = isSpeechRecognitionSupported();
 
   const assistantMessage = useMemo(() => {
@@ -138,6 +143,22 @@ export function AtmScenarioPage() {
     });
   };
 
+  const refreshSttUsage = useCallback(async () => {
+    const usage = await getSttUsage();
+    sttUsageRef.current = usage;
+    return usage;
+  }, []);
+
+  const finishListeningSession = useCallback(() => {
+    if (sttAutoStopTimerRef.current) {
+      window.clearTimeout(sttAutoStopTimerRef.current);
+      sttAutoStopTimerRef.current = null;
+    }
+
+    listeningStartedAtRef.current = null;
+    setIsListening(false);
+  }, []);
+
   useEffect(() => {
     if (state.status !== "lockout" || state.lockoutSecondsRemaining === 0) {
       return;
@@ -178,16 +199,22 @@ export function AtmScenarioPage() {
       if (stopListeningTimerRef.current) {
         window.clearTimeout(stopListeningTimerRef.current);
       }
+      if (sttAutoStopTimerRef.current) {
+        window.clearTimeout(sttAutoStopTimerRef.current);
+      }
       recognizerRef.current?.stop();
+      spaceIsHeldRef.current = false;
+      finishListeningSession();
     };
-  }, [stopSpeech]);
+  }, [finishListeningSession, stopSpeech]);
 
   useEffect(() => {
     const stopAllScenarioAudio = () => {
       stopSpeech();
       stopSuccessSound();
       recognizerRef.current?.stop();
-      setIsListening(false);
+      spaceIsHeldRef.current = false;
+      finishListeningSession();
     };
 
     const handleNavigationClick = (event: MouseEvent) => {
@@ -208,16 +235,31 @@ export function AtmScenarioPage() {
       window.removeEventListener("popstate", stopAllScenarioAudio);
       document.removeEventListener("click", handleNavigationClick, true);
     };
-  }, [stopSpeech]);
+  }, [finishListeningSession, stopSpeech]);
 
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  const startNameListening = useCallback(() => {
+  const startNameListening = useCallback(async () => {
     stopSpeech();
     setSpeechError("");
     setTranscript("");
+
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage) {
+      return;
+    }
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    if (!spaceIsHeldRef.current) {
+      return;
+    }
 
     const recognizer = createSpeechRecognizer(
       {
@@ -227,9 +269,7 @@ export function AtmScenarioPage() {
         onError: (message) => {
           setSpeechError(message);
         },
-        onEnd: () => {
-          setIsListening(false);
-        },
+        onEnd: finishListeningSession,
       },
       "name",
       language,
@@ -246,17 +286,39 @@ export function AtmScenarioPage() {
 
     recognizerRef.current = recognizer;
     try {
-      setIsListening(true);
       recognizer.start();
+      listeningStartedAtRef.current = Date.now();
+      setIsListening(true);
+      sttAutoStopTimerRef.current = window.setTimeout(() => {
+        setSpeechError(text.speechLimitReached);
+        recognizerRef.current?.stop();
+        finishListeningSession();
+      }, usage.remaining * 1000);
     } catch {
+      listeningStartedAtRef.current = null;
       setIsListening(false);
       setSpeechError(text.speechNameStartError);
     }
-  }, [language, stopSpeech, text]);
+  }, [finishListeningSession, language, refreshSttUsage, stopSpeech, text]);
 
-  const startPinListening = useCallback(() => {
+  const startPinListening = useCallback(async () => {
     stopSpeech();
     setSpeechError("");
+
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage) {
+      return;
+    }
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    if (!spaceIsHeldRef.current) {
+      return;
+    }
 
     const recognizer = createSpeechRecognizer(
       {
@@ -266,9 +328,7 @@ export function AtmScenarioPage() {
         onError: (message) => {
           setSpeechError(message);
         },
-        onEnd: () => {
-          setIsListening(false);
-        },
+        onEnd: finishListeningSession,
       },
       "pin",
       language,
@@ -285,24 +345,32 @@ export function AtmScenarioPage() {
 
     recognizerRef.current = recognizer;
     try {
-      setIsListening(true);
       recognizer.start();
+      listeningStartedAtRef.current = Date.now();
+      setIsListening(true);
+      sttAutoStopTimerRef.current = window.setTimeout(() => {
+        setSpeechError(text.speechLimitReached);
+        recognizerRef.current?.stop();
+        finishListeningSession();
+      }, usage.remaining * 1000);
     } catch {
+      listeningStartedAtRef.current = null;
       setIsListening(false);
       setSpeechError(text.speechPinStartError);
     }
-  }, [language, stopSpeech, text]);
+  }, [finishListeningSession, language, refreshSttUsage, stopSpeech, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
       window.clearTimeout(stopListeningTimerRef.current);
     }
+    spaceIsHeldRef.current = false;
     stopListeningTimerRef.current = window.setTimeout(() => {
       recognizerRef.current?.stop();
-      setIsListening(false);
+      finishListeningSession();
       stopListeningTimerRef.current = null;
     }, 250);
-  }, []);
+  }, [finishListeningSession]);
 
   useEffect(() => {
     if (!["enter_name", "pin_attempt"].includes(state.status) || !speechRecognitionSupported) {
@@ -326,12 +394,13 @@ export function AtmScenarioPage() {
         return;
       }
       event.preventDefault();
+      spaceIsHeldRef.current = true;
       if (!isListeningRef.current) {
         if (state.status === "enter_name") {
-          startNameListening();
+          void startNameListening();
         }
         if (state.status === "pin_attempt") {
-          startPinListening();
+          void startPinListening();
         }
       }
     };
@@ -341,6 +410,7 @@ export function AtmScenarioPage() {
         return;
       }
       event.preventDefault();
+      spaceIsHeldRef.current = false;
       stopListening();
     };
 

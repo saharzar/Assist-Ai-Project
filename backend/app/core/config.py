@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     tts_max_request_characters: int = 1000
     tts_default_voice: str = "en-US-JennyNeural"
     tts_cache_dir: str = "media/tts-cache"
+    stt_default_limit_seconds: int = 300
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
