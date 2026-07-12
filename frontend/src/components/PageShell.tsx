@@ -25,7 +25,6 @@ export function PageShell() {
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
   const homeTarget = isAuthenticated ? "/scenarios" : "/login";
-  const scenariosTarget = isAuthenticated ? "/scenarios" : "/login";
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -127,7 +126,7 @@ export function PageShell() {
               </div>
             )}
             <Link
-              to={scenariosTarget}
+              to="/scenarios"
               className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {t("scenarios")}
