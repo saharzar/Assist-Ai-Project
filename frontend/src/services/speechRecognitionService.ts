@@ -1,3 +1,6 @@
+import { API_BASE_URL, ApiError } from "./api";
+import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
+
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
 type SpeechRecognitionMode = "name" | "pin";
@@ -14,64 +17,39 @@ type SpeechRecognitionErrorMessages = {
   problem: string;
 };
 
-type BrowserSpeechRecognition = {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  maxAlternatives: number;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
+type AzureSttResponse = {
+  transcript: string;
+  detected_language?: string | null;
+  confidence?: number | null;
+  stt_limit_seconds: number;
+  stt_used_seconds: number;
+  stt_remaining_seconds: number;
+  stt_reset_date: string;
 };
 
-type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
-
-type SpeechRecognitionEvent = {
-  results: ArrayLike<{
-    0: {
-      transcript: string;
-    };
-    length: number;
-    item?: (index: number) => {
-      transcript: string;
-      confidence?: number;
-    };
-  }>;
-};
-
-type SpeechRecognitionErrorEvent = {
-  error: string;
+type RecorderNode = ScriptProcessorNode & {
+  onaudioprocess: ((event: AudioProcessingEvent) => void) | null;
 };
 
 declare global {
   interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
     webkitAudioContext?: typeof AudioContext;
   }
 }
 
 export function isSpeechRecognitionSupported() {
-  return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return Boolean(
+    typeof navigator.mediaDevices?.getUserMedia === "function" &&
+      (window.AudioContext || window.webkitAudioContext),
+  );
 }
-
-const speechRecognitionLocales: Record<SpeechRecognitionLanguage, string> = {
-  en: "en-US",
-  es: "es-ES",
-  de: "de-DE",
-  tr: "tr-TR",
-  pt: "pt-PT",
-  fr: "fr-FR",
-};
 
 export function cleanSpokenNameTranscript(transcript: string) {
   return transcript
     .trim()
     .replace(/[.?!]+$/g, "")
     .replace(
-      /^(my full name is|my name is|the name is|name is|i am|i'm|call me|it is|it's|benim adım|benim adim|adım|adim|ismim|أنا اسمي|اسمي|انا اسمي|الاسم|اسمي هو)\s+/i,
+      /^(my full name is|my name is|the name is|name is|i am|i'm|call me|it is|it's|benim adım|benim adim|adım|adim|ismim|mi nombre es|me llamo|mein name ist|ich heiße|ich heisse|je m'appelle|mon nom est|meu nome é|meu nome e)\s+/i,
       "",
     )
     .replace(/\s+/g, " ")
@@ -169,27 +147,223 @@ export function cleanSpokenPinTranscript(transcript: string) {
   return digits.join("").slice(0, 4);
 }
 
-function getResultAlternatives(result: SpeechRecognitionEvent["results"][number]) {
-  if (typeof result.item === "function") {
-    return Array.from({ length: result.length }, (_, index) => result.item?.(index)?.transcript ?? "");
+function mapSttUsage(response: AzureSttResponse): SttUsage {
+  return {
+    limit: response.stt_limit_seconds,
+    used: response.stt_used_seconds,
+    remaining: response.stt_remaining_seconds,
+    resetDate: response.stt_reset_date,
+  };
+}
+
+async function transcribeAzureSpeech(
+  audio: Blob,
+  language: SpeechRecognitionLanguage,
+  mode: SpeechRecognitionMode,
+) {
+  const token = localStorage.getItem("assist_ai_token");
+  const response = await fetch(
+    `${API_BASE_URL}/api/stt?language=${encodeURIComponent(language)}&mode=${mode}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "audio/wav",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: audio,
+    },
+  );
+
+  if (!response.ok) {
+    let message = "Voice input had a problem. Please try again or type.";
+    try {
+      const data = (await response.json()) as { detail?: string };
+      if (data.detail) {
+        message = data.detail;
+      }
+    } catch {
+      // Keep friendly fallback.
+    }
+    throw new ApiError(message, response.status);
   }
-  return [result[0].transcript];
+
+  const data = (await response.json()) as AzureSttResponse;
+  notifySttUsageUpdated(mapSttUsage(data));
+  return data.transcript;
 }
 
-function chooseBestNameTranscript(result: SpeechRecognitionEvent["results"][number]) {
-  const alternatives = getResultAlternatives(result)
-    .map(cleanSpokenNameTranscript)
-    .filter(Boolean);
-
-  return alternatives.find((value) => value.length > 1) ?? alternatives[0] ?? "";
+function mergeAudioBuffers(buffers: Float32Array[]) {
+  const length = buffers.reduce((total, buffer) => total + buffer.length, 0);
+  const result = new Float32Array(length);
+  let offset = 0;
+  for (const buffer of buffers) {
+    result.set(buffer, offset);
+    offset += buffer.length;
+  }
+  return result;
 }
 
-function chooseBestPinTranscript(result: SpeechRecognitionEvent["results"][number]) {
-  const alternatives = getResultAlternatives(result)
-    .map(cleanSpokenPinTranscript)
-    .filter(Boolean);
+function encodeWav(samples: Float32Array, sampleRate: number) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
 
-  return alternatives.find((value) => value.length === 4) ?? alternatives[0] ?? "";
+  const writeString = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+
+  let offset = 44;
+  for (const sample of samples) {
+    const clamped = Math.max(-1, Math.min(1, sample));
+    view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+    offset += 2;
+  }
+
+  return new Blob([view], { type: "audio/wav" });
+}
+
+class AzureSpeechRecognizer {
+  private audioContext: AudioContext | null = null;
+  private source: MediaStreamAudioSourceNode | null = null;
+  private processor: RecorderNode | null = null;
+  private stream: MediaStream | null = null;
+  private buffers: Float32Array[] = [];
+  private isStopping = false;
+  private isStarted = false;
+  private hasEnded = false;
+
+  constructor(
+    private readonly callbacks: SpeechRecognitionCallbacks,
+    private readonly mode: SpeechRecognitionMode,
+    private readonly language: SpeechRecognitionLanguage,
+    private readonly errorMessages: SpeechRecognitionErrorMessages,
+  ) {}
+
+  start() {
+    void this.startRecording();
+  }
+
+  stop() {
+    void this.stopRecording();
+  }
+
+  private async startRecording() {
+    try {
+      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextConstructor) {
+        this.callbacks.onError(this.errorMessages.problem);
+        this.callbacks.onEnd();
+        return;
+      }
+
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (this.isStopping) {
+        await this.cleanup();
+        this.endOnce();
+        return;
+      }
+
+      this.audioContext = new AudioContextConstructor();
+      this.source = this.audioContext.createMediaStreamSource(this.stream);
+      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1) as RecorderNode;
+      this.processor.onaudioprocess = (event) => {
+        if (this.isStopping) {
+          return;
+        }
+        this.buffers.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+      };
+      this.source.connect(this.processor);
+      this.processor.connect(this.audioContext.destination);
+      this.isStarted = true;
+    } catch (error) {
+      this.callbacks.onError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? this.errorMessages.microphoneBlocked
+          : this.errorMessages.problem,
+      );
+      await this.cleanup();
+      this.endOnce();
+    }
+  }
+
+  private async stopRecording() {
+    if (this.isStopping) {
+      return;
+    }
+    this.isStopping = true;
+
+    if (!this.isStarted || !this.audioContext) {
+      await this.cleanup();
+      this.endOnce();
+      return;
+    }
+
+    const sampleRate = this.audioContext.sampleRate;
+    const audio = encodeWav(mergeAudioBuffers(this.buffers), sampleRate);
+
+    await this.cleanup();
+
+    try {
+      const transcript = await transcribeAzureSpeech(audio, this.language, this.mode);
+      const cleanedTranscript =
+        this.mode === "pin"
+          ? cleanSpokenPinTranscript(transcript)
+          : cleanSpokenNameTranscript(transcript);
+      if (cleanedTranscript) {
+        this.callbacks.onResult(cleanedTranscript);
+      } else {
+        this.callbacks.onError(this.errorMessages.problem);
+      }
+    } catch (error) {
+      if (error instanceof TypeError && error.message.toLowerCase().includes("fetch")) {
+        this.callbacks.onError(
+          `Cannot reach the speech backend at ${API_BASE_URL}. Please restart the frontend and make sure the backend is running.`,
+        );
+      } else {
+        this.callbacks.onError(error instanceof Error ? error.message : this.errorMessages.problem);
+      }
+    } finally {
+      this.endOnce();
+    }
+  }
+
+  private endOnce() {
+    if (this.hasEnded) {
+      return;
+    }
+    this.hasEnded = true;
+    this.callbacks.onEnd();
+  }
+
+  private async cleanup() {
+    this.processor?.disconnect();
+    this.source?.disconnect();
+    this.processor = null;
+    this.source = null;
+
+    this.stream?.getTracks().forEach((track) => track.stop());
+    this.stream = null;
+
+    if (this.audioContext?.state !== "closed") {
+      await this.audioContext?.close();
+    }
+    this.audioContext = null;
+  }
 }
 
 export function createSpeechRecognizer(
@@ -201,35 +375,9 @@ export function createSpeechRecognizer(
     problem: "Voice input had a problem. Please try again or type.",
   },
 ) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
+  if (!isSpeechRecognitionSupported()) {
     return null;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = speechRecognitionLocales[language];
-  recognition.interimResults = mode === "name";
-  recognition.continuous = false;
-  recognition.maxAlternatives = 5;
-
-  recognition.onresult = (event) => {
-    const lastResult = event.results[event.results.length - 1];
-    const transcript =
-      mode === "pin" ? chooseBestPinTranscript(lastResult) : chooseBestNameTranscript(lastResult);
-    if (transcript) {
-      callbacks.onResult(transcript);
-    }
-  };
-
-  recognition.onerror = (event) => {
-    const message =
-      event.error === "not-allowed"
-        ? errorMessages.microphoneBlocked
-        : errorMessages.problem;
-    callbacks.onError(message);
-  };
-
-  recognition.onend = callbacks.onEnd;
-
-  return recognition;
+  return new AzureSpeechRecognizer(callbacks, mode, language, errorMessages);
 }

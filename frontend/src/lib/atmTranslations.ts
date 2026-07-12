@@ -68,6 +68,7 @@ type AtmTranslation = {
   speechPinUnsupported: string;
   speechPinStartError: string;
   speechMicBlocked: string;
+  speechLimitReached: string;
   speechProblem: string;
 };
 
@@ -140,6 +141,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "Voice input is not supported in this browser. Please use the keypad.",
     speechPinStartError: "Voice input could not start. Please try again or use the keypad.",
     speechMicBlocked: "Microphone access was blocked. Please type or use the keypad.",
+    speechLimitReached: "Speech time limit reached. Please type or use the keypad.",
     speechProblem: "Voice input had a problem. Please try again or type.",
   },
   es: {
@@ -210,6 +212,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "La entrada de voz no es compatible en este navegador. Usa el teclado.",
     speechPinStartError: "La entrada de voz no pudo iniciar. Intenta de nuevo o usa el teclado.",
     speechMicBlocked: "El acceso al microfono fue bloqueado. Escribe o usa el teclado.",
+    speechLimitReached: "Se alcanzo el limite de voz. Escribe o usa el teclado.",
     speechProblem: "La entrada de voz tuvo un problema. Intenta de nuevo o escribe.",
   },
   de: {
@@ -280,6 +283,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "Spracheingabe wird in diesem Browser nicht unterstuetzt. Bitte nutze das Tastenfeld.",
     speechPinStartError: "Spracheingabe konnte nicht starten. Versuche es erneut oder nutze das Tastenfeld.",
     speechMicBlocked: "Mikrofonzugriff wurde blockiert. Bitte tippe oder nutze das Tastenfeld.",
+    speechLimitReached: "Das Sprachlimit ist erreicht. Bitte tippe oder nutze das Tastenfeld.",
     speechProblem: "Bei der Spracheingabe gab es ein Problem. Versuche es erneut oder tippe.",
   },
   tr: {
@@ -350,6 +354,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "Bu tarayıcıda ses girişi desteklenmiyor. Lütfen tuş takımını kullan.",
     speechPinStartError: "Ses girişi başlatılamadı. Lütfen tekrar dene veya tuş takımını kullan.",
     speechMicBlocked: "Mikrofon erişimi engellendi. Lütfen yaz veya tuş takımını kullan.",
+    speechLimitReached: "Konuşma süresi limitine ulaşıldı. Lütfen yaz veya tuş takımını kullan.",
     speechProblem: "Ses girişinde bir problem oldu. Lütfen tekrar dene veya yaz.",
   },
   pt: {
@@ -420,6 +425,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "Entrada de voz nao suportada neste navegador. Use o teclado.",
     speechPinStartError: "A entrada de voz nao conseguiu iniciar. Tente novamente ou use o teclado.",
     speechMicBlocked: "O acesso ao microfone foi bloqueado. Digite ou use o teclado.",
+    speechLimitReached: "O limite de fala foi atingido. Digite ou use o teclado.",
     speechProblem: "A entrada de voz teve um problema. Tente novamente ou digite.",
   },
   fr: {
@@ -490,6 +496,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechPinUnsupported: "L'entree vocale n'est pas prise en charge dans ce navigateur. Utilise le clavier.",
     speechPinStartError: "L'entree vocale n'a pas pu demarrer. Reessaie ou utilise le clavier.",
     speechMicBlocked: "L'acces au micro a ete bloque. Ecris ou utilise le clavier.",
+    speechLimitReached: "La limite de parole est atteinte. Ecris ou utilise le clavier.",
     speechProblem: "L'entree vocale a eu un probleme. Reessaie ou ecris.",
   },
 };

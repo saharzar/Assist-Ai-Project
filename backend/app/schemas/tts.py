@@ -1,4 +1,5 @@
 from typing import Literal
+from datetime import date
 
 from pydantic import BaseModel, Field
 
@@ -15,3 +16,4 @@ class TtsUsageResponse(BaseModel):
     tts_limit_characters: int
     tts_used_characters: int
     tts_remaining_characters: int
+    tts_reset_date: date
