@@ -24,6 +24,8 @@ export function PageShell() {
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
+  const homeTarget = isAuthenticated ? "/scenarios" : "/login";
+  const scenariosTarget = isAuthenticated ? "/scenarios" : "/login";
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -93,7 +95,7 @@ export function PageShell() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link
-            to="/"
+            to={homeTarget}
             className="flex items-center gap-3 text-xl font-bold tracking-tight text-slate-900 transition-opacity hover:opacity-85"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
@@ -125,7 +127,7 @@ export function PageShell() {
               </div>
             )}
             <Link
-              to="/scenarios"
+              to={scenariosTarget}
               className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {t("scenarios")}

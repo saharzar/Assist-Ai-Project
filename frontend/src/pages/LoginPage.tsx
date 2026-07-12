@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
@@ -7,7 +7,7 @@ import { ApiError } from "../services/api";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { isAuthenticated, login, user } = useAuth();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,6 +40,10 @@ export function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === "admin" ? "/admin/users" : "/scenarios"} replace />;
+  }
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
