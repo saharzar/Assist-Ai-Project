@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import type { Scenario } from "../types/scenario";
 
@@ -9,6 +10,7 @@ type ScenarioCardProps = {
 };
 
 export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
+  const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
   const formattedId = Number(scenario.id).toString().padStart(2, "0");
 
@@ -43,7 +45,8 @@ export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
       </div>
       {isAvailable ? (
         <Link
-          to={`/scenario/${scenario.slug}`}
+          to={isAuthenticated ? `/scenario/${scenario.slug}` : "/login"}
+          state={isAuthenticated ? undefined : { from: `/scenario/${scenario.slug}` }}
           className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-lg bg-slate-900 px-5 py-3 text-base font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
         >
           {t("openScenario")}
