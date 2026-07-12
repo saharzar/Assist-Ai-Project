@@ -200,3 +200,7 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
 
 To test Azure TTS, set the Azure Speech variables in `backend/.env`, restart the backend, log in as an approved user, open the ATM scenario, and confirm the assistant speaks. The first time a prompt is spoken it may spend TTS characters; repeated cached prompts should reuse saved audio.
+
+## Docker Deployment
+
+Production Docker files are included for PostgreSQL, the FastAPI backend, and the React/Nginx frontend. Follow [DEPLOYMENT.md](DEPLOYMENT.md) to deploy ASSIST-AI on a Linux VPS.
