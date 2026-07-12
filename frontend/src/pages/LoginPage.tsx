@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
@@ -7,12 +7,21 @@ import { ApiError } from "../services/api";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, login, user } = useAuth();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const redirectPath =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "from" in location.state &&
+    typeof location.state.from === "string" &&
+    location.state.from.startsWith("/")
+      ? location.state.from
+      : null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -21,7 +30,7 @@ export function LoginPage() {
 
     try {
       const loggedInUser = await login({ email, password });
-      navigate(loggedInUser.role === "admin" ? "/admin/users" : "/scenarios");
+      navigate(redirectPath ?? (loggedInUser.role === "admin" ? "/admin/users" : "/scenarios"));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         if (error.message.includes("waiting")) {
@@ -40,6 +49,10 @@ export function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === "admin" ? "/admin/users" : "/scenarios"} replace />;
+  }
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">

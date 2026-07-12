@@ -25,8 +25,8 @@ export function App() {
             <Route path="guest" element={<GuestConsentPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="admin/users" element={<AdminUsersPage />} />
+            <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="scenarios" element={<ScenarioCataloguePage />} />
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
