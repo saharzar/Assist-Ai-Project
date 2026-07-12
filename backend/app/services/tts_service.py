@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import re
@@ -36,6 +36,7 @@ class TtsUsageSnapshot:
     used_characters: int
     remaining_characters: int
     limit_characters: int
+    reset_date: date
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class TtsAudioResult:
     characters_charged: int
     remaining_characters: int
     limit_characters: int
+    reset_date: date
     cache_status: str
 
 
@@ -195,6 +197,22 @@ def synthesize_speech_to_mp3(text: str, language: str = "en") -> bytes:
     )
 
 
+def get_next_weekly_reset_date() -> date:
+    return datetime.now(timezone.utc).date() + timedelta(days=7)
+
+
+def reset_tts_usage_if_due(usage: UserTtsUsage) -> None:
+    today = datetime.now(timezone.utc).date()
+    if usage.tts_reset_date is None:
+        usage.tts_reset_date = today + timedelta(days=7)
+        return
+
+    if usage.tts_reset_date <= today:
+        usage.tts_used_characters = 0
+        usage.tts_reset_date = today + timedelta(days=7)
+        usage.updated_at = datetime.now(timezone.utc)
+
+
 def get_or_create_tts_usage(db: Session, user_id: int) -> UserTtsUsage:
     settings = get_settings()
     usage = db.scalar(
@@ -203,12 +221,14 @@ def get_or_create_tts_usage(db: Session, user_id: int) -> UserTtsUsage:
         .with_for_update(),
     )
     if usage is not None:
+        reset_tts_usage_if_due(usage)
         return usage
 
     usage = UserTtsUsage(
         user_id=user_id,
         tts_limit_characters=settings.tts_default_limit_characters,
         tts_used_characters=0,
+        tts_reset_date=get_next_weekly_reset_date(),
     )
     db.add(usage)
     db.flush()
@@ -222,6 +242,7 @@ def get_tts_usage_snapshot(db: Session, user_id: int) -> TtsUsageSnapshot:
         used_characters=usage.tts_used_characters,
         remaining_characters=remaining,
         limit_characters=usage.tts_limit_characters,
+        reset_date=usage.tts_reset_date or get_next_weekly_reset_date(),
     )
 
 
@@ -282,6 +303,7 @@ def synthesize_tts_with_cache(db: Session, user_id: int, text: str, language: st
             characters_charged=0,
             remaining_characters=usage.remaining_characters,
             limit_characters=usage.limit_characters,
+            reset_date=usage.reset_date,
             cache_status="HIT",
         )
 
@@ -327,5 +349,6 @@ def synthesize_tts_with_cache(db: Session, user_id: int, text: str, language: st
         characters_charged=characters_charged,
         remaining_characters=usage.remaining_characters,
         limit_characters=usage.limit_characters,
+        reset_date=usage.reset_date,
         cache_status=cache_status,
     )

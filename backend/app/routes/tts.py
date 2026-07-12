@@ -25,6 +25,7 @@ def get_tts_usage(
         tts_limit_characters=usage.tts_limit_characters,
         tts_used_characters=usage.tts_used_characters,
         tts_remaining_characters=usage.tts_limit_characters - usage.tts_used_characters,
+        tts_reset_date=usage.tts_reset_date,
     )
 
 
@@ -58,6 +59,7 @@ def create_tts_audio(
             "X-TTS-Remaining-Characters": str(tts_result.remaining_characters),
             "X-TTS-Used-Characters": str(tts_result.characters_charged),
             "X-TTS-Limit-Characters": str(tts_result.limit_characters),
+            "X-TTS-Reset-Date": tts_result.reset_date.isoformat(),
             "X-TTS-Language": payload.language,
             "X-TTS-Cache": tts_result.cache_status,
         },

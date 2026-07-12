@@ -88,6 +88,7 @@ async function playBackendTts(
 
     const remainingHeader = response.headers.get("X-TTS-Remaining-Characters");
     const limitHeader = response.headers.get("X-TTS-Limit-Characters");
+    const resetDateHeader = response.headers.get("X-TTS-Reset-Date");
     if (remainingHeader) {
       callbacks.onCreditsRemaining?.(Number(remainingHeader));
     }
@@ -96,6 +97,7 @@ async function playBackendTts(
         remaining: Number(remainingHeader),
         used: Number(limitHeader) - Number(remainingHeader),
         limit: Number(limitHeader),
+        resetDate: resetDateHeader ?? "",
       };
       callbacks.onUsageUpdate?.(usage);
       notifyTtsUsageUpdated(usage);
