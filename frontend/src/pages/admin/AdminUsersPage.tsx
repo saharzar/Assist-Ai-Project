@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
@@ -100,9 +100,14 @@ export function AdminUsersPage() {
 
   return (
     <section className="flex flex-1 flex-col">
-      <div className="max-w-3xl">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
-        <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div className="max-w-3xl">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
+          <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
+        </div>
+        <Link to="/admin/atm-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          ATM Analytics
+        </Link>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">

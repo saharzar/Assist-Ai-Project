@@ -1,4 +1,5 @@
 import secrets
+import uuid
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ def create_guest_session(
 ) -> GuestSessionRead:
     guest_session = GuestSession(
         guest_session_token=secrets.token_urlsafe(32),
+        analytics_guest_id=str(uuid.uuid4()) if payload.save_progress else None,
         save_progress=payload.save_progress,
         preferred_language=payload.preferred_language,
     )

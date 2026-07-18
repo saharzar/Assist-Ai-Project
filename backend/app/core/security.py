@@ -36,6 +36,10 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
+    return get_user_from_access_token(token, db)
+
+
+def get_user_from_access_token(token: str, db: Session) -> User:
     settings = get_settings()
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,7 +55,10 @@ def get_current_user(
     except JWTError as exc:
         raise credentials_error from exc
 
-    user = db.get(User, int(user_id))
+    try:
+        user = db.get(User, int(user_id))
+    except (TypeError, ValueError) as exc:
+        raise credentials_error from exc
     if user is None or not user.is_active:
         raise credentials_error
 
