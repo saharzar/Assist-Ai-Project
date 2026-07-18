@@ -7,6 +7,7 @@ import { TranslationProvider } from "./i18n";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminAtmAnalyticsPage } from "./pages/admin/AdminAtmAnalyticsPage";
 import { AdminScenarioAnalyticsPage } from "./pages/admin/AdminScenarioAnalyticsPage";
+import { AdminSpeechProvidersPage } from "./pages/admin/AdminSpeechProvidersPage";
 import { GuestConsentPage } from "./pages/GuestConsentPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -29,6 +30,7 @@ export function App() {
             <Route path="admin/users" element={<AdminUsersPage />} />
             <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
             <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
+            <Route path="admin/speech-providers" element={<AdminSpeechProvidersPage />} />
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />

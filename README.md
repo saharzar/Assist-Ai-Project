@@ -137,6 +137,10 @@ TTS_DEFAULT_LIMIT_CHARACTERS=5000
 TTS_MAX_REQUEST_CHARACTERS=1000
 TTS_DEFAULT_VOICE=en-US-JennyNeural
 TTS_CACHE_DIR=media/tts-cache
+AZURE_TTS_MONTHLY_LIMIT_CHARACTERS=500000
+AZURE_STT_MONTHLY_LIMIT_SECONDS=18000
+SPEECH_WARNING_THRESHOLD_PERCENT=80
+SPEECH_SWITCH_THRESHOLD_PERCENT=95
 ```
 
 The voice assistant supports the site languages with Azure neural voices:
@@ -151,6 +155,10 @@ The voice assistant supports the site languages with Azure neural voices:
 TTS billing is character-based, so ASSIST-AI tracks usage by characters, not tokens. The frontend shows the remaining voice allowance in the top navigation for logged-in users.
 
 Generated audio is cached under `backend/media/tts-cache`, and metadata is stored in PostgreSQL. The `backend/media/` folder is ignored by Git because cached audio is generated locally. Repeated prompts are returned from cache without using new TTS characters. PIN and name-confirmation prompts are split so fixed sentence parts can be cached while only the dynamic name or PIN part is generated when needed.
+
+Administrators can open **Speech Provider Management** from the admin dashboard to monitor the internally estimated monthly Azure TTS character usage and STT audio duration. Automatic mode continues using Azure after the warning threshold and routes new requests to browser speech at the switch threshold. Azure provider failures also activate browser fallback until the next billing month. Automatic, Azure, and Browser modes can be configured independently for TTS and STT.
+
+The monthly provider totals are global estimates based only on ASSIST-AI requests; Azure does not provide a remaining-free-quota API. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Azure quota, and request IDs prevent retries from being counted twice.
 
 ## Run the Backend
 

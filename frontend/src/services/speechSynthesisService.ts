@@ -17,13 +17,21 @@ let currentAssistantAbortController: AbortController | null = null;
 let currentSuccessAudio: HTMLAudioElement | null = null;
 let currentSuccessToneContext: AudioContext | null = null;
 let activeSpeechId = 0;
+let currentBrowserUtterance: SpeechSynthesisUtterance | null = null;
 
 export function isSpeechSynthesisSupported() {
-  return typeof window !== "undefined" && typeof Audio !== "undefined";
+  return typeof window !== "undefined" && (
+    typeof Audio !== "undefined" || "speechSynthesis" in window
+  );
 }
 
 export function stopAssistantSpeech() {
   activeSpeechId += 1;
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    currentBrowserUtterance = null;
+  }
 
   if (currentAssistantAbortController) {
     currentAssistantAbortController.abort();
@@ -73,10 +81,17 @@ async function playBackendTts(
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "X-Speech-Request-ID": crypto.randomUUID(),
       },
       body: JSON.stringify({ text: message, language }),
       signal: abortController.signal,
     });
+
+    const selectedProvider = response.headers.get("X-Speech-Provider");
+    if (response.status === 204 && selectedProvider === "browser") {
+      playBrowserTts(message, language, callbacks, speechId);
+      return;
+    }
 
     if (!response.ok) {
       throw new ApiError(await readTtsError(response), response.status);
@@ -138,6 +153,49 @@ async function playBackendTts(
       currentAssistantAbortController = null;
     }
   }
+}
+
+function playBrowserTts(
+  message: string,
+  language: LanguageCode,
+  callbacks: SpeechCallbacks,
+  speechId: number,
+) {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    callbacks.onError?.("Browser speech is not supported on this device.");
+    callbacks.onEnd?.();
+    return;
+  }
+  const localeByLanguage: Record<LanguageCode, string> = {
+    en: "en-US",
+    es: "es-ES",
+    de: "de-DE",
+    tr: "tr-TR",
+    pt: "pt-PT",
+    fr: "fr-FR",
+  };
+  const utterance = new SpeechSynthesisUtterance(message);
+  utterance.lang = localeByLanguage[language];
+  const voices = window.speechSynthesis.getVoices();
+  utterance.voice = voices.find((voice) => voice.lang === utterance.lang)
+    ?? voices.find((voice) => voice.lang.startsWith(language))
+    ?? null;
+  currentBrowserUtterance = utterance;
+  utterance.onstart = () => {
+    if (activeSpeechId === speechId) callbacks.onStart?.();
+  };
+  utterance.onend = () => {
+    if (activeSpeechId !== speechId) return;
+    currentBrowserUtterance = null;
+    callbacks.onEnd?.();
+  };
+  utterance.onerror = () => {
+    if (activeSpeechId !== speechId) return;
+    currentBrowserUtterance = null;
+    callbacks.onError?.("Browser speech could not play.");
+    callbacks.onEnd?.();
+  };
+  window.speechSynthesis.speak(utterance);
 }
 
 async function readTtsError(response: Response) {

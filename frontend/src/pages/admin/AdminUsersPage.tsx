@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
 import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
+import { speechProviderTranslations } from "../../lib/speechProviderTranslations";
 import {
   activateUser,
   approveUser,
@@ -32,6 +33,7 @@ export function AdminUsersPage() {
   const { user, isAuthenticated } = useAuth();
   const { language, t } = useTranslation();
   const analyticsText = adminAnalyticsTranslations[language];
+  const speechText = speechProviderTranslations[language];
   const [statusFilter, setStatusFilter] = useState<AdminUserStatusFilter>("pending");
   const [users, setUsers] = useState<User[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
@@ -107,9 +109,14 @@ export function AdminUsersPage() {
           <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
           <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
         </div>
-        <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
-          {analyticsText.scenarioAnalytics}
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/admin/speech-providers" className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-5 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            {speechText.title}
+          </Link>
+          <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            {analyticsText.scenarioAnalytics}
+          </Link>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">

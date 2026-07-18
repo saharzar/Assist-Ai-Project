@@ -36,6 +36,7 @@ class SttRecognitionResult:
     remaining_seconds: int
     limit_seconds: int
     reset_date: date
+    audio_seconds_charged: int
 
 
 @dataclass(frozen=True)
@@ -418,4 +419,5 @@ def recognize_stt_with_usage(
         remaining_seconds=usage.remaining_seconds,
         limit_seconds=usage.limit_seconds,
         reset_date=usage.reset_date,
+        audio_seconds_charged=seconds,
     )

@@ -1,4 +1,5 @@
 import { API_BASE_URL, ApiError } from "./api";
+import { resolveSpeechProvider } from "./speechProviderService";
 import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
@@ -34,13 +35,37 @@ type RecorderNode = ScriptProcessorNode & {
 declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
   }
 }
 
+type BrowserSpeechRecognitionEvent = Event & {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type BrowserSpeechRecognitionErrorEvent = Event & { error?: string };
+
+type BrowserSpeechRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
 export function isSpeechRecognitionSupported() {
   return Boolean(
-    typeof navigator.mediaDevices?.getUserMedia === "function" &&
-      (window.AudioContext || window.webkitAudioContext),
+    (typeof navigator.mediaDevices?.getUserMedia === "function" &&
+      (window.AudioContext || window.webkitAudioContext)) ||
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition,
   );
 }
 
@@ -169,6 +194,7 @@ async function transcribeAzureSpeech(
       headers: {
         "Content-Type": "audio/wav",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "X-Speech-Request-ID": crypto.randomUUID(),
       },
       body: audio,
     },
@@ -185,6 +211,10 @@ async function transcribeAzureSpeech(
       // Keep friendly fallback.
     }
     throw new ApiError(message, response.status);
+  }
+
+  if (response.status === 204 && response.headers.get("X-Speech-Provider") === "browser") {
+    throw new ApiError("Browser speech recognition is now active. Hold Space and try again.", 503);
   }
 
   const data = (await response.json()) as AzureSttResponse;
@@ -366,6 +396,120 @@ class AzureSpeechRecognizer {
   }
 }
 
+class BrowserSpeechRecognizer {
+  private recognition: BrowserSpeechRecognition | null = null;
+  private hasEnded = false;
+
+  constructor(
+    private readonly callbacks: SpeechRecognitionCallbacks,
+    private readonly mode: SpeechRecognitionMode,
+    private readonly language: SpeechRecognitionLanguage,
+    private readonly errorMessages: SpeechRecognitionErrorMessages,
+  ) {}
+
+  start() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      this.callbacks.onError(this.errorMessages.problem);
+      this.endOnce();
+      return;
+    }
+    const localeByLanguage: Record<SpeechRecognitionLanguage, string> = {
+      en: "en-US",
+      es: "es-ES",
+      de: "de-DE",
+      tr: "tr-TR",
+      pt: "pt-PT",
+      fr: "fr-FR",
+    };
+    const recognition = new Recognition();
+    recognition.lang = localeByLanguage[this.language];
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? "";
+      const cleaned = this.mode === "pin"
+        ? cleanSpokenPinTranscript(transcript)
+        : cleanSpokenNameTranscript(transcript);
+      if (cleaned) this.callbacks.onResult(cleaned);
+      else this.callbacks.onError(this.errorMessages.problem);
+    };
+    recognition.onerror = (event) => {
+      this.callbacks.onError(
+        event.error === "not-allowed" ? this.errorMessages.microphoneBlocked : this.errorMessages.problem,
+      );
+    };
+    recognition.onend = () => this.endOnce();
+    this.recognition = recognition;
+    try {
+      recognition.start();
+    } catch {
+      this.callbacks.onError(this.errorMessages.problem);
+      this.endOnce();
+    }
+  }
+
+  stop() {
+    this.recognition?.stop();
+  }
+
+  private endOnce() {
+    if (this.hasEnded) return;
+    this.hasEnded = true;
+    this.recognition = null;
+    this.callbacks.onEnd();
+  }
+}
+
+class ManagedSpeechRecognizer {
+  private delegate: AzureSpeechRecognizer | BrowserSpeechRecognizer | null = null;
+  private stopRequested = false;
+  private ended = false;
+
+  constructor(
+    private readonly callbacks: SpeechRecognitionCallbacks,
+    private readonly mode: SpeechRecognitionMode,
+    private readonly language: SpeechRecognitionLanguage,
+    private readonly errorMessages: SpeechRecognitionErrorMessages,
+  ) {}
+
+  start() {
+    void this.selectAndStart();
+  }
+
+  stop() {
+    this.stopRequested = true;
+    this.delegate?.stop();
+  }
+
+  private async selectAndStart() {
+    try {
+      const decision = await resolveSpeechProvider("stt");
+      if (this.stopRequested) {
+        this.endOnce();
+        return;
+      }
+      const delegatedCallbacks: SpeechRecognitionCallbacks = {
+        ...this.callbacks,
+        onEnd: () => this.endOnce(),
+      };
+      this.delegate = decision.provider === "browser"
+        ? new BrowserSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages)
+        : new AzureSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages);
+      this.delegate.start();
+    } catch {
+      this.callbacks.onError(this.errorMessages.problem);
+      this.endOnce();
+    }
+  }
+
+  private endOnce() {
+    if (this.ended) return;
+    this.ended = true;
+    this.callbacks.onEnd();
+  }
+}
+
 export function createSpeechRecognizer(
   callbacks: SpeechRecognitionCallbacks,
   mode: SpeechRecognitionMode = "name",
@@ -379,5 +523,5 @@ export function createSpeechRecognizer(
     return null;
   }
 
-  return new AzureSpeechRecognizer(callbacks, mode, language, errorMessages);
+  return new ManagedSpeechRecognizer(callbacks, mode, language, errorMessages);
 }

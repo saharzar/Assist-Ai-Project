@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     tts_default_voice: str = "en-US-JennyNeural"
     tts_cache_dir: str = "media/tts-cache"
     stt_default_limit_seconds: int = 300
+    azure_tts_monthly_limit_characters: int = 500000
+    azure_stt_monthly_limit_seconds: int = 18000
+    speech_warning_threshold_percent: int = 80
+    speech_switch_threshold_percent: int = 95
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
