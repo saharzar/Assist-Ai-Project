@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
+import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
 import {
   activateUser,
   approveUser,
@@ -29,7 +30,8 @@ const statusLabelKeys = {
 
 export function AdminUsersPage() {
   const { user, isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
+  const analyticsText = adminAnalyticsTranslations[language];
   const [statusFilter, setStatusFilter] = useState<AdminUserStatusFilter>("pending");
   const [users, setUsers] = useState<User[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
@@ -106,7 +108,7 @@ export function AdminUsersPage() {
           <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
         </div>
         <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
-          Scenario Analytics
+          {analyticsText.scenarioAnalytics}
         </Link>
       </div>
 

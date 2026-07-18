@@ -3,12 +3,14 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { scenarios } from "../../data/scenarios";
 import { useTranslation } from "../../i18n";
+import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
 
 const ACTIVE_ANALYTICS_SCENARIO = "atm-withdrawal";
 
 export function AdminScenarioAnalyticsPage() {
   const { user, isAuthenticated } = useAuth();
-  const { translateScenario } = useTranslation();
+  const { language, translateScenario } = useTranslation();
+  const text = adminAnalyticsTranslations[language];
   const isAdmin = isAuthenticated && user?.role === "admin";
 
   if (!isAuthenticated) {
@@ -18,7 +20,7 @@ export function AdminScenarioAnalyticsPage() {
   if (!isAdmin) {
     return (
       <section className="rounded-lg border border-amber-300 bg-amber-50 p-6 font-semibold text-amber-900">
-        Access denied.
+        {text.accessDenied}
       </section>
     );
   }
@@ -27,17 +29,17 @@ export function AdminScenarioAnalyticsPage() {
     <section className="flex flex-1 flex-col text-slate-900">
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div className="max-w-3xl">
-          <p className="text-sm font-bold uppercase text-teal-700">Admin dashboard</p>
-          <h1 className="mt-1 text-3xl font-bold">Scenario Analytics</h1>
+          <p className="text-sm font-bold uppercase text-teal-700">{text.adminDashboard}</p>
+          <h1 className="mt-1 text-3xl font-bold">{text.scenarioAnalytics}</h1>
           <p className="mt-2 text-slate-600">
-            Select a scenario to review usage, completion, and performance data.
+            {text.selectorDescription}
           </p>
         </div>
         <Link
           to="/admin/users"
           className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
-          Manage users
+          {text.manageUsers}
         </Link>
       </div>
 
@@ -74,7 +76,7 @@ export function AdminScenarioAnalyticsPage() {
                         : "bg-slate-200 text-slate-500"
                     }`}
                   >
-                    {isAvailable ? "Available" : "Coming soon"}
+                    {isAvailable ? text.available : text.comingSoon}
                   </span>
                 </div>
                 <h2
@@ -90,18 +92,18 @@ export function AdminScenarioAnalyticsPage() {
                 <Link
                   to="/admin/atm-analytics"
                   className="mt-5 inline-flex min-h-[46px] items-center justify-center rounded-lg bg-slate-900 px-4 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-                  aria-label={`View analytics for ${translatedScenario.title}`}
+                  aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}
                 >
-                  View analytics
+                  {text.viewAnalytics}
                 </Link>
               ) : (
                 <button
                   type="button"
                   disabled
-                  aria-label={`Analytics unavailable for ${translatedScenario.title}`}
+                  aria-label={`${text.analyticsUnavailable}: ${translatedScenario.title}`}
                   className="mt-5 min-h-[46px] cursor-not-allowed rounded-lg bg-slate-200 px-4 font-bold text-slate-500"
                 >
-                  Analytics unavailable
+                  {text.analyticsUnavailable}
                 </button>
               )}
             </article>
