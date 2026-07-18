@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { TranslationProvider } from "./i18n";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminAtmAnalyticsPage } from "./pages/admin/AdminAtmAnalyticsPage";
+import { AdminScenarioAnalyticsPage } from "./pages/admin/AdminScenarioAnalyticsPage";
 import { GuestConsentPage } from "./pages/GuestConsentPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -26,6 +27,7 @@ export function App() {
             <Route path="guest" element={<GuestConsentPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="admin/users" element={<AdminUsersPage />} />
+            <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
             <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute />}>

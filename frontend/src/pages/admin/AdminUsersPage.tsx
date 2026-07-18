@@ -105,8 +105,8 @@ export function AdminUsersPage() {
           <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
           <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
         </div>
-        <Link to="/admin/atm-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
-          ATM Analytics
+        <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          Scenario Analytics
         </Link>
       </div>
 

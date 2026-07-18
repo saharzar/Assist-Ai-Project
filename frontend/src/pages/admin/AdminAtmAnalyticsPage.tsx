@@ -77,9 +77,14 @@ export function AdminAtmAnalyticsPage() {
           <h1 className="mt-1 text-3xl font-bold">ATM Analytics</h1>
           <p className="mt-2 text-slate-600">Session history for registered users and consenting guests.</p>
         </div>
-        <Link to="/admin/users" className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">
-          Manage users
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            All scenario analytics
+          </Link>
+          <Link to="/admin/users" className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            Manage users
+          </Link>
+        </div>
       </div>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
