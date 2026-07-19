@@ -15,6 +15,7 @@ from app.services.tts_service import (
     get_or_create_tts_usage,
     synthesize_tts_with_cache,
 )
+from app.services.soniox_service import get_soniox_tts_cache_voice
 from app.services.speech_provider_manager import (
     get_provider_chain,
     mark_provider_failure,
@@ -74,7 +75,11 @@ def create_tts_audio(
             record_request_result(db, request_id, "tts", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
 
-        voice = get_azure_voice_for_language(payload.language)
+        voice = (
+            get_soniox_tts_cache_voice()
+            if decision.provider == "soniox"
+            else get_azure_voice_for_language(payload.language)
+        )
         cached_audio = get_cached_tts_audio(db, text, payload.language, voice)
         if cached_audio is not None:
             usage = get_or_create_tts_usage(db, user_id) if user_id is not None else None
@@ -85,12 +90,26 @@ def create_tts_audio(
                 "X-TTS-Reset-Date": usage.tts_reset_date.isoformat() if usage and usage.tts_reset_date else "", "X-TTS-Language": payload.language, "X-TTS-Cache": "HIT",
             })
         try:
-            tts_result = synthesize_tts_with_cache(db, user_id, text, payload.language, cache_voice=voice)
+            tts_result = synthesize_tts_with_cache(
+                db,
+                user_id,
+                text,
+                payload.language,
+                provider=decision.provider,
+                request_id=request_id,
+                cache_voice=voice,
+            )
         except HTTPException as exc:
             if exc.status_code not in {502, 503, 504}:
                 raise
             last_error = exc
-            mark_provider_failure(db, decision.provider, "tts", str(exc.detail), quota_error=is_quota_failure(exc.detail))
+            mark_provider_failure(
+                db,
+                decision.provider,
+                "tts",
+                str(exc.detail),
+                quota_error=bool(getattr(exc, "quota_error", False)) or is_quota_failure(exc.detail),
+            )
             if index + 1 < len(decisions):
                 log_provider_event(db, "tts", "automatic_provider_switch", "Provider request failed.", previous_provider=decision.provider, new_provider=decisions[index + 1].provider, provider_key=decision.provider)
             db.commit()

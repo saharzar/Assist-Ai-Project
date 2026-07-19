@@ -258,6 +258,12 @@ def test_speech_provider(
                 headers={"Ocp-Apim-Subscription-Key": settings.azure_speech_key},
                 timeout=10,
             )
+        elif service_type == "tts":
+            response = httpx.get(
+                "https://api.soniox.com/v1/tts-models",
+                headers={"Authorization": f"Bearer {settings.soniox_api_key}"},
+                timeout=10,
+            )
         else:
             response = httpx.get(
                 "https://api.soniox.com/v1/files/count",

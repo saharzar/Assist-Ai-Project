@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.tts_audio_cache import TtsAudioCache
 from app.models.tts_usage import UserTtsUsage
+from app.services.soniox_service import synthesize_soniox_tts
 
 AZURE_TTS_VOICES = {
     "en": "en-US-JennyNeural",
@@ -292,7 +293,14 @@ def refund_tts_characters(db: Session, user_id: int, character_count: int) -> No
 
 
 def synthesize_tts_with_cache(
-    db: Session, user_id: int | None, text: str, language: str, *, cache_voice: str | None = None
+    db: Session,
+    user_id: int | None,
+    text: str,
+    language: str,
+    *,
+    provider: str = "azure",
+    request_id: str = "assist-ai-tts",
+    cache_voice: str | None = None,
 ) -> TtsAudioResult:
     voice = cache_voice or get_azure_voice_for_language(language)
     full_cached_audio = get_cached_tts_audio(db, text, language, voice)
@@ -314,7 +322,7 @@ def synthesize_tts_with_cache(
     cache_hits = 0
     cache_misses = 0
 
-    for segment in split_text_for_segment_cache(text):
+    for segment_index, segment in enumerate(split_text_for_segment_cache(text)):
         cached_segment = get_cached_tts_audio(db, segment, language, voice)
         if cached_segment is not None:
             audio_parts.append(cached_segment.audio)
@@ -323,7 +331,10 @@ def synthesize_tts_with_cache(
 
         reservation = reserve_tts_characters(db, user_id, len(segment)) if user_id is not None else TtsReservation(len(segment), 0, 0)
         try:
-            segment_audio = synthesize_speech_to_mp3(segment, language)
+            if provider == "soniox":
+                segment_audio = synthesize_soniox_tts(segment, language, f"{request_id}-{segment_index}")
+            else:
+                segment_audio = synthesize_speech_to_mp3(segment, language)
         except Exception:
             if user_id is not None:
                 refund_tts_characters(db, user_id, reservation.characters_used)

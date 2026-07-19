@@ -25,6 +25,7 @@ def fake_config():
         speech_switch_threshold_percent=95,
         soniox_api_key="test-soniox-key",
         soniox_stt_monthly_limit_seconds=36000,
+        soniox_tts_monthly_limit_characters=500000,
         speech_provider_cooldown_seconds=300,
     )
 
@@ -220,6 +221,20 @@ def test_threshold_fallback_and_browser_unlimited(monkeypatch):
         assert manager.capability_quota_status(browser, browser_usage) == "unlimited"
 
 
+def test_tts_threshold_falls_back_from_azure_to_soniox_then_browser(monkeypatch):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    with SpeechTestContext() as (_, db):
+        configs = manager.ensure_capability_configs(db)
+        azure = next(item for item in configs if item.provider_key == "azure" and item.service_type == "tts")
+        soniox = next(item for item in configs if item.provider_key == "soniox" and item.service_type == "tts")
+        azure_usage = manager.get_or_create_provider_usage(db, azure)
+        azure_usage.characters_used = int(azure.quota_limit * 0.95)
+        assert manager.get_provider_chain(db, "tts")[0].provider == "soniox"
+        soniox_usage = manager.get_or_create_provider_usage(db, soniox)
+        soniox_usage.characters_used = int(soniox.quota_limit * 0.95)
+        assert manager.get_provider_chain(db, "tts")[0].provider == "browser"
+
+
 def test_custom_billing_period_starts_at_zero_and_keeps_history(monkeypatch):
     monkeypatch.setattr(manager, "get_settings", fake_config)
     with SpeechTestContext() as (_, db):
@@ -235,7 +250,7 @@ def test_custom_billing_period_starts_at_zero_and_keeps_history(monkeypatch):
         assert db.query(SpeechUsage).filter(SpeechUsage.provider == "azure", SpeechUsage.service_type == "tts").count() == 2
 
 
-def test_duplicate_priority_and_unsupported_capability_are_rejected(monkeypatch):
+def test_duplicate_priority_is_rejected_and_soniox_tts_is_supported(monkeypatch):
     monkeypatch.setattr(manager, "get_settings", fake_config)
     with SpeechTestContext() as (_, db):
         values = routing_payload(db).model_dump()
@@ -246,13 +261,8 @@ def test_duplicate_priority_and_unsupported_capability_are_rejected(monkeypatch)
             assert False, "duplicate priorities should fail"
         except ValueError:
             pass
-        values = routing_payload(db).model_dump()
-        values["capabilities"].append({**values["capabilities"][0], "provider_key": "soniox"})
-        try:
-            GlobalSpeechRoutingUpdate.model_validate(values)
-            assert False, "Soniox TTS is unsupported"
-        except ValueError:
-            pass
+        tts = [item for item in manager.ensure_capability_configs(db) if item.service_type == "tts"]
+        assert [item.provider_key for item in tts] == ["azure", "soniox", "browser"]
 
 
 def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):

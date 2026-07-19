@@ -22,6 +22,7 @@ from app.schemas.speech_provider import GlobalSpeechRoutingUpdate
 VALID_SERVICES = {"tts", "stt"}
 PROVIDER_DEFINITIONS = {
     ("azure", "tts"): ("Microsoft Azure TTS", "limited", "characters"),
+    ("soniox", "tts"): ("Soniox TTS", "limited", "characters"),
     ("azure", "stt"): ("Microsoft Azure STT", "limited", "seconds"),
     ("soniox", "stt"): ("Soniox STT", "limited", "seconds"),
     ("browser", "tts"): ("Browser TTS", "unlimited", "requests"),
@@ -451,7 +452,7 @@ def provider_is_configured(provider_key: str, service_type: str) -> bool:
     config = get_settings()
     if provider_key == "azure":
         return bool(config.azure_speech_key and config.azure_speech_region)
-    if provider_key == "soniox" and service_type == "stt":
+    if provider_key == "soniox" and service_type in VALID_SERVICES:
         return bool(config.soniox_api_key)
     return provider_key == "browser"
 
@@ -465,7 +466,8 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
     }
     defaults = {
         ("azure", "tts"): (1, settings.azure_tts_monthly_limit),
-        ("browser", "tts"): (2, None),
+        ("soniox", "tts"): (2, config.soniox_tts_monthly_limit_characters),
+        ("browser", "tts"): (3, None),
         ("azure", "stt"): (1, settings.azure_stt_monthly_limit_seconds),
         ("soniox", "stt"): (2, config.soniox_stt_monthly_limit_seconds),
         ("browser", "stt"): (3, None),
@@ -493,8 +495,12 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
             db.add(item)
             existing[key] = item
         item.available = True
-        if provider_key != "browser" and not provider_is_configured(provider_key, service_type):
-            item.health_status = "misconfigured"
+        if provider_key != "browser":
+            configured = provider_is_configured(provider_key, service_type)
+            if not configured:
+                item.health_status = "misconfigured"
+            elif item.health_status == "misconfigured":
+                item.health_status = "healthy"
     db.flush()
     return sorted(existing.values(), key=lambda item: (item.service_type, item.priority))
 

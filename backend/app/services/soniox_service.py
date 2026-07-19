@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from app.core.config import get_settings
 
 SONIOX_BASE_URL = "https://api.soniox.com/v1"
+SONIOX_TTS_URL = "https://tts-rt.soniox.com/tts"
 QUOTA_STATUS_CODES = {402, 429}
 
 
@@ -85,3 +86,35 @@ def recognize_soniox_stt(audio: bytes, request_id: str) -> str:
                         client.delete(f"{SONIOX_BASE_URL}/files/{file_id}")
             except httpx.HTTPError:
                 pass
+
+
+def synthesize_soniox_tts(text: str, language: str, request_id: str) -> bytes:
+    settings = get_settings()
+    if not settings.soniox_api_key:
+        raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is not configured.")
+    try:
+        response = httpx.post(
+            SONIOX_TTS_URL,
+            headers={
+                "Authorization": f"Bearer {settings.soniox_api_key}",
+                "X-Request-Id": request_id,
+            },
+            json={
+                "model": settings.soniox_tts_model,
+                "language": language,
+                "voice": settings.soniox_tts_voice,
+                "audio_format": "mp3",
+                "text": text,
+                "client_reference_id": request_id,
+            },
+            timeout=settings.soniox_api_timeout_seconds,
+        )
+        _raise_for_soniox(response)
+        return response.content
+    except httpx.HTTPError as exc:
+        raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is unavailable.") from exc
+
+
+def get_soniox_tts_cache_voice() -> str:
+    settings = get_settings()
+    return f"soniox:{settings.soniox_tts_model}:{settings.soniox_tts_voice}"
