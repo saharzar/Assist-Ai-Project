@@ -34,6 +34,16 @@ class AtmScenarioSession(Base):
     simulated_system_error_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_pin_submission_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    first_pin_was_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    identity_verification_attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    incorrect_identity_verification_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    identity_verification_succeeded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    returned_to_pin_after_verification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    pin_return_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    security_terminated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    termination_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    terminated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completion_status: Mapped[str] = mapped_column(
         String(24), default="in_progress", index=True, nullable=False
     )

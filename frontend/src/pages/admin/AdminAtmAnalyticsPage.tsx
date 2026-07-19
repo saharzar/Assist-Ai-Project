@@ -27,6 +27,7 @@ const emptySummary: AtmAnalyticsSummary = {
   average_retries: 0,
   registered_user_sessions: 0,
   consenting_guest_sessions: 0,
+  unsuccessful_sessions:0,security_terminated_sessions:0,average_pin_attempts:0,average_verification_attempts:0,returned_to_pin_sessions:0,correct_first_pin_sessions:0,incorrect_first_pin_sessions:0,
 };
 
 const initialFilters: AtmAnalyticsFilters = {
@@ -103,6 +104,13 @@ export function AdminAtmAnalyticsPage() {
         <Metric label={text.averageRetries} value={summary.average_retries} />
         <Metric label={text.registeredSessions} value={summary.registered_user_sessions} />
         <Metric label={text.guestSessions} value={summary.consenting_guest_sessions} />
+        <Metric label="Unsuccessful" value={summary.unsuccessful_sessions} />
+        <Metric label="Security terminated" value={summary.security_terminated_sessions} />
+        <Metric label="Average PIN attempts" value={summary.average_pin_attempts} />
+        <Metric label="Average verification attempts" value={summary.average_verification_attempts} />
+        <Metric label="Returned to PIN" value={summary.returned_to_pin_sessions} />
+        <Metric label="Correct first PIN" value={summary.correct_first_pin_sessions} />
+        <Metric label="Incorrect first PIN" value={summary.incorrect_first_pin_sessions} />
       </div>
 
       <form
@@ -164,8 +172,9 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
 }
 
 function SessionTable({ sessions, text, onActorClick }: { sessions: AtmAnalyticsSession[]; text: AdminAnalyticsText; onActorClick?: (session: AtmAnalyticsSession) => void }) {
+  const [page,setPage]=useState(1);const pageSize=10;const pages=Math.max(1,Math.ceil(sessions.length/pageSize));const visible=sessions.slice((page-1)*pageSize,page*pageSize);
   if (!sessions.length) return <p className="py-10 text-center font-semibold text-slate-500">{text.noSessions}</p>;
-  const headings = [text.user, text.started, text.duration, text.pinErrors, text.submissions, text.retries, text.status, text.language, text.stt, text.input, text.finalStep];
+  const headings = [text.user, text.started, text.duration,"Result","First PIN",text.submissions,"Verification attempts","Verification result","Returned to PIN",text.status,text.finalStep];
   const statusLabel = (status: AtmAnalyticsSession["completion_status"]) => status === "completed" ? text.completed : status === "abandoned" ? text.abandoned : text.inProgress;
-  return <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-slate-100 text-xs uppercase text-slate-600"><tr>{headings.map((heading) => <th key={heading} className="whitespace-nowrap px-4 py-3">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{sessions.map((session) => <tr key={session.session_id} className="hover:bg-slate-50"><td className="whitespace-nowrap px-4 py-3 font-bold">{onActorClick ? <button type="button" onClick={() => onActorClick(session)} className="text-teal-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-teal-500">{session.display_name}</button> : session.display_name}<span className="block text-xs font-normal text-slate-500">{session.actor_type === "guest" ? `${text.guest} ${session.actor_reference.slice(0, 8)}` : text.registered}</span></td><td className="whitespace-nowrap px-4 py-3">{new Date(session.started_at).toLocaleString(text.locale)}</td><td className="px-4 py-3">{session.duration_seconds === null ? "-" : `${session.duration_seconds}s`}</td><td className="px-4 py-3">{session.incorrect_user_pin_count}</td><td className="px-4 py-3">{session.total_pin_submission_count}</td><td className="px-4 py-3">{session.retry_count}</td><td className="px-4 py-3">{statusLabel(session.completion_status)}</td><td className="px-4 py-3 uppercase">{session.selected_language ?? "-"}</td><td className="px-4 py-3 capitalize">{session.stt_provider ?? "-"}</td><td className="px-4 py-3">{[session.used_voice_input && text.voice, session.used_keyboard_input && text.keyboard].filter(Boolean).join(" + ") || "-"}</td><td className="whitespace-nowrap px-4 py-3">{text.stepNames[session.final_step_reached] ?? session.final_step_reached}</td></tr>)}</tbody></table></div>;
+  return <div className="mt-6"><div className="overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-slate-100 text-xs uppercase text-slate-600"><tr>{headings.map((heading) => <th key={heading} className="whitespace-nowrap px-4 py-3">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{visible.map((session) => <tr key={session.session_id} className="hover:bg-slate-50"><td className="whitespace-nowrap px-4 py-3 font-bold">{onActorClick ? <button type="button" onClick={() => onActorClick(session)} className="text-teal-700 hover:underline">{session.display_name}</button> : session.display_name}</td><td className="whitespace-nowrap px-4 py-3">{new Date(session.started_at).toLocaleString(text.locale)}</td><td className="px-4 py-3">{session.duration_seconds===null?"-":`${session.duration_seconds}s`}</td><td className="px-4 py-3 font-bold">{session.success?"Success":session.security_terminated?"Security terminated":session.completion_status}</td><td className="px-4 py-3">{session.first_pin_was_correct===null?"-":session.first_pin_was_correct?"Correct":"Incorrect"}</td><td className="px-4 py-3">{session.total_pin_submission_count}</td><td className="px-4 py-3">{session.identity_verification_attempt_count} ({session.incorrect_identity_verification_count} failed)</td><td className="px-4 py-3">{session.identity_verification_succeeded?"Verified":"Not verified"}</td><td className="px-4 py-3">{session.returned_to_pin_after_verification?"Yes":"No"}</td><td className="px-4 py-3">{statusLabel(session.completion_status)}</td><td className="whitespace-nowrap px-4 py-3">{session.termination_reason??text.stepNames[session.final_step_reached]??session.final_step_reached}</td></tr>)}</tbody></table></div>{pages>1&&<div className="mt-3 flex justify-end gap-2"><button disabled={page===1} onClick={()=>setPage(page-1)} className="rounded-md border px-3 py-2 disabled:opacity-40">Previous</button><span className="px-2 py-2 text-sm">{page} / {pages}</span><button disabled={page===pages} onClick={()=>setPage(page+1)} className="rounded-md border px-3 py-2 disabled:opacity-40">Next</button></div>}</div>;
 }

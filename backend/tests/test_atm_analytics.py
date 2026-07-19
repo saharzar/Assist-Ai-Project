@@ -56,6 +56,25 @@ def event(client: TestClient, session_id: str, headers: dict[str, str], event_id
     )
 
 
+def verification_event(
+    client: TestClient,
+    session_id: str,
+    headers: dict[str, str],
+    event_id: str,
+    outcome: str,
+):
+    return client.post(
+        f"/api/atm-sessions/{session_id}/events",
+        headers=headers,
+        json={
+            "client_event_id": event_id,
+            "event_type": "identity_verification",
+            "verification_outcome": outcome,
+            "final_step_reached": "letter_check",
+        },
+    )
+
+
 def test_registered_and_consenting_guest_sessions_are_saved_but_nonconsenting_is_not():
     with test_context() as (client, db):
         user = make_user(db, email="user@example.com")
@@ -90,29 +109,33 @@ def test_registered_and_consenting_guest_sessions_are_saved_but_nonconsenting_is
         assert sum(item.guest_session_id is not None for item in sessions) == 1
 
 
-def test_pin_counts_keep_simulated_error_separate_and_events_are_idempotent():
+def test_first_pin_result_is_recorded_and_verification_events_are_idempotent():
     with test_context() as (client, db):
         user = make_user(db, email="pin@example.com")
         headers = auth_headers(user)
         session_id = start_session(client, headers)
 
-        simulated_id = "00000000-0000-4000-8000-000000000001"
-        assert event(client, session_id, headers, simulated_id, "simulated_system_error").status_code == 200
-        assert event(client, session_id, headers, simulated_id, "simulated_system_error").status_code == 200
-        assert event(
+        pin_id = "00000000-0000-4000-8000-000000000001"
+        assert event(client, session_id, headers, pin_id, "incorrect").status_code == 200
+        assert event(client, session_id, headers, pin_id, "incorrect").status_code == 200
+        verification_id = "00000000-0000-4000-8000-000000000002"
+        assert verification_event(
             client,
             session_id,
             headers,
-            "00000000-0000-4000-8000-000000000002",
-            "incorrect",
+            verification_id,
+            "failed",
         ).status_code == 200
+        assert verification_event(client, session_id, headers, verification_id, "failed").status_code == 200
 
         session = db.scalar(select(AtmScenarioSession).where(AtmScenarioSession.public_id == session_id))
         assert session is not None
-        assert session.total_pin_submission_count == 2
+        assert session.total_pin_submission_count == 1
+        assert session.first_pin_was_correct is False
         assert session.simulated_system_error_count == 1
         assert session.incorrect_user_pin_count == 1
-        assert session.retry_count == 1
+        assert session.identity_verification_attempt_count == 1
+        assert session.incorrect_identity_verification_count == 1
         assert db.query(AtmScenarioEvent).count() == 2
 
 
@@ -126,9 +149,15 @@ def test_completion_is_idempotent_and_duration_is_calculated_server_side():
             session_id,
             headers,
             "00000000-0000-4000-8000-000000000011",
-            "simulated_system_error",
+            "success",
         ).status_code == 200
-        assert event(
+        blocked = client.post(
+            f"/api/atm-sessions/{session_id}/complete",
+            headers=headers,
+            json={"final_step_reached": "success"},
+        )
+        assert blocked.status_code == 409
+        assert verification_event(
             client,
             session_id,
             headers,
@@ -156,6 +185,65 @@ def test_completion_is_idempotent_and_duration_is_calculated_server_side():
         assert first.json()["duration_seconds"] >= 12
         assert second.json()["duration_seconds"] == first.json()["duration_seconds"]
         assert db.query(AtmScenarioSession).count() == 1
+
+
+def test_incorrect_first_pin_returns_to_pin_only_after_successful_verification():
+    with test_context() as (client, db):
+        user = make_user(db, email="return@example.com")
+        headers = auth_headers(user)
+        session_id = start_session(client, headers)
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000021", "incorrect").status_code == 200
+        blocked_pin = event(client, session_id, headers, "00000000-0000-4000-8000-000000000022", "success")
+        assert blocked_pin.status_code == 409
+        assert verification_event(client, session_id, headers, "00000000-0000-4000-8000-000000000023", "success").status_code == 200
+        returned = client.post(
+            f"/api/atm-sessions/{session_id}/events",
+            headers=headers,
+            json={
+                "client_event_id": "00000000-0000-4000-8000-000000000024",
+                "event_type": "returned_to_pin",
+                "final_step_reached": "pin_attempt",
+            },
+        )
+        assert returned.status_code == 200
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000025", "success").status_code == 200
+        session = db.scalar(select(AtmScenarioSession).where(AtmScenarioSession.public_id == session_id))
+        assert session is not None
+        assert session.returned_to_pin_after_verification is True
+        assert session.pin_return_count == 1
+        assert session.total_pin_submission_count == 2
+
+
+def test_three_failed_verifications_terminate_once_and_cannot_succeed():
+    with test_context() as (client, db):
+        user = make_user(db, email="terminated@example.com")
+        headers = auth_headers(user)
+        session_id = start_session(client, headers)
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000031", "success").status_code == 200
+        for index in range(3):
+            response = verification_event(
+                client,
+                session_id,
+                headers,
+                f"00000000-0000-4000-8000-00000000003{index + 2}",
+                "failed",
+            )
+            assert response.status_code == 200
+
+        first = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers)
+        second = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers)
+        assert first.status_code == second.status_code == 200
+        assert first.json()["security_terminated"] is True
+        assert first.json()["success"] is False
+        assert first.json()["termination_reason"] == "identity_verification_failed_three_times"
+        assert verification_event(
+            client,
+            session_id,
+            headers,
+            "00000000-0000-4000-8000-000000000039",
+            "success",
+        ).status_code == 200
+        assert db.query(AtmScenarioEvent).filter(AtmScenarioEvent.event_type == "identity_verification").count() == 3
 
 
 def test_abandoned_session_and_session_ownership_are_enforced():

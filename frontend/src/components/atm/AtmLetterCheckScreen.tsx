@@ -1,19 +1,13 @@
 export function AtmLetterCheckScreen({
   letterInput,
   errorMessage,
-  firstName,
-  lastName,
   labels,
 }: {
   letterInput: string;
   errorMessage: string;
-  firstName: string;
-  lastName: string;
   labels: {
     title: string;
     hint: string;
-    firstName: string;
-    lastName: string;
     lettersEntered: string;
     lettersAria: string;
   };
@@ -27,17 +21,6 @@ export function AtmLetterCheckScreen({
         <p className="mt-1 text-sm font-semibold leading-5 text-slate-700">
           {labels.hint}
         </p>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-2">
-          <p className="text-xs font-bold text-slate-600">{labels.firstName}</p>
-          <p className="truncate text-base font-bold text-slate-950">{firstName}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-2">
-          <p className="text-xs font-bold text-slate-600">{labels.lastName}</p>
-          <p className="truncate text-base font-bold text-slate-950">{lastName}</p>
-        </div>
       </div>
 
       <div>

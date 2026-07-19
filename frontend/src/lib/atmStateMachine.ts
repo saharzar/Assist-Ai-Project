@@ -20,6 +20,8 @@ export function createInitialAtmState(): AtmState {
     pinAttemptCount: 0,
     letterInput: "",
     identityVerified: false,
+    pinWasCorrectBeforeVerification: null,
+    verificationAttemptCount: 0,
     lockoutSecondsRemaining: LOCKOUT_SECONDS,
     errorMessage: "",
     assistantMessage: "Welcome to the ATM practice. Click start when you are ready.",
@@ -36,7 +38,9 @@ export function parseAtmName(value: string): ParsedAtmName | null {
 
   const firstName = parts[0];
   const lastName = parts[parts.length - 1];
-  if (firstName.length < 2 || lastName.length < 1) {
+  const firstLetters = Array.from(firstName.normalize("NFC")).filter((value) => /\p{L}/u.test(value));
+  const lastLetters = Array.from(lastName.normalize("NFC")).filter((value) => /\p{L}/u.test(value));
+  if (firstLetters.length < 2 || lastLetters.length < 1) {
     return null;
   }
 
@@ -44,8 +48,8 @@ export function parseAtmName(value: string): ParsedAtmName | null {
     fullName: parts.join(" "),
     firstName,
     lastName,
-    expectedSecondLetter: firstName[1].toLowerCase(),
-    expectedLastLetter: lastName[lastName.length - 1].toLowerCase(),
+    expectedSecondLetter: firstLetters[1].toLocaleLowerCase(),
+    expectedLastLetter: lastLetters[lastLetters.length - 1].toLocaleLowerCase(),
   };
 }
 
@@ -146,10 +150,12 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.pinAttemptCount === 0) {
         return {
           ...state,
+          status: "security_message",
           currentPinInput: "",
           pinAttemptCount: 1,
-          errorMessage: "The system has a problem, so please try again.",
-          assistantMessage: `There is a temporary system problem. Please try again with password ${state.demoPin}.`,
+          pinWasCorrectBeforeVerification: state.currentPinInput === state.demoPin,
+          errorMessage: "",
+          assistantMessage: "For your security, we need to verify your identity before continuing.",
         };
       }
 
@@ -186,6 +192,10 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       };
     }
 
+    case "SHOW_VERIFICATION":
+      if (state.status !== "security_message") return state;
+      return {...state,status:"letter_check",letterInput:"",errorMessage:"",assistantMessage:"For your security, enter the second letter of your first name and the last letter of your last name."};
+
     case "LETTER_INPUT":
       if (state.status !== "letter_check" || state.letterInput.length >= 2) {
         return state;
@@ -219,8 +229,11 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         };
       }
 
-      const expected = `${state.expectedSecondLetter}${state.expectedLastLetter}`;
-      if (state.letterInput.toLowerCase() === expected) {
+      const expected = `${state.expectedSecondLetter}${state.expectedLastLetter}`.normalize("NFC").toLocaleLowerCase();
+      if (state.letterInput.trim().normalize("NFC").toLocaleLowerCase() === expected) {
+        if (state.pinWasCorrectBeforeVerification) {
+          return {...state,status:"success",letterInput:"",identityVerified:true,errorMessage:"",assistantMessage:"Well done. Your identity was verified and you completed the ATM practice."};
+        }
         return {
           ...state,
           status: "pin_attempt",
@@ -231,15 +244,9 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           assistantMessage: `Thank you. Please enter the practice password again: ${state.demoPin}.`,
         };
       }
-
-      return {
-        ...state,
-        status: "lockout",
-        letterInput: "",
-        lockoutSecondsRemaining: LOCKOUT_SECONDS,
-        errorMessage: "",
-        assistantMessage: "There is a temporary problem. Please wait calmly before trying again.",
-      };
+      const attempts=state.verificationAttemptCount+1;
+      if(attempts>=3)return{...state,status:"security_terminated",letterInput:"",verificationAttemptCount:attempts,errorMessage:"",assistantMessage:"For your security, this ATM session has ended. Please start again."};
+      return{...state,letterInput:"",verificationAttemptCount:attempts,errorMessage:`The letters do not match. Please try again. ${3-attempts} attempt${3-attempts===1?"":"s"} remaining.`,assistantMessage:"That does not match our information. Please check the letters and try again."};
     }
 
     case "LOCKOUT_TICK":
