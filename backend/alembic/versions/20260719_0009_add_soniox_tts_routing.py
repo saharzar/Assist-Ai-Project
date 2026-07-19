@@ -33,12 +33,18 @@ def upgrade() -> None:
     op.execute(
         """
         WITH ranked AS (
-            SELECT id, ROW_NUMBER() OVER (ORDER BY priority) AS position
+            SELECT
+                id,
+                ROW_NUMBER() OVER (ORDER BY priority) AS position,
+                COUNT(*) OVER () AS provider_count
             FROM speech_provider_capability_configs
             WHERE service_type = 'tts'
         )
         UPDATE speech_provider_capability_configs AS capability
-        SET priority = CASE WHEN ranked.position = 1 THEN 1 ELSE 3 END
+        SET priority = CASE
+            WHEN ranked.provider_count = 2 AND ranked.position = 2 THEN 3
+            ELSE ranked.position
+        END
         FROM ranked
         WHERE capability.id = ranked.id
         """

@@ -133,6 +133,14 @@ class SpeechProviderCapabilityConfig(Base):
             name="ck_speech_capability_thresholds",
         ),
         CheckConstraint("switch_threshold_percent <= 100", name="ck_speech_capability_switch_threshold"),
+        CheckConstraint(
+            "warning_threshold_value > 0 AND warning_threshold_value < switch_threshold_value",
+            name="ck_speech_capability_absolute_thresholds",
+        ),
+        CheckConstraint(
+            "quota_limit IS NULL OR switch_threshold_value <= quota_limit",
+            name="ck_speech_capability_switch_within_quota",
+        ),
         Index("ix_speech_capability_service_priority", "service_type", "priority"),
     )
 
@@ -148,6 +156,8 @@ class SpeechProviderCapabilityConfig(Base):
     usage_unit: Mapped[str] = mapped_column(String(32), nullable=False)
     warning_threshold_percent: Mapped[int] = mapped_column(Integer, default=80, nullable=False)
     switch_threshold_percent: Mapped[int] = mapped_column(Integer, default=95, nullable=False)
+    warning_threshold_value: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    switch_threshold_value: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
     billing_period_type: Mapped[str] = mapped_column(String(24), default="calendar_month", nullable=False)
     reset_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     health_status: Mapped[str] = mapped_column(String(16), default="healthy", nullable=False)

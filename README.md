@@ -170,6 +170,8 @@ The monthly provider totals are global estimates based only on ASSIST-AI request
 
 Global speech routing is stored in PostgreSQL and becomes effective immediately for every registered user and guest. Administrators can independently order TTS and STT providers, force a provider, disable providers, configure calendar or custom monthly periods, and edit provider-specific thresholds. Azure and Soniox support both TTS and STT, and browser speech is used only when the current client reports that capability.
 
+Provider warning and automatic-switch levels are configured as real usage values rather than percentages. TTS levels use characters and STT levels use audio seconds. Crossing a warning level sends one email per provider and billing period to `ADMIN_NOTIFICATION_EMAIL` (or `ADMIN_EMAIL` when no notification address is set). Crossing the switch level makes the next eligible provider in the configured priority order active for subsequent requests.
+
 ## Run the Backend
 
 ```bash

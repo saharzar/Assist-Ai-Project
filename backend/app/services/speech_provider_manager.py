@@ -16,6 +16,7 @@ from app.models.speech_provider import (
     SpeechUsageRequest,
 )
 from app.models.user import User
+from app.services.email_service import send_speech_quota_warning_email
 from app.schemas.speech_provider import SpeechProviderSettingsUpdate
 from app.schemas.speech_provider import GlobalSpeechRoutingUpdate
 
@@ -175,8 +176,9 @@ def log_provider_event(
     usage_at_event: int | None = None,
     threshold_at_event: int | None = None,
     configured_limit: int | None = None,
+    billing_period: date | None = None,
 ) -> None:
-    period = billing_period_for()
+    period = billing_period or billing_period_for()
     if once_per_period and _event_exists(db, service_type, event_type, period, provider_key):
         return
     db.add(
@@ -322,6 +324,7 @@ def record_request_result(
         usage.characters_used += max(0, characters_used)
         usage.audio_seconds_used += max(0, audio_seconds_used)
         mark_provider_success(db, provider, service_type)
+        evaluate_capability_thresholds(db, capability, usage)
     elif outcome == "failed":
         usage.failed_requests += 1
     try:
@@ -510,6 +513,8 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
                 usage_unit=definition[2],
                 warning_threshold_percent=settings.warning_threshold_percent,
                 switch_threshold_percent=settings.switch_threshold_percent,
+                warning_threshold_value=max(1, int((quota_limit or 100) * settings.warning_threshold_percent / 100)),
+                switch_threshold_value=max(2, int((quota_limit or 100) * settings.switch_threshold_percent / 100)),
                 billing_period_type="no_reset" if provider_key == "browser" else "calendar_month",
                 health_status="healthy" if provider_is_configured(provider_key, service_type) else "misconfigured",
             )
@@ -603,13 +608,13 @@ def capability_used(capability: SpeechProviderCapabilityConfig, usage: SpeechUsa
 def capability_quota_status(capability: SpeechProviderCapabilityConfig, usage: SpeechUsage) -> str:
     if capability.quota_type == "unlimited":
         return "unlimited"
+    used = capability_used(capability, usage)
     limit = capability.quota_limit or 0
-    percent = (capability_used(capability, usage) / limit) * 100 if limit else 100
-    if percent >= 100:
+    if used >= limit:
         return "reached"
-    if percent >= capability.switch_threshold_percent:
+    if used >= capability.switch_threshold_value:
         return "critical"
-    if percent >= capability.warning_threshold_percent:
+    if used >= capability.warning_threshold_value:
         return "warning"
     return "normal"
 
@@ -627,6 +632,75 @@ def capability_is_eligible(capability: SpeechProviderCapabilityConfig, usage: Sp
     if capability.quota_blocked_until and capability.quota_blocked_until > now:
         return False
     return capability_quota_status(capability, usage) not in {"critical", "reached"}
+
+
+def evaluate_capability_thresholds(
+    db: Session,
+    capability: SpeechProviderCapabilityConfig,
+    usage: SpeechUsage,
+) -> None:
+    if capability.quota_type == "unlimited":
+        return
+    used = capability_used(capability, usage)
+    period = usage.billing_period
+    if used >= capability.warning_threshold_value and not _event_exists(
+        db, capability.service_type, "quota_warning", period, capability.provider_key
+    ):
+        send_speech_quota_warning_email(
+            capability.display_name,
+            capability.service_type,
+            used,
+            capability.warning_threshold_value,
+            capability.switch_threshold_value,
+            capability.quota_limit or 0,
+            capability.usage_unit,
+        )
+        log_provider_event(
+            db,
+            capability.service_type,
+            "quota_warning",
+            f"{capability.display_name} reached {used:,} {capability.usage_unit}.",
+            provider_key=capability.provider_key,
+            usage_at_event=used,
+            threshold_at_event=capability.warning_threshold_value,
+            configured_limit=capability.quota_limit,
+            once_per_period=True,
+            billing_period=period,
+        )
+    if used < capability.switch_threshold_value or _event_exists(
+        db, capability.service_type, "switch_threshold_reached", period, capability.provider_key
+    ):
+        return
+
+    next_provider = None
+    candidates = db.scalars(
+        select(SpeechProviderCapabilityConfig)
+        .where(
+            SpeechProviderCapabilityConfig.service_type == capability.service_type,
+            SpeechProviderCapabilityConfig.priority > capability.priority,
+        )
+        .order_by(SpeechProviderCapabilityConfig.priority)
+    ).all()
+    for candidate in candidates:
+        candidate_usage = get_or_create_provider_usage(db, candidate)
+        if capability_is_eligible(candidate, candidate_usage):
+            next_provider = candidate.provider_key
+            break
+    log_provider_event(
+        db,
+        capability.service_type,
+        "switch_threshold_reached",
+        f"{capability.display_name} reached the automatic switch level of "
+        f"{capability.switch_threshold_value:,} {capability.usage_unit}.",
+        previous_provider=capability.provider_key,
+        new_provider=next_provider,
+        provider_key=capability.provider_key,
+        usage_at_event=used,
+        threshold_at_event=capability.switch_threshold_value,
+        configured_limit=capability.quota_limit,
+        once_per_period=True,
+        billing_period=period,
+    )
 
 
 def get_provider_chain(
@@ -650,20 +724,7 @@ def get_provider_chain(
             continue
         usage = get_or_create_provider_usage(db, capability)
         quota_status = capability_quota_status(capability, usage)
-        if quota_status == "warning":
-            log_provider_event(
-                db, service_type, "quota_warning", "Configured warning threshold reached.",
-                provider_key=capability.provider_key, usage_at_event=capability_used(capability, usage),
-                threshold_at_event=capability.warning_threshold_percent,
-                configured_limit=capability.quota_limit, once_per_period=True,
-            )
-        elif quota_status in {"critical", "reached"}:
-            log_provider_event(
-                db, service_type, "switch_threshold_reached", "Configured switch threshold reached.",
-                provider_key=capability.provider_key, usage_at_event=capability_used(capability, usage),
-                threshold_at_event=capability.switch_threshold_percent,
-                configured_limit=capability.quota_limit, once_per_period=True,
-            )
+        evaluate_capability_thresholds(db, capability, usage)
         if not capability_is_eligible(capability, usage):
             continue
         decisions.append(ProviderDecision(
@@ -760,8 +821,8 @@ def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, adminis
         target.enabled = item.enabled
         target.priority = item.priority
         target.quota_limit = item.quota_limit if target.quota_type == "limited" else None
-        target.warning_threshold_percent = item.warning_threshold_percent
-        target.switch_threshold_percent = item.switch_threshold_percent
+        target.warning_threshold_value = item.warning_threshold_value
+        target.switch_threshold_value = item.switch_threshold_value
         target.billing_period_type = item.billing_period_type if target.quota_type == "limited" else "no_reset"
         target.reset_day = item.reset_day if target.billing_period_type == "custom_monthly" else None
     settings.automatic_tts_routing_enabled = payload.automatic_tts_routing_enabled

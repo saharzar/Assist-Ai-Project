@@ -162,8 +162,8 @@ def routing_payload(db: Session, **overrides) -> GlobalSpeechRoutingUpdate:
                 "enabled": item.enabled,
                 "priority": item.priority,
                 "quota_limit": item.quota_limit,
-                "warning_threshold_percent": item.warning_threshold_percent,
-                "switch_threshold_percent": item.switch_threshold_percent,
+                "warning_threshold_value": item.warning_threshold_value,
+                "switch_threshold_value": item.switch_threshold_value,
                 "billing_period_type": item.billing_period_type,
                 "reset_day": item.reset_day,
             }
@@ -233,6 +233,51 @@ def test_tts_threshold_falls_back_from_azure_to_soniox_then_browser(monkeypatch)
         soniox_usage = manager.get_or_create_provider_usage(db, soniox)
         soniox_usage.characters_used = int(soniox.quota_limit * 0.95)
         assert manager.get_provider_chain(db, "tts")[0].provider == "browser"
+
+
+def test_absolute_warning_emails_once_and_switches_to_next_priority(monkeypatch):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    sent_emails = []
+    monkeypatch.setattr(
+        manager,
+        "send_speech_quota_warning_email",
+        lambda *args: sent_emails.append(args),
+    )
+    with SpeechTestContext() as (_, db):
+        azure = next(
+            item
+            for item in manager.ensure_capability_configs(db)
+            if item.provider_key == "azure" and item.service_type == "tts"
+        )
+        azure.quota_limit = 100
+        azure.warning_threshold_value = 10
+        azure.switch_threshold_value = 20
+        db.commit()
+
+        assert manager.record_request_result(
+            db, "00000000-0000-4000-8000-000000000101", "tts", "azure", "success", characters_used=12
+        )
+        assert len(sent_emails) == 1
+        assert manager.get_provider_chain(db, "tts")[0].provider == "azure"
+
+        assert manager.record_request_result(
+            db, "00000000-0000-4000-8000-000000000102", "tts", "azure", "success", characters_used=5
+        )
+        assert len(sent_emails) == 1
+
+        assert manager.record_request_result(
+            db, "00000000-0000-4000-8000-000000000103", "tts", "azure", "success", characters_used=3
+        )
+        assert manager.get_provider_chain(db, "tts")[0].provider == "soniox"
+        switch_event = db.scalar(
+            select(SpeechProviderEvent).where(
+                SpeechProviderEvent.event_type == "switch_threshold_reached",
+                SpeechProviderEvent.provider_key == "azure",
+            )
+        )
+        assert switch_event is not None
+        assert switch_event.new_provider == "soniox"
+        assert switch_event.threshold_at_event == 20
 
 
 def test_missing_soniox_tts_rebalances_legacy_priorities(monkeypatch):
@@ -306,7 +351,7 @@ def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):
             "capabilities": [
                 {key: item[key] for key in (
                     "provider_key", "service_type", "enabled", "priority", "quota_limit",
-                    "warning_threshold_percent", "switch_threshold_percent",
+                    "warning_threshold_value", "switch_threshold_value",
                     "billing_period_type", "reset_day",
                 )}
                 for item in body["capabilities"]

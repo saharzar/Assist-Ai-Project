@@ -34,15 +34,17 @@ class SpeechCapabilityConfigUpdate(BaseModel):
     enabled: bool
     priority: int = Field(ge=1, le=20)
     quota_limit: int | None = Field(default=None, ge=1, le=1000000000)
-    warning_threshold_percent: int = Field(ge=1, le=99)
-    switch_threshold_percent: int = Field(ge=2, le=100)
+    warning_threshold_value: int = Field(ge=1, le=1000000000)
+    switch_threshold_value: int = Field(ge=2, le=1000000000)
     billing_period_type: BillingPeriodType
     reset_day: int | None = Field(default=None, ge=1, le=28)
 
     @model_validator(mode="after")
     def validate_capability(self):
-        if self.warning_threshold_percent >= self.switch_threshold_percent:
+        if self.warning_threshold_value >= self.switch_threshold_value:
             raise ValueError("Warning threshold must be lower than switch threshold.")
+        if self.quota_limit is not None and self.switch_threshold_value > self.quota_limit:
+            raise ValueError("Switch threshold cannot exceed the quota limit.")
         if self.billing_period_type == "custom_monthly" and self.reset_day is None:
             raise ValueError("Custom monthly periods require a reset day.")
         return self
@@ -88,6 +90,8 @@ class SpeechCapabilityRead(BaseModel):
     usage_unit: str
     warning_threshold_percent: int
     switch_threshold_percent: int
+    warning_threshold_value: int
+    switch_threshold_value: int
     billing_period_type: BillingPeriodType
     reset_day: int | None
     health_status: str
