@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     tts_default_voice: str = "en-US-JennyNeural"
     tts_cache_dir: str = "media/tts-cache"
     stt_default_limit_seconds: int = 300
+    azure_tts_monthly_limit_characters: int = 500000
+    azure_stt_monthly_limit_seconds: int = 18000
+    speech_warning_threshold_percent: int = 80
+    speech_switch_threshold_percent: int = 95
+    soniox_api_key: str = ""
+    soniox_stt_model: str = "stt-async-v5"
+    soniox_stt_monthly_limit_seconds: int = 36000
+    soniox_tts_model: str = "tts-rt-v1"
+    soniox_tts_voice: str = "Adrian"
+    soniox_tts_monthly_limit_characters: int = 500000
+    soniox_api_timeout_seconds: int = 30
+    speech_provider_cooldown_seconds: int = 300
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

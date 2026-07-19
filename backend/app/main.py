@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routes import admin, auth, guests, stt, tts, users
+from app.routes import admin, atm_analytics, auth, guests, speech_providers, stt, tts, users
 from app.scenarios import SCENARIOS
 
 settings = get_settings()
@@ -29,6 +29,8 @@ app.add_middleware(
         "X-STT-Limit-Seconds",
         "X-STT-Remaining-Seconds",
         "X-STT-Used-Seconds",
+        "X-Speech-Provider",
+        "X-Speech-Status",
     ],
 )
 
@@ -38,6 +40,8 @@ app.include_router(users.router)
 app.include_router(admin.router)
 app.include_router(tts.router)
 app.include_router(stt.router)
+app.include_router(atm_analytics.router)
+app.include_router(speech_providers.router)
 
 
 @app.get("/health")

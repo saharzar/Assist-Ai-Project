@@ -36,6 +36,7 @@ class SttRecognitionResult:
     remaining_seconds: int
     limit_seconds: int
     reset_date: date
+    audio_seconds_charged: int
 
 
 @dataclass(frozen=True)
@@ -58,7 +59,6 @@ AZURE_NAME_AUTO_DETECT_LANGUAGE_CANDIDATES = [
     "en-US",
     "tr-TR",
     "fr-FR",
-    "ar-SA",
 ]
 
 AZURE_NAME_FALLBACK_LANGUAGE_CANDIDATES = [
@@ -395,22 +395,22 @@ def get_wav_duration_seconds(audio: bytes) -> int:
 
 def recognize_stt_with_usage(
     db: Session,
-    user_id: int,
+    user_id: int | None,
     audio: bytes,
     language: str,
     mode: str,
 ) -> SttRecognitionResult:
     seconds = get_wav_duration_seconds(audio)
-    snapshot = get_stt_usage_snapshot(db, user_id)
+    snapshot = get_stt_usage_snapshot(db, user_id) if user_id is not None else SttUsageSnapshot(0, 0, 0, get_next_weekly_reset_date())
     db.commit()
-    if snapshot.remaining_seconds <= 0:
+    if user_id is not None and snapshot.remaining_seconds <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="STT time limit reached",
         )
 
     transcript_result = recognize_azure_stt(audio, language, mode)
-    usage = record_stt_seconds(db, user_id, seconds)
+    usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else snapshot
     return SttRecognitionResult(
         transcript=transcript_result.transcript,
         detected_language=transcript_result.detected_language,
@@ -419,4 +419,5 @@ def recognize_stt_with_usage(
         remaining_seconds=usage.remaining_seconds,
         limit_seconds=usage.limit_seconds,
         reset_date=usage.reset_date,
+        audio_seconds_charged=seconds,
     )

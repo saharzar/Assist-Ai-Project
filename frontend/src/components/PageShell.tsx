@@ -14,6 +14,13 @@ import {
   type TtsUsage,
 } from "../services/ttsUsageService";
 import atmWallBackground from "../assets/atm-wall-background.png";
+import {
+  fetchGlobalSpeechDashboard,
+  SPEECH_PROVIDER_UPDATED_EVENT,
+  SPEECH_PROVIDER_USED_EVENT,
+  type GlobalSpeechDashboard,
+  type GlobalSpeechProvider,
+} from "../services/speechProviderService";
 
 export function PageShell() {
   const location = useLocation();
@@ -21,9 +28,11 @@ export function PageShell() {
   const { user, isAuthenticated, isGuest, logout } = useAuth();
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
   const [sttUsage, setSttUsage] = useState<SttUsage | null>(null);
+  const [speechProviders, setSpeechProviders] = useState<GlobalSpeechDashboard | null>(null);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
+  const homeTarget = isAuthenticated ? "/scenarios" : "/login";
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -74,6 +83,40 @@ export function PageShell() {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAdmin) {
+      setSpeechProviders(null);
+      return;
+    }
+    let isMounted = true;
+    fetchGlobalSpeechDashboard()
+      .then((dashboard) => {
+        if (isMounted) setSpeechProviders(dashboard);
+      })
+      .catch(() => {
+        if (isMounted) setSpeechProviders(null);
+      });
+    const handleProviderUpdate = (event: Event) => {
+      setSpeechProviders((event as CustomEvent<GlobalSpeechDashboard>).detail);
+    };
+    const handleProviderUsed = (event: Event) => {
+      const detail = (event as CustomEvent<{ serviceType: "tts" | "stt"; provider: GlobalSpeechProvider }>).detail;
+      setSpeechProviders((current) => current ? {
+        ...current,
+        ...(detail.serviceType === "tts"
+          ? { active_tts_provider: detail.provider }
+          : { active_stt_provider: detail.provider }),
+      } : current);
+    };
+    window.addEventListener(SPEECH_PROVIDER_UPDATED_EVENT, handleProviderUpdate);
+    window.addEventListener(SPEECH_PROVIDER_USED_EVENT, handleProviderUsed);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SPEECH_PROVIDER_UPDATED_EVENT, handleProviderUpdate);
+      window.removeEventListener(SPEECH_PROVIDER_USED_EVENT, handleProviderUsed);
+    };
+  }, [isAdmin]);
+
   return (
     <div
       className={`flex min-h-screen flex-col selection:bg-teal-100 selection:text-slate-900 ${
@@ -93,7 +136,7 @@ export function PageShell() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link
-            to="/"
+            to={homeTarget}
             className="flex items-center gap-3 text-xl font-bold tracking-tight text-slate-900 transition-opacity hover:opacity-85"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
@@ -102,6 +145,18 @@ export function PageShell() {
             <span>ASSIST-AI</span>
           </Link>
           <div className="flex items-center gap-3">
+            {isAdmin && speechProviders && (
+              <Link
+                to="/admin/speech-providers"
+                className="hidden min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 2xl:inline-flex"
+                aria-label={`TTS: ${speechProviders.active_tts_provider}. STT: ${speechProviders.active_stt_provider}.`}
+              >
+                <span className="h-2 w-2 rounded-full bg-teal-400" aria-hidden="true" />
+                {providerLabel(speechProviders.active_tts_provider)} TTS
+                <span className="text-slate-300" aria-hidden="true">|</span>
+                {providerLabel(speechProviders.active_stt_provider)} STT
+              </Link>
+            )}
             {ttsUsage && (
               <div
                 className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm lg:inline-flex"
@@ -204,4 +259,8 @@ function formatResetDate(resetDate: string) {
     return "weekly";
   }
   return resetDate;
+}
+
+function providerLabel(provider: GlobalSpeechProvider) {
+  return provider === "azure" ? "Azure" : provider === "soniox" ? "Soniox" : "Browser";
 }

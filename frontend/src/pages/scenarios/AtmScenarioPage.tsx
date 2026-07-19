@@ -15,9 +15,18 @@ import { AtmPinScreen } from "../../components/atm/AtmPinScreen";
 import { AtmSuccessScreen } from "../../components/atm/AtmSuccessScreen";
 import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
 import { SoundToggle } from "../../components/atm/SoundToggle";
+import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
 import { atmReducer, initialAtmState } from "../../lib/atmStateMachine";
 import { atmTranslations } from "../../lib/atmTranslations";
+import {
+  abandonAtmAnalyticsSession,
+  completeAtmAnalyticsSession,
+  recordAtmAnalyticsEvent,
+  startAtmAnalyticsSession,
+  type AtmInputMode,
+  type AtmPinOutcome,
+} from "../../services/atmAnalyticsService";
 import {
   createSpeechRecognizer,
   isSpeechRecognitionSupported,
@@ -34,6 +43,7 @@ const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
 export function AtmScenarioPage() {
   const navigate = useNavigate();
+  const { token, guestSessionToken } = useAuth();
   const { language } = useTranslation();
   const text = atmTranslations[language];
   const [state, dispatch] = useReducer(atmReducer, initialAtmState);
@@ -55,7 +65,88 @@ export function AtmScenarioPage() {
   const spaceIsHeldRef = useRef(false);
   const stopListeningTimerRef = useRef<number | null>(null);
   const sttAutoStopTimerRef = useRef<number | null>(null);
+  const analyticsSessionIdRef = useRef<string | null>(null);
+  const analyticsStartRef = useRef<Promise<string | null> | null>(null);
+  const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const latestStatusRef = useRef(state.status);
+  const recordedInputModesRef = useRef<Set<AtmInputMode>>(new Set());
+  const analyticsCredentialsRef = useRef<{
+    token: string | null;
+    guestToken: string | null;
+  }>({ token: null, guestToken: null });
   const speechRecognitionSupported = isSpeechRecognitionSupported();
+
+  const enqueueAnalytics = useCallback(
+    (operation: (sessionId: string) => Promise<unknown>) => {
+      const knownSessionId = analyticsSessionIdRef.current;
+      const startPromise = analyticsStartRef.current;
+      analyticsQueueRef.current = analyticsQueueRef.current
+        .then(async () => {
+          const sessionId = knownSessionId ?? (await startPromise);
+          if (!sessionId) {
+            return;
+          }
+          analyticsSessionIdRef.current = sessionId;
+          await operation(sessionId);
+        })
+        .catch(() => {
+          // Analytics must never interrupt the learner's practice flow.
+        });
+    },
+    [],
+  );
+
+  const beginAnalyticsSession = useCallback(() => {
+    analyticsSessionIdRef.current = null;
+    recordedInputModesRef.current = new Set();
+    analyticsCredentialsRef.current = { token, guestToken: guestSessionToken };
+    const startPromise = startAtmAnalyticsSession(language).catch(() => null);
+    analyticsStartRef.current = startPromise;
+    void startPromise.then((sessionId) => {
+      if (analyticsStartRef.current === startPromise) {
+        analyticsSessionIdRef.current = sessionId;
+      }
+    });
+  }, [guestSessionToken, language, token]);
+
+  const recordInputMode = useCallback(
+    (inputMode: AtmInputMode) => {
+      if (recordedInputModesRef.current.has(inputMode)) {
+        return;
+      }
+      recordedInputModesRef.current.add(inputMode);
+      enqueueAnalytics((sessionId) =>
+        recordAtmAnalyticsEvent(sessionId, {
+          client_event_id: crypto.randomUUID(),
+          event_type: "input_mode",
+          input_mode: inputMode,
+          stt_provider: inputMode === "voice" ? "azure" : undefined,
+        }),
+      );
+    },
+    [enqueueAnalytics],
+  );
+
+  useEffect(() => {
+    return () => {
+      const startPromise = analyticsStartRef.current;
+      if (!startPromise || latestStatusRef.current === "success") {
+        return;
+      }
+      void analyticsQueueRef.current.finally(async () => {
+        const sessionId = await startPromise;
+        if (sessionId) {
+          const credentials = analyticsCredentialsRef.current;
+          await abandonAtmAnalyticsSession(
+            sessionId,
+            latestStatusRef.current,
+            credentials.token,
+            credentials.guestToken,
+          ).catch(() => undefined);
+        }
+      });
+    };
+  }, []);
 
   const assistantMessage = useMemo(() => {
     if (state.status === "confirm_name" && state.fullName) {
@@ -158,6 +249,30 @@ export function AtmScenarioPage() {
     listeningStartedAtRef.current = null;
     setIsListening(false);
   }, []);
+
+  useEffect(() => {
+    latestStatusRef.current = state.status;
+    if (state.status === "welcome" || !analyticsStartRef.current) {
+      return;
+    }
+    if (state.status === "success") {
+      enqueueAnalytics(async (sessionId) => {
+        await completeAtmAnalyticsSession(sessionId, "success");
+        if (analyticsSessionIdRef.current === sessionId) {
+          analyticsSessionIdRef.current = null;
+          analyticsStartRef.current = null;
+        }
+      });
+      return;
+    }
+    enqueueAnalytics((sessionId) =>
+      recordAtmAnalyticsEvent(sessionId, {
+        client_event_id: crypto.randomUUID(),
+        event_type: "progress",
+        final_step_reached: state.status,
+      }),
+    );
+  }, [enqueueAnalytics, state.status]);
 
   useEffect(() => {
     if (state.status !== "lockout" || state.lockoutSecondsRemaining === 0) {
@@ -287,6 +402,7 @@ export function AtmScenarioPage() {
     recognizerRef.current = recognizer;
     try {
       recognizer.start();
+      recordInputMode("voice");
       listeningStartedAtRef.current = Date.now();
       setIsListening(true);
       sttAutoStopTimerRef.current = window.setTimeout(() => {
@@ -299,7 +415,7 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechNameStartError);
     }
-  }, [finishListeningSession, language, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
 
   const startPinListening = useCallback(async () => {
     stopSpeech();
@@ -346,6 +462,7 @@ export function AtmScenarioPage() {
     recognizerRef.current = recognizer;
     try {
       recognizer.start();
+      recordInputMode("voice");
       listeningStartedAtRef.current = Date.now();
       setIsListening(true);
       sttAutoStopTimerRef.current = window.setTimeout(() => {
@@ -358,7 +475,7 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechPinStartError);
     }
-  }, [finishListeningSession, language, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
@@ -453,6 +570,8 @@ export function AtmScenarioPage() {
             }}
             onStart={() => {
               stopSpeech();
+              beginAnalyticsSession();
+              latestStatusRef.current = "enter_name";
               dispatch({ type: "START" });
             }}
           />
@@ -479,6 +598,7 @@ export function AtmScenarioPage() {
               pressEnter: text.pressEnterName,
             }}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
+            onKeyboardInput={() => recordInputMode("keyboard")}
           />
         );
 
@@ -602,8 +722,12 @@ export function AtmScenarioPage() {
         />
       }
       keypadMode={keypadMode}
-      onDigit={(digit) => dispatch({ type: "PIN_DIGIT", digit })}
+      onDigit={(digit) => {
+        recordInputMode("keyboard");
+        dispatch({ type: "PIN_DIGIT", digit });
+      }}
       onLetter={(letter) => {
+        recordInputMode("keyboard");
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "letter", value: letter });
         }
@@ -654,6 +778,22 @@ export function AtmScenarioPage() {
           dispatch({ type: "NAME_CONFIRMED" });
         }
         if (state.status === "pin_attempt") {
+          if (state.currentPinInput.length === 4) {
+            let pinOutcome: AtmPinOutcome = "incorrect";
+            if (state.pinAttemptCount === 0) {
+              pinOutcome = "simulated_system_error";
+            } else if (state.currentPinInput === state.demoPin) {
+              pinOutcome = "success";
+            }
+            enqueueAnalytics((sessionId) =>
+              recordAtmAnalyticsEvent(sessionId, {
+                client_event_id: crypto.randomUUID(),
+                event_type: "pin_submission",
+                pin_outcome: pinOutcome,
+                final_step_reached: pinOutcome === "success" ? "success" : state.status,
+              }),
+            );
+          }
           dispatch({ type: "PIN_SUBMIT" });
         }
         if (state.status === "letter_check") {

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
+import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
+import { speechProviderTranslations } from "../../lib/speechProviderTranslations";
 import {
   activateUser,
   approveUser,
@@ -29,7 +31,9 @@ const statusLabelKeys = {
 
 export function AdminUsersPage() {
   const { user, isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
+  const analyticsText = adminAnalyticsTranslations[language];
+  const speechText = speechProviderTranslations[language];
   const [statusFilter, setStatusFilter] = useState<AdminUserStatusFilter>("pending");
   const [users, setUsers] = useState<User[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
@@ -100,9 +104,19 @@ export function AdminUsersPage() {
 
   return (
     <section className="flex flex-1 flex-col">
-      <div className="max-w-3xl">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
-        <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div className="max-w-3xl">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
+          <p className="mt-4 text-lg leading-8 text-slate-600">{t("viewPendingAccounts")}</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/admin/speech-providers" className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-5 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            {speechText.title}
+          </Link>
+          <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            {analyticsText.scenarioAnalytics}
+          </Link>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">

@@ -21,6 +21,7 @@ export function AtmNameScreen({
   inputEvent,
   labels,
   onSubmit,
+  onKeyboardInput,
 }: {
   errorMessage: string;
   transcript: string;
@@ -40,6 +41,7 @@ export function AtmNameScreen({
     pressEnter: string;
   };
   onSubmit: (fullName: string) => void;
+  onKeyboardInput: () => void;
 }) {
   const [fullName, setFullName] = useState("");
   const fullNameRef = useRef("");
@@ -126,7 +128,10 @@ export function AtmNameScreen({
         <span className="text-xs font-bold text-slate-700">{labels.fullName}</span>
         <input
           value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
+          onChange={(event) => {
+            onKeyboardInput();
+            setFullName(event.target.value);
+          }}
           placeholder={labels.placeholder}
           className="mt-1 min-h-[40px] w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
         />
