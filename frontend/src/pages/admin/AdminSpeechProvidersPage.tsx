@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation, type LanguageCode } from "../../i18n";
@@ -33,6 +33,7 @@ export function AdminSpeechProvidersPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [activeView, setActiveView] = useState<"routing" | "activity">("routing");
   const isAdmin = isAuthenticated && user?.role === "admin";
 
   useEffect(() => {
@@ -77,17 +78,90 @@ export function AdminSpeechProvidersPage() {
   };
 
   return <section className="flex flex-1 flex-col text-slate-900">
-    <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><h1 className="text-3xl font-bold">{text.title}</h1><p className="mt-2 text-slate-600">{text.description}</p></div><div className="flex gap-3"><Link to="/admin/scenario-analytics" className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-bold">{text.scenarioAnalytics}</Link><Link to="/admin/users" className="rounded-lg bg-slate-900 px-4 py-3 font-bold text-white">{text.manageUsers}</Link></div></div>
-    <p className="mt-6 rounded-lg border border-sky-200 bg-sky-50 p-4 font-semibold text-sky-900">{text.estimatedNotice}</p>
+    <div><p className="text-sm font-bold uppercase text-teal-700">Admin dashboard</p><h1 className="mt-1 text-3xl font-bold">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
     {!draft || !dashboard ? <p className="py-12 text-center font-semibold">{text.loading}</p> : <>
-      <ProviderSection service="stt" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
-      <ProviderSection service="tts" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
-      <button type="button" disabled={saving} onClick={() => void save()} className="mt-7 min-h-[48px] self-start rounded-lg bg-teal-700 px-6 font-bold text-white disabled:opacity-60">{labels.save}</button>
-      <History dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200">
+        <div className="flex gap-1" role="tablist" aria-label="Speech provider views">
+          {(["routing", "activity"] as const).map((view) => <button key={view} type="button" role="tab" aria-selected={activeView === view} onClick={() => setActiveView(view)} className={`border-b-2 px-4 py-3 text-sm font-bold capitalize ${activeView === view ? "border-teal-600 text-teal-800" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{view}</button>)}
+        </div>
+      </div>
+      {activeView === "routing" ? <>
+        <div className="grid gap-5 xl:grid-cols-2">
+          <CompactProviderSection service="stt" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
+          <CompactProviderSection service="tts" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
+        </div>
+        <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[44px] self-start rounded-lg bg-teal-700 px-5 text-sm font-bold text-white disabled:opacity-60">{labels.save}</button>
+      </> : <CompactHistory dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />}
     </>}
   </section>;
+}
+
+type ProviderSectionProps = {
+  service: "tts" | "stt";
+  draft: GlobalSpeechDashboard;
+  labels: Record<string, string>;
+  text: ReturnType<typeof getText>;
+  language: LanguageCode;
+  updateDashboard: React.Dispatch<React.SetStateAction<GlobalSpeechDashboard | null>>;
+  updateCapability: (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => void;
+  move: (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => void;
+};
+
+function CompactProviderSection({ service, draft, labels, text, language, updateDashboard, updateCapability, move }: ProviderSectionProps) {
+  const [testResults, setTestResults] = useState<Record<string, string>>({});
+  const items = useMemo(
+    () => draft.capabilities.filter((item) => item.service_type === service).sort((a, b) => a.priority - b.priority),
+    [draft.capabilities, service],
+  );
+  const automaticKey = service === "tts" ? "automatic_tts_routing_enabled" : "automatic_stt_routing_enabled";
+  const forcedKey = service === "tts" ? "forced_tts_provider_key" : "forced_stt_provider_key";
+  const active = service === "tts" ? draft.active_tts_provider : draft.active_stt_provider;
+
+  return <section className="mt-5">
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <div><p className="text-xs font-bold uppercase text-slate-500">{service}</p><p className="font-bold text-teal-800">{labels.active}: {providerName(active)}</p></div>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={Boolean(draft[automaticKey])} onChange={(event) => updateDashboard((current) => current ? { ...current, [automaticKey]: event.target.checked, ...(!event.target.checked && !current[forcedKey] ? { [forcedKey]: active } : {}) } : current)} />{labels.automatic}</label>
+        {!draft[automaticKey] && <label className="text-sm font-bold">{labels.forced}<select value={draft[forcedKey] ?? active} onChange={(event) => updateDashboard((current) => current ? { ...current, [forcedKey]: event.target.value as GlobalSpeechProvider } : current)} className="ml-2 min-h-[40px] rounded-lg border border-slate-300 px-3">{items.filter((item) => item.enabled && item.configured).map((item) => <option key={item.provider_key} value={item.provider_key}>{item.display_name}</option>)}</select></label>}
+      </div>
+    </div>
+    <div className="mt-3 space-y-3">{items.map((item, index) => <article key={item.provider_key} className="rounded-lg border border-slate-200 bg-white">
+      <div className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(180px,1.5fr)_1fr_1fr_auto]">
+        <div><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${item.provider_key === active ? "bg-teal-500" : item.enabled ? "bg-slate-300" : "bg-slate-200"}`} /><h3 className="font-bold">{item.display_name}</h3></div><p className="mt-1 text-xs text-slate-500">{labels.priority} {item.priority} · {item.configured ? item.health_status : labels.unsupported}</p></div>
+        <Metric label={text.used} value={item.quota_type === "unlimited" ? `${item.used} ${text.requests}` : `${item.used.toLocaleString(text.locale)} / ${item.quota_limit?.toLocaleString(text.locale)}`} />
+        <Metric label={text.status} value={item.quota_status} />
+        <div className="flex gap-1"><button type="button" aria-label={labels.up} disabled={index === 0} onClick={() => move(service, item.provider_key, -1)} className="h-9 w-9 rounded-md border border-slate-300 font-bold disabled:opacity-30">↑</button><button type="button" aria-label={labels.down} disabled={index === items.length - 1} onClick={() => move(service, item.provider_key, 1)} className="h-9 w-9 rounded-md border border-slate-300 font-bold disabled:opacity-30">↓</button></div>
+      </div>
+      <details className="border-t border-slate-100">
+        <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Configure provider</summary>
+        <div className="grid gap-4 border-t border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={item.enabled} disabled={!item.configured} onChange={(event) => { if (!event.target.checked && active === item.provider_key && !window.confirm(labels.confirmDisable)) return; updateCapability(item.provider_key, service, { enabled: event.target.checked }); }} />{labels.enabled}</label><button type="button" disabled={!item.configured} onClick={() => void testSpeechProvider(service, item.provider_key).then((result) => setTestResults((current) => ({ ...current, [item.provider_key]: result.status })))} className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold disabled:opacity-40">{testLabel(language)}</button>{testResults[item.provider_key] && <p className="mt-1 text-xs font-semibold">{testResults[item.provider_key]}</p>}</div>
+          <Metric label={text.remaining} value={item.remaining === null ? labels.unlimited : item.remaining.toLocaleString(text.locale)} />
+          {item.quota_type === "limited" && <><NumberField label={`${labels.limit} (${item.usage_unit})`} value={item.quota_limit ?? 1} onChange={(quota_limit) => updateCapability(item.provider_key, service, { quota_limit })} /><NumberField label={`${labels.warning.replace(" %", "")} (${item.usage_unit})`} value={item.warning_threshold_value} max={item.quota_limit ?? undefined} onChange={(warning_threshold_value) => updateCapability(item.provider_key, service, { warning_threshold_value })} /><NumberField label={`${labels.switching.replace(" %", "")} (${item.usage_unit})`} value={item.switch_threshold_value} max={item.quota_limit ?? undefined} onChange={(switch_threshold_value) => updateCapability(item.provider_key, service, { switch_threshold_value })} /><label className="text-sm font-bold">{labels.period}<select value={item.billing_period_type} onChange={(event) => updateCapability(item.provider_key, service, { billing_period_type: event.target.value as SpeechCapability["billing_period_type"] })} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3">{["calendar_month", "custom_monthly", "manual"].map((value) => <option key={value} value={value}>{labels[value]}</option>)}</select></label>{item.billing_period_type === "custom_monthly" && <NumberField label={labels.resetDay} value={item.reset_day ?? 1} max={28} onChange={(reset_day) => updateCapability(item.provider_key, service, { reset_day })} />}</>}
+          <Metric label={labels.lastSuccess} value={formatDate(item.last_success_at, text.locale)} /><Metric label={labels.lastFailure} value={formatDate(item.last_failure_at, text.locale)} />
+        </div>
+      </details>
+    </article>)}</div>
+  </section>;
+}
+
+function CompactHistory({ dashboard, title, eventTitle, locale }: { dashboard: GlobalSpeechDashboard; title: string; eventTitle: string; locale: string }) {
+  const pageSize = 4;
+  const [usagePage, setUsagePage] = useState(0);
+  const [eventPage, setEventPage] = useState(0);
+  const usageItems = dashboard.usage_history.slice(usagePage * pageSize, (usagePage + 1) * pageSize);
+  const eventItems = dashboard.events.slice(eventPage * pageSize, (eventPage + 1) * pageSize);
+  return <div className="mt-6 grid gap-6 lg:grid-cols-2">
+    <ActivityList title={title} page={usagePage} total={dashboard.usage_history.length} pageSize={pageSize} onPage={setUsagePage}>{usageItems.map((item) => <div key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="flex items-center justify-between border-b border-slate-100 py-3 text-sm last:border-0"><div><strong>{item.provider.toUpperCase()}</strong><span className="ml-2 text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span><p className="text-xs text-slate-500">{new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)}</p></div><strong>{item.service_type === "tts" ? item.characters_used.toLocaleString(locale) : `${item.audio_seconds_used}s`}</strong></div>)}</ActivityList>
+    <ActivityList title={eventTitle} page={eventPage} total={dashboard.events.length} pageSize={pageSize} onPage={setEventPage}>{eventItems.map((item) => <div key={item.id} className="border-b border-slate-100 py-3 text-sm last:border-0"><div className="flex items-center justify-between gap-3"><strong className="capitalize">{item.event_type.replace(/_/g, " ")}</strong><span className="text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span></div><p className="mt-1 text-xs text-slate-600">{item.reason}</p></div>)}</ActivityList>
+  </div>;
+}
+
+function ActivityList({ title, page, total, pageSize, onPage, children }: { title: string; page: number; total: number; pageSize: number; onPage: (page: number) => void; children: React.ReactNode }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  return <section className="rounded-lg border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><h2 className="text-lg font-bold">{title}</h2><span className="text-xs font-bold text-slate-500">{page + 1} / {pages}</span></div><div className="mt-2 min-h-[240px]">{children}</div><div className="mt-3 flex justify-end gap-2"><button type="button" aria-label="Previous page" disabled={page === 0} onClick={() => onPage(page - 1)} className="h-9 w-9 rounded-md border border-slate-300 disabled:opacity-30">←</button><button type="button" aria-label="Next page" disabled={page + 1 >= pages} onClick={() => onPage(page + 1)} className="h-9 w-9 rounded-md border border-slate-300 disabled:opacity-30">→</button></div></section>;
 }
 
 function ProviderSection({ service, draft, labels, text, language, updateDashboard, updateCapability, move }: { service: "tts" | "stt"; draft: GlobalSpeechDashboard; labels: Record<string, string>; text: ReturnType<typeof getText>; language: LanguageCode; updateDashboard: React.Dispatch<React.SetStateAction<GlobalSpeechDashboard | null>>; updateCapability: (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => void; move: (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => void }) {
