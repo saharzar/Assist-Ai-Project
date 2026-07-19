@@ -472,6 +472,27 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
         ("soniox", "stt"): (2, config.soniox_stt_monthly_limit_seconds),
         ("browser", "stt"): (3, None),
     }
+
+    # A backend may be restarted before the latest data migration runs. Move
+    # existing rows out of the constrained priority range before adding a new
+    # provider, then restore the complete service order atomically.
+    for service_type in VALID_SERVICES:
+        expected_keys = {key for key in defaults if key[1] == service_type}
+        existing_keys = {key for key in existing if key[1] == service_type}
+        if expected_keys == existing_keys:
+            continue
+        service_rows = sorted(
+            (item for key, item in existing.items() if key[1] == service_type),
+            key=lambda item: item.priority,
+        )
+        for offset, item in enumerate(service_rows, start=1):
+            item.priority = 100 + offset
+        db.flush()
+        for key, item in existing.items():
+            if key[1] == service_type and key in defaults:
+                item.priority = defaults[key][0]
+        db.flush()
+
     for key, (priority, quota_limit) in defaults.items():
         provider_key, service_type = key
         definition = PROVIDER_DEFINITIONS[key]

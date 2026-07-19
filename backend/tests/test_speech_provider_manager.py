@@ -235,6 +235,27 @@ def test_tts_threshold_falls_back_from_azure_to_soniox_then_browser(monkeypatch)
         assert manager.get_provider_chain(db, "tts")[0].provider == "browser"
 
 
+def test_missing_soniox_tts_rebalances_legacy_priorities(monkeypatch):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    with SpeechTestContext() as (_, db):
+        configs = manager.ensure_capability_configs(db)
+        soniox = next(item for item in configs if item.provider_key == "soniox" and item.service_type == "tts")
+        browser = next(item for item in configs if item.provider_key == "browser" and item.service_type == "tts")
+        db.delete(soniox)
+        db.flush()
+        browser.priority = 2
+        db.commit()
+
+        restored = [item for item in manager.ensure_capability_configs(db) if item.service_type == "tts"]
+        db.commit()
+
+        assert [(item.provider_key, item.priority) for item in restored] == [
+            ("azure", 1),
+            ("soniox", 2),
+            ("browser", 3),
+        ]
+
+
 def test_custom_billing_period_starts_at_zero_and_keeps_history(monkeypatch):
     monkeypatch.setattr(manager, "get_settings", fake_config)
     with SpeechTestContext() as (_, db):
