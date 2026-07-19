@@ -11,6 +11,9 @@ class GuestSession(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     guest_session_token: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    analytics_guest_id: Mapped[str | None] = mapped_column(
+        String(36), unique=True, index=True, nullable=True
+    )
     save_progress: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     preferred_language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
