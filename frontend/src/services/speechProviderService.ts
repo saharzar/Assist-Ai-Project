@@ -2,11 +2,12 @@ import { apiRequest } from "./api";
 
 export type SpeechMode = "automatic" | "azure" | "browser";
 export type SpeechProvider = "azure" | "browser";
+export type GlobalSpeechProvider = SpeechProvider | "soniox";
 export type SpeechStatus = "normal" | "warning" | "critical" | "quota_reached" | "unavailable";
 
 export type SpeechProviderResolution = {
   service_type: "tts" | "stt";
-  provider: SpeechProvider;
+  provider: GlobalSpeechProvider;
   mode: SpeechMode;
   status: SpeechStatus;
 };
@@ -68,7 +69,54 @@ export type SpeechProviderDashboard = {
 };
 
 export function resolveSpeechProvider(serviceType: "tts" | "stt") {
-  return apiRequest<SpeechProviderResolution>(`/api/speech/providers/${serviceType}`);
+  const browserSupported = serviceType === "tts"
+    ? "speechSynthesis" in window
+    : Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return apiRequest<SpeechProviderResolution>(`/api/speech/providers/${serviceType}?browser_supported=${browserSupported}`);
+}
+
+export type SpeechCapability = {
+  provider_key: GlobalSpeechProvider; display_name: string; service_type: "tts" | "stt";
+  enabled: boolean; available: boolean; configured: boolean; priority: number;
+  quota_type: "limited" | "unlimited"; quota_limit: number | null; usage_unit: string;
+  warning_threshold_percent: number; switch_threshold_percent: number;
+  billing_period_type: "calendar_month" | "custom_monthly" | "no_reset" | "manual";
+  reset_day: number | null; health_status: string; quota_status: string; used: number;
+  remaining: number | null; usage_percent: number | null; period_start: string;
+  period_end: string | null; next_reset_date: string | null;
+  last_success_at: string | null; last_failure_at: string | null;
+};
+
+export type GlobalSpeechDashboard = {
+  estimate_notice: string;
+  automatic_tts_routing_enabled: boolean; automatic_stt_routing_enabled: boolean;
+  forced_tts_provider_key: GlobalSpeechProvider | null; forced_stt_provider_key: GlobalSpeechProvider | null;
+  active_tts_provider: GlobalSpeechProvider; active_stt_provider: GlobalSpeechProvider;
+  capabilities: SpeechCapability[]; usage_history: SpeechUsageHistory[]; events: SpeechProviderEvent[];
+};
+
+export type GlobalSpeechRoutingUpdate = Pick<GlobalSpeechDashboard,
+  "automatic_tts_routing_enabled" | "automatic_stt_routing_enabled" |
+  "forced_tts_provider_key" | "forced_stt_provider_key"
+> & {
+  capabilities: Array<Pick<SpeechCapability,
+    "provider_key" | "service_type" | "enabled" | "priority" | "quota_limit" |
+    "warning_threshold_percent" | "switch_threshold_percent" | "billing_period_type" | "reset_day"
+  >>;
+};
+
+export function fetchGlobalSpeechDashboard() {
+  return apiRequest<GlobalSpeechDashboard>("/admin/speech-providers/global");
+}
+
+export function updateGlobalSpeechRouting(payload: GlobalSpeechRoutingUpdate) {
+  return apiRequest<GlobalSpeechDashboard>("/admin/speech-providers/global", {
+    method: "PUT", body: JSON.stringify(payload),
+  });
+}
+
+export function testSpeechProvider(serviceType: "tts" | "stt", providerKey: GlobalSpeechProvider) {
+  return apiRequest<{ ok: boolean; status: string }>(`/admin/speech-providers/test/${serviceType}/${providerKey}`, { method: "POST" });
 }
 
 export function fetchSpeechProviderDashboard() {
@@ -83,7 +131,12 @@ export function updateSpeechProviderSettings(settings: SpeechProviderSettings) {
 }
 
 export const SPEECH_PROVIDER_UPDATED_EVENT = "assist-ai:speech-provider-updated";
+export const SPEECH_PROVIDER_USED_EVENT = "assist-ai:speech-provider-used";
 
-export function notifySpeechProviderUpdated(dashboard: SpeechProviderDashboard) {
+export function notifySpeechProviderUpdated(dashboard: SpeechProviderDashboard | GlobalSpeechDashboard) {
   window.dispatchEvent(new CustomEvent(SPEECH_PROVIDER_UPDATED_EVENT, { detail: dashboard }));
+}
+
+export function notifySpeechProviderUsed(serviceType: "tts" | "stt", provider: GlobalSpeechProvider) {
+  window.dispatchEvent(new CustomEvent(SPEECH_PROVIDER_USED_EVENT, { detail: { serviceType, provider } }));
 }

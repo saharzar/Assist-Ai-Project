@@ -3,6 +3,7 @@ from app.models.guest_session import GuestSession
 from app.models.speech_provider import (
     SpeechProviderEvent,
     SpeechProviderSettings,
+    SpeechProviderCapabilityConfig,
     SpeechUsage,
     SpeechUsageRequest,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "GuestSession",
     "SpeechProviderEvent",
     "SpeechProviderSettings",
+    "SpeechProviderCapabilityConfig",
     "SpeechUsage",
     "SpeechUsageRequest",
     "TtsAudioCache",

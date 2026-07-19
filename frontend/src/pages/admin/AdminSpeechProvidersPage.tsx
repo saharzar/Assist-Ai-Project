@@ -1,162 +1,113 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
-import { useTranslation } from "../../i18n";
+import { useTranslation, type LanguageCode } from "../../i18n";
+import { speechProviderTranslations } from "../../lib/speechProviderTranslations";
 import {
-  speechProviderTranslations,
-  type SpeechProviderText,
-} from "../../lib/speechProviderTranslations";
-import {
-  fetchSpeechProviderDashboard,
+  fetchGlobalSpeechDashboard,
   notifySpeechProviderUpdated,
-  updateSpeechProviderSettings,
-  type SpeechMode,
-  type SpeechProviderDashboard,
-  type SpeechProviderSettings,
-  type SpeechServiceSnapshot,
+  updateGlobalSpeechRouting,
+  testSpeechProvider,
+  type GlobalSpeechDashboard,
+  type GlobalSpeechProvider,
+  type SpeechCapability,
 } from "../../services/speechProviderService";
+
+const managementText: Record<LanguageCode, Record<string, string>> = {
+  en: { automatic: "Automatic routing", forced: "Forced provider", priority: "Priority", enabled: "Enabled", configured: "Configured", unlimited: "Unlimited", limit: "Quota limit", warning: "Warning %", switching: "Switch %", period: "Billing period", resetDay: "Reset day", health: "Health", lastSuccess: "Last success", lastFailure: "Last failure", up: "Move up", down: "Move down", calendar_month: "Calendar month", custom_monthly: "Custom monthly", no_reset: "No reset", manual: "Manual period", active: "Globally active", save: "Save global routing", saved: "Global speech routing saved.", unsupported: "Not configured", confirmDisable: "This provider is currently active. Disable it anyway?" },
+  es: { automatic: "Enrutamiento automático", forced: "Proveedor forzado", priority: "Prioridad", enabled: "Activo", configured: "Configurado", unlimited: "Ilimitado", limit: "Límite de cuota", warning: "Aviso %", switching: "Cambio %", period: "Período de facturación", resetDay: "Día de reinicio", health: "Estado", lastSuccess: "Último éxito", lastFailure: "Último fallo", up: "Subir", down: "Bajar", calendar_month: "Mes natural", custom_monthly: "Mes personalizado", no_reset: "Sin reinicio", manual: "Período manual", active: "Activo global", save: "Guardar enrutamiento global", saved: "Enrutamiento global guardado.", unsupported: "No configurado", confirmDisable: "Este proveedor está activo. ¿Desactivarlo igualmente?" },
+  de: { automatic: "Automatisches Routing", forced: "Erzwungener Anbieter", priority: "Priorität", enabled: "Aktiviert", configured: "Konfiguriert", unlimited: "Unbegrenzt", limit: "Kontingent", warning: "Warnung %", switching: "Wechsel %", period: "Abrechnungszeitraum", resetDay: "Rücksetztag", health: "Zustand", lastSuccess: "Letzter Erfolg", lastFailure: "Letzter Fehler", up: "Nach oben", down: "Nach unten", calendar_month: "Kalendermonat", custom_monthly: "Eigener Monat", no_reset: "Keine Rücksetzung", manual: "Manueller Zeitraum", active: "Global aktiv", save: "Globales Routing speichern", saved: "Globales Sprachrouting gespeichert.", unsupported: "Nicht konfiguriert", confirmDisable: "Dieser Anbieter ist aktiv. Trotzdem deaktivieren?" },
+  tr: { automatic: "Otomatik yönlendirme", forced: "Zorunlu sağlayıcı", priority: "Öncelik", enabled: "Etkin", configured: "Yapılandırıldı", unlimited: "Sınırsız", limit: "Kota sınırı", warning: "Uyarı %", switching: "Geçiş %", period: "Fatura dönemi", resetDay: "Sıfırlama günü", health: "Sağlık", lastSuccess: "Son başarı", lastFailure: "Son hata", up: "Yukarı taşı", down: "Aşağı taşı", calendar_month: "Takvim ayı", custom_monthly: "Özel aylık", no_reset: "Sıfırlama yok", manual: "Manuel dönem", active: "Genel etkin", save: "Genel yönlendirmeyi kaydet", saved: "Genel konuşma yönlendirmesi kaydedildi.", unsupported: "Yapılandırılmadı", confirmDisable: "Bu sağlayıcı şu anda etkin. Yine de devre dışı bırakılsın mı?" },
+  pt: { automatic: "Roteamento automático", forced: "Provedor forçado", priority: "Prioridade", enabled: "Ativo", configured: "Configurado", unlimited: "Ilimitado", limit: "Limite de cota", warning: "Aviso %", switching: "Troca %", period: "Período de faturamento", resetDay: "Dia de reinício", health: "Saúde", lastSuccess: "Último sucesso", lastFailure: "Última falha", up: "Mover para cima", down: "Mover para baixo", calendar_month: "Mês civil", custom_monthly: "Mês personalizado", no_reset: "Sem reinício", manual: "Período manual", active: "Ativo global", save: "Salvar roteamento global", saved: "Roteamento global salvo.", unsupported: "Não configurado", confirmDisable: "Este provedor está ativo. Desativar mesmo assim?" },
+  fr: { automatic: "Routage automatique", forced: "Fournisseur forcé", priority: "Priorité", enabled: "Activé", configured: "Configuré", unlimited: "Illimité", limit: "Limite du quota", warning: "Alerte %", switching: "Bascule %", period: "Période de facturation", resetDay: "Jour de réinitialisation", health: "État", lastSuccess: "Dernier succès", lastFailure: "Dernier échec", up: "Monter", down: "Descendre", calendar_month: "Mois civil", custom_monthly: "Mois personnalisé", no_reset: "Sans réinitialisation", manual: "Période manuelle", active: "Actif global", save: "Enregistrer le routage global", saved: "Routage vocal global enregistré.", unsupported: "Non configuré", confirmDisable: "Ce fournisseur est actif. Le désactiver quand même ?" },
+};
 
 export function AdminSpeechProvidersPage() {
   const { user, isAuthenticated } = useAuth();
   const { language } = useTranslation();
   const text = speechProviderTranslations[language];
-  const [dashboard, setDashboard] = useState<SpeechProviderDashboard | null>(null);
-  const [draft, setDraft] = useState<SpeechProviderSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const labels = managementText[language];
+  const [dashboard, setDashboard] = useState<GlobalSpeechDashboard | null>(null);
+  const [draft, setDraft] = useState<GlobalSpeechDashboard | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [saving, setSaving] = useState(false);
   const isAdmin = isAuthenticated && user?.role === "admin";
-
-  const loadDashboard = async () => {
-    const nextDashboard = await fetchSpeechProviderDashboard();
-    setDashboard(nextDashboard);
-    setDraft(nextDashboard.settings);
-    notifySpeechProviderUpdated(nextDashboard);
-  };
 
   useEffect(() => {
     if (!isAdmin) return;
-    setIsLoading(true);
-    setErrorMessage("");
-    loadDashboard()
-      .catch(() => setErrorMessage(text.loadError))
-      .finally(() => setIsLoading(false));
+    fetchGlobalSpeechDashboard().then((value) => { setDashboard(value); setDraft(value); notifySpeechProviderUpdated(value); }).catch(() => setError(text.loadError));
   }, [isAdmin, text.loadError]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/scenarios" replace />;
 
-  const saveSettings = async () => {
-    if (!draft) return;
-    setIsSaving(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-    try {
-      await updateSpeechProviderSettings(draft);
-      await loadDashboard();
-      setSuccessMessage(text.settingsSaved);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : text.saveError);
-    } finally {
-      setIsSaving(false);
-    }
+  const updateCapability = (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => {
+    setDraft((current) => current ? { ...current, capabilities: current.capabilities.map((item) => item.provider_key === key && item.service_type === service ? { ...item, ...changes } : item) } : current);
   };
 
-  return (
-    <section className="flex flex-1 flex-col text-slate-900">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div className="max-w-3xl">
-          <p className="text-sm font-bold uppercase text-teal-700">{text.title}</p>
-          <h1 className="mt-1 text-3xl font-bold">{text.title}</h1>
-          <p className="mt-2 text-slate-600">{text.description}</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center rounded-lg border border-slate-300 bg-white px-4 font-bold hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">{text.scenarioAnalytics}</Link>
-          <Link to="/admin/users" className="inline-flex min-h-[44px] items-center rounded-lg border border-slate-300 bg-white px-4 font-bold hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">{text.manageUsers}</Link>
-        </div>
-      </div>
+  const move = (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const ordered = current.capabilities.filter((item) => item.service_type === service).sort((a, b) => a.priority - b.priority);
+      const index = ordered.findIndex((item) => item.provider_key === key);
+      const target = index + direction;
+      if (target < 0 || target >= ordered.length) return current;
+      [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+      const priorities = new Map(ordered.map((item, itemIndex) => [item.provider_key, itemIndex + 1]));
+      return { ...current, capabilities: current.capabilities.map((item) => item.service_type === service ? { ...item, priority: priorities.get(item.provider_key) ?? item.priority } : item) };
+    });
+  };
 
-      <div className="mt-6 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 font-semibold text-sky-900">
-        {text.estimatedNotice}
-      </div>
+  const save = async () => {
+    if (!draft) return;
+    setSaving(true); setError(""); setSuccess("");
+    try {
+      const updated = await updateGlobalSpeechRouting({
+        automatic_tts_routing_enabled: draft.automatic_tts_routing_enabled,
+        automatic_stt_routing_enabled: draft.automatic_stt_routing_enabled,
+        forced_tts_provider_key: draft.forced_tts_provider_key,
+        forced_stt_provider_key: draft.forced_stt_provider_key,
+        capabilities: draft.capabilities.map(({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_percent, switch_threshold_percent, billing_period_type, reset_day }) => ({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_percent, switch_threshold_percent, billing_period_type, reset_day })),
+      });
+      setDashboard(updated); setDraft(updated); setSuccess(labels.saved); notifySpeechProviderUpdated(updated);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : text.saveError); }
+    finally { setSaving(false); }
+  };
 
-      {errorMessage && <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900">{errorMessage}</div>}
-      {successMessage && <div className="mt-5 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-900">{successMessage}</div>}
-
-      {isLoading || !dashboard || !draft ? (
-        <p className="py-12 text-center font-semibold text-slate-600">{text.loading}</p>
-      ) : (
-        <>
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <ProviderCard snapshot={dashboard.tts} title={text.tts} text={text} />
-            <ProviderCard snapshot={dashboard.stt} title={text.stt} text={text} />
-          </div>
-
-          <section className="mt-7 border-y border-slate-200 py-6">
-            <h2 className="text-xl font-bold">{text.settings}</h2>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <ModeSelect label={text.ttsMode} value={draft.tts_mode} text={text} onChange={(tts_mode) => setDraft((current) => current ? { ...current, tts_mode } : current)} />
-              <ModeSelect label={text.sttMode} value={draft.stt_mode} text={text} onChange={(stt_mode) => setDraft((current) => current ? { ...current, stt_mode } : current)} />
-              <NumberSetting label={text.ttsLimit} value={draft.azure_tts_monthly_limit} min={1} onChange={(azure_tts_monthly_limit) => setDraft((current) => current ? { ...current, azure_tts_monthly_limit } : current)} />
-              <NumberSetting label={text.sttLimit} value={draft.azure_stt_monthly_limit_seconds} min={1} onChange={(azure_stt_monthly_limit_seconds) => setDraft((current) => current ? { ...current, azure_stt_monthly_limit_seconds } : current)} />
-              <NumberSetting label={text.warningThreshold} value={draft.warning_threshold_percent} min={1} max={99} onChange={(warning_threshold_percent) => setDraft((current) => current ? { ...current, warning_threshold_percent } : current)} />
-              <NumberSetting label={text.switchThreshold} value={draft.switch_threshold_percent} min={2} max={100} onChange={(switch_threshold_percent) => setDraft((current) => current ? { ...current, switch_threshold_percent } : current)} />
-            </div>
-            <button type="button" disabled={isSaving} onClick={() => void saveSettings()} className="mt-5 min-h-[46px] rounded-lg bg-slate-900 px-6 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-60">{text.saveSettings}</button>
-          </section>
-
-          <UsageHistory dashboard={dashboard} text={text} />
-          <EventHistory dashboard={dashboard} text={text} />
-        </>
-      )}
-    </section>
-  );
+  return <section className="flex flex-1 flex-col text-slate-900">
+    <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><h1 className="text-3xl font-bold">{text.title}</h1><p className="mt-2 text-slate-600">{text.description}</p></div><div className="flex gap-3"><Link to="/admin/scenario-analytics" className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-bold">{text.scenarioAnalytics}</Link><Link to="/admin/users" className="rounded-lg bg-slate-900 px-4 py-3 font-bold text-white">{text.manageUsers}</Link></div></div>
+    <p className="mt-6 rounded-lg border border-sky-200 bg-sky-50 p-4 font-semibold text-sky-900">{text.estimatedNotice}</p>
+    {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
+    {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
+    {!draft || !dashboard ? <p className="py-12 text-center font-semibold">{text.loading}</p> : <>
+      <ProviderSection service="stt" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
+      <ProviderSection service="tts" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
+      <button type="button" disabled={saving} onClick={() => void save()} className="mt-7 min-h-[48px] self-start rounded-lg bg-teal-700 px-6 font-bold text-white disabled:opacity-60">{labels.save}</button>
+      <History dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />
+    </>}
+  </section>;
 }
 
-function ProviderCard({ snapshot, title, text }: { snapshot: SpeechServiceSnapshot; title: string; text: SpeechProviderText }) {
-  const isTts = snapshot.service_type === "tts";
-  const statusLabel = text[snapshot.status === "quota_reached" ? "quotaReached" : snapshot.status];
-  const providerLabel = snapshot.current_provider === "azure" ? text.azure : text.browser;
-  const modeLabel = snapshot.mode === "automatic" ? text.automatic : snapshot.mode === "azure" ? text.azure : text.browser;
-  const formatValue = (value: number) => isTts ? `${value.toLocaleString(text.locale)} ${text.characters}` : formatDuration(value, text);
-  return (
-    <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase text-slate-500">{isTts ? "TTS" : "STT"}</p><h2 className="mt-1 text-xl font-bold">{title}</h2></div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClasses(snapshot.status)}`}>{statusLabel}</span>
-      </div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-teal-500" style={{ width: `${Math.min(100, snapshot.usage_percent)}%` }} /></div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Value label={text.currentProvider} value={providerLabel} />
-        <Value label={text.mode} value={modeLabel} />
-        <Value label={text.used} value={formatValue(snapshot.used)} />
-        <Value label={text.configuredLimit} value={formatValue(snapshot.limit)} />
-        <Value label={text.remaining} value={formatValue(snapshot.remaining)} />
-        <Value label={text.usage} value={`${snapshot.usage_percent.toFixed(2)}%`} />
-        <Value label={text.successfulRequests} value={snapshot.successful_requests.toLocaleString(text.locale)} />
-        <Value label={text.failedRequests} value={snapshot.failed_requests.toLocaleString(text.locale)} />
-        {isTts && <Value label={text.cachedRequests} value={snapshot.cached_requests.toLocaleString(text.locale)} />}
-        <Value label={text.billingPeriod} value={formatMonth(snapshot.billing_period, text.locale)} />
-        <Value label={text.estimatedReset} value={new Date(`${snapshot.reset_date}T00:00:00`).toLocaleDateString(text.locale)} />
-      </div>
-    </article>
-  );
+function ProviderSection({ service, draft, labels, text, language, updateDashboard, updateCapability, move }: { service: "tts" | "stt"; draft: GlobalSpeechDashboard; labels: Record<string, string>; text: ReturnType<typeof getText>; language: LanguageCode; updateDashboard: React.Dispatch<React.SetStateAction<GlobalSpeechDashboard | null>>; updateCapability: (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => void; move: (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => void }) {
+  const [testResults, setTestResults] = useState<Record<string, string>>({});
+  const items = useMemo(() => draft.capabilities.filter((item) => item.service_type === service).sort((a, b) => a.priority - b.priority), [draft.capabilities, service]);
+  const automaticKey = service === "tts" ? "automatic_tts_routing_enabled" : "automatic_stt_routing_enabled";
+  const forcedKey = service === "tts" ? "forced_tts_provider_key" : "forced_stt_provider_key";
+  const active = service === "tts" ? draft.active_tts_provider : draft.active_stt_provider;
+  return <section className="mt-8 border-t border-slate-200 pt-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-2xl font-bold">{service.toUpperCase()}</h2><p className="mt-1 font-semibold text-teal-800">{labels.active}: {providerName(active)}</p></div><div className="flex flex-wrap items-center gap-4"><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={Boolean(draft[automaticKey])} onChange={(event) => updateDashboard((current) => current ? { ...current, [automaticKey]: event.target.checked, ...(!event.target.checked && !current[forcedKey] ? { [forcedKey]: active } : {}) } : current)} />{labels.automatic}</label>{!draft[automaticKey] && <label className="font-bold">{labels.forced}<select value={draft[forcedKey] ?? active} onChange={(event) => updateDashboard((current) => current ? { ...current, [forcedKey]: event.target.value as GlobalSpeechProvider } : current)} className="ml-2 rounded-lg border border-slate-300 px-3 py-2">{items.filter((item) => item.enabled && item.configured).map((item) => <option key={item.provider_key} value={item.provider_key}>{item.display_name}</option>)}</select></label>}</div></div>
+    <div className="mt-5 grid gap-4">{items.map((item, index) => <article key={item.provider_key} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase text-slate-500">{labels.priority} {item.priority}</p><h3 className="text-lg font-bold">{item.display_name}</h3><p className="mt-1 text-sm text-slate-600">{labels.health}: {item.health_status} · {item.configured ? labels.configured : labels.unsupported}</p></div><div className="flex gap-2"><button type="button" aria-label={labels.up} disabled={index === 0} onClick={() => move(service, item.provider_key, -1)} className="h-11 w-11 rounded-lg border border-slate-300 font-bold disabled:opacity-30">↑</button><button type="button" aria-label={labels.down} disabled={index === items.length - 1} onClick={() => move(service, item.provider_key, 1)} className="h-11 w-11 rounded-lg border border-slate-300 font-bold disabled:opacity-30">↓</button></div></div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={item.enabled} disabled={!item.configured} onChange={(event) => { if (!event.target.checked && active === item.provider_key && !window.confirm(labels.confirmDisable)) return; updateCapability(item.provider_key, service, { enabled: event.target.checked }); }} />{labels.enabled}</label><button type="button" disabled={!item.configured} onClick={() => void testSpeechProvider(service, item.provider_key).then((result) => setTestResults((current) => ({ ...current, [item.provider_key]: result.status })))} className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold disabled:opacity-40">{testLabel(language)}</button>{testResults[item.provider_key] && <p className="mt-1 text-xs font-semibold">{testResults[item.provider_key]}</p>}</div><Metric label={text.used} value={item.quota_type === "unlimited" ? `${item.used} ${text.requests}` : `${item.used.toLocaleString(text.locale)} / ${item.quota_limit?.toLocaleString(text.locale)}`} /><Metric label={text.remaining} value={item.remaining === null ? labels.unlimited : item.remaining.toLocaleString(text.locale)} /><Metric label={text.status} value={item.quota_status} />
+      {item.quota_type === "limited" && <><NumberField label={labels.limit} value={item.quota_limit ?? 1} onChange={(quota_limit) => updateCapability(item.provider_key, service, { quota_limit })} /><NumberField label={labels.warning} value={item.warning_threshold_percent} max={99} onChange={(warning_threshold_percent) => updateCapability(item.provider_key, service, { warning_threshold_percent })} /><NumberField label={labels.switching} value={item.switch_threshold_percent} max={100} onChange={(switch_threshold_percent) => updateCapability(item.provider_key, service, { switch_threshold_percent })} /><label className="text-sm font-bold">{labels.period}<select value={item.billing_period_type} onChange={(event) => updateCapability(item.provider_key, service, { billing_period_type: event.target.value as SpeechCapability["billing_period_type"] })} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 px-3">{["calendar_month", "custom_monthly", "manual"].map((value) => <option key={value} value={value}>{labels[value]}</option>)}</select></label>{item.billing_period_type === "custom_monthly" && <NumberField label={labels.resetDay} value={item.reset_day ?? 1} max={28} onChange={(reset_day) => updateCapability(item.provider_key, service, { reset_day })} />}</>}
+      <Metric label={labels.lastSuccess} value={formatDate(item.last_success_at, text.locale)} /><Metric label={labels.lastFailure} value={formatDate(item.last_failure_at, text.locale)} /></div></article>)}</div>
+  </section>;
 }
 
-function UsageHistory({ dashboard, text }: { dashboard: SpeechProviderDashboard; text: SpeechProviderText }) {
-  return <section className="mt-7"><h2 className="text-xl font-bold">{text.monthlyHistory}</h2>{dashboard.usage_history.length === 0 ? <p className="mt-4 text-slate-500">{text.noHistory}</p> : <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-slate-100 text-xs uppercase text-slate-600"><tr>{[text.billingPeriod, text.service, text.provider, text.requests, text.failedRequests, text.cachedRequests, text.amountUsed].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{dashboard.usage_history.map((item) => <tr key={`${item.billing_period}-${item.service_type}`}><td className="px-4 py-3">{formatMonth(item.billing_period, text.locale)}</td><td className="px-4 py-3 uppercase">{item.service_type}</td><td className="px-4 py-3">{text.azure}</td><td className="px-4 py-3">{item.successful_requests}</td><td className="px-4 py-3">{item.failed_requests}</td><td className="px-4 py-3">{item.cached_requests}</td><td className="px-4 py-3">{item.service_type === "tts" ? `${item.characters_used.toLocaleString(text.locale)} ${text.characters}` : formatDuration(item.audio_seconds_used, text)}</td></tr>)}</tbody></table></div>}</section>;
-}
-
-function EventHistory({ dashboard, text }: { dashboard: SpeechProviderDashboard; text: SpeechProviderText }) {
-  return <section className="mt-7"><h2 className="text-xl font-bold">{text.eventHistory}</h2>{dashboard.events.length === 0 ? <p className="mt-4 text-slate-500">{text.noEvents}</p> : <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-slate-100 text-xs uppercase text-slate-600"><tr>{[text.date, text.service, text.event, text.change, text.reason, text.administrator].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{dashboard.events.map((item) => { const eventLabel = text.eventNames[item.event_type] ?? item.event_type; return <tr key={item.id}><td className="whitespace-nowrap px-4 py-3">{new Date(item.created_at).toLocaleString(text.locale)}</td><td className="px-4 py-3 uppercase">{item.service_type}</td><td className="px-4 py-3 font-semibold">{eventLabel}</td><td className="whitespace-nowrap px-4 py-3">{providerName(item.previous_provider, text)} -&gt; {providerName(item.new_provider, text)}</td><td className="px-4 py-3">{item.reason}</td><td className="px-4 py-3">{item.administrator_name ?? "-"}</td></tr>; })}</tbody></table></div>}</section>;
-}
-
-function ModeSelect({ label, value, text, onChange }: { label: string; value: SpeechMode; text: SpeechProviderText; onChange: (value: SpeechMode) => void }) { return <label className="text-sm font-bold text-slate-700">{label}<select value={value} onChange={(event) => onChange(event.target.value as SpeechMode)} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 font-normal outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"><option value="automatic">{text.automatic}</option><option value="azure">{text.azure}</option><option value="browser">{text.browser}</option></select></label>; }
-function NumberSetting({ label, value, min, max, onChange }: { label: string; value: number; min: number; max?: number; onChange: (value: number) => void }) { return <label className="text-sm font-bold text-slate-700">{label}<input type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 px-3 font-normal outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500" /></label>; }
-function Value({ label, value }: { label: string; value: string }) { return <div><p className="text-xs font-bold uppercase text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-950">{value}</p></div>; }
-function formatDuration(totalSeconds: number, text: SpeechProviderText) { const hours = Math.floor(totalSeconds / 3600); const minutes = Math.floor((totalSeconds % 3600) / 60); const seconds = totalSeconds % 60; return [hours && `${hours}${text.hours}`, minutes && `${minutes}${text.minutes}`, !hours && !minutes && `${seconds}${text.seconds}`].filter(Boolean).join(" "); }
-function formatMonth(value: string, locale: string) { return new Date(`${value}T00:00:00`).toLocaleDateString(locale, { month: "long", year: "numeric" }); }
-function providerName(value: string | null, text: SpeechProviderText) { return value === "azure" ? text.azure : value === "browser" ? text.browser : "-"; }
-function statusClasses(status: SpeechServiceSnapshot["status"]) { if (status === "normal") return "bg-teal-100 text-teal-800"; if (status === "warning") return "bg-amber-100 text-amber-900"; return "bg-rose-100 text-rose-800"; }
+function History({ dashboard, title, eventTitle, locale }: { dashboard: GlobalSpeechDashboard; title: string; eventTitle: string; locale: string }) { return <div className="mt-9 grid gap-8 lg:grid-cols-2"><section><h2 className="text-xl font-bold">{title}</h2><div className="mt-3 space-y-2">{dashboard.usage_history.slice(0, 12).map((item) => <p key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.provider.toUpperCase()} {item.service_type.toUpperCase()}</strong> · {new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)} · {item.service_type === "tts" ? item.characters_used : item.audio_seconds_used}</p>)}</div></section><section><h2 className="text-xl font-bold">{eventTitle}</h2><div className="mt-3 space-y-2">{dashboard.events.slice(0, 12).map((item) => <p key={item.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.event_type.replace(/_/g, " ")}</strong> · {item.service_type.toUpperCase()}<br />{item.reason}</p>)}</div></section></div>; }
+function NumberField({ label, value, max, onChange }: { label: string; value: number; max?: number; onChange: (value: number) => void }) { return <label className="text-sm font-bold">{label}<input type="number" min={1} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 px-3" /></label>; }
+function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-xs font-bold uppercase text-slate-500">{label}</p><p className="mt-1 font-semibold">{value}</p></div>; }
+function providerName(value: GlobalSpeechProvider) { return value === "azure" ? "Microsoft Azure" : value === "soniox" ? "Soniox" : "Browser"; }
+function formatDate(value: string | null, locale: string) { return value ? new Date(value).toLocaleString(locale) : "-"; }
+function getText() { return speechProviderTranslations.en; }
+function testLabel(language: LanguageCode) { return ({ en: "Test provider", es: "Probar proveedor", de: "Anbieter testen", tr: "Sağlayıcıyı test et", pt: "Testar provedor", fr: "Tester le fournisseur" })[language]; }

@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, model_validator
 
 SpeechMode = Literal["automatic", "azure", "browser"]
 SpeechServiceType = Literal["tts", "stt"]
+ProviderKey = Literal["azure", "soniox", "browser"]
+BillingPeriodType = Literal["calendar_month", "custom_monthly", "no_reset", "manual"]
 
 
 class SpeechProviderSettingsUpdate(BaseModel):
@@ -26,9 +28,93 @@ class SpeechProviderSettingsRead(SpeechProviderSettingsUpdate):
     pass
 
 
+class SpeechCapabilityConfigUpdate(BaseModel):
+    provider_key: ProviderKey
+    service_type: SpeechServiceType
+    enabled: bool
+    priority: int = Field(ge=1, le=20)
+    quota_limit: int | None = Field(default=None, ge=1, le=1000000000)
+    warning_threshold_percent: int = Field(ge=1, le=99)
+    switch_threshold_percent: int = Field(ge=2, le=100)
+    billing_period_type: BillingPeriodType
+    reset_day: int | None = Field(default=None, ge=1, le=28)
+
+    @model_validator(mode="after")
+    def validate_capability(self):
+        if self.warning_threshold_percent >= self.switch_threshold_percent:
+            raise ValueError("Warning threshold must be lower than switch threshold.")
+        if self.billing_period_type == "custom_monthly" and self.reset_day is None:
+            raise ValueError("Custom monthly periods require a reset day.")
+        return self
+
+
+class GlobalSpeechRoutingUpdate(BaseModel):
+    automatic_tts_routing_enabled: bool
+    automatic_stt_routing_enabled: bool
+    forced_tts_provider_key: ProviderKey | None = None
+    forced_stt_provider_key: ProviderKey | None = None
+    capabilities: list[SpeechCapabilityConfigUpdate]
+
+    @model_validator(mode="after")
+    def validate_orders(self):
+        if not self.automatic_tts_routing_enabled and self.forced_tts_provider_key is None:
+            raise ValueError("Forced TTS mode requires a provider.")
+        if not self.automatic_stt_routing_enabled and self.forced_stt_provider_key is None:
+            raise ValueError("Forced STT mode requires a provider.")
+        for service in ("tts", "stt"):
+            items = [item for item in self.capabilities if item.service_type == service]
+            keys = [item.provider_key for item in items]
+            priorities = [item.priority for item in items]
+            if len(keys) != len(set(keys)) or len(priorities) != len(set(priorities)):
+                raise ValueError(f"{service.upper()} providers and priorities must be unique.")
+            if not any(item.enabled for item in items):
+                raise ValueError(f"At least one {service.upper()} provider must remain enabled.")
+            forced = self.forced_tts_provider_key if service == "tts" else self.forced_stt_provider_key
+            if forced and not any(item.provider_key == forced and item.enabled for item in items):
+                raise ValueError(f"Forced {service.upper()} provider must be enabled.")
+        return self
+
+
+class SpeechCapabilityRead(BaseModel):
+    provider_key: ProviderKey
+    display_name: str
+    service_type: SpeechServiceType
+    enabled: bool
+    available: bool
+    configured: bool
+    priority: int
+    quota_type: Literal["limited", "unlimited"]
+    quota_limit: int | None
+    usage_unit: str
+    warning_threshold_percent: int
+    switch_threshold_percent: int
+    billing_period_type: BillingPeriodType
+    reset_day: int | None
+    health_status: str
+    quota_status: str
+    used: int
+    remaining: int | None
+    usage_percent: float | None
+    period_start: date
+    period_end: date | None
+    next_reset_date: date | None
+    last_success_at: datetime | None
+    last_failure_at: datetime | None
+
+
+class GlobalSpeechRoutingRead(BaseModel):
+    automatic_tts_routing_enabled: bool
+    automatic_stt_routing_enabled: bool
+    forced_tts_provider_key: ProviderKey | None
+    forced_stt_provider_key: ProviderKey | None
+    active_tts_provider: ProviderKey
+    active_stt_provider: ProviderKey
+    capabilities: list[SpeechCapabilityRead]
+
+
 class SpeechProviderResolution(BaseModel):
     service_type: SpeechServiceType
-    provider: Literal["azure", "browser"]
+    provider: ProviderKey
     mode: SpeechMode
     status: Literal["normal", "warning", "critical", "quota_reached", "unavailable"]
 
@@ -76,5 +162,11 @@ class SpeechProviderDashboard(BaseModel):
     settings: SpeechProviderSettingsRead
     tts: SpeechServiceSnapshot
     stt: SpeechServiceSnapshot
+    usage_history: list[SpeechUsageHistoryRead]
+    events: list[SpeechProviderEventRead]
+
+
+class GlobalSpeechDashboard(GlobalSpeechRoutingRead):
+    estimate_notice: str
     usage_history: list[SpeechUsageHistoryRead]
     events: list[SpeechProviderEventRead]

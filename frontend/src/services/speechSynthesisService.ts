@@ -1,7 +1,8 @@
 import applauseSoundUrl from "../assets/audio/applause.mp3";
 import type { LanguageCode } from "../i18n";
-import { API_BASE_URL, ApiError } from "./api";
+import { API_BASE_URL, ApiError, getSessionHeaders } from "./api";
 import { notifyTtsUsageUpdated, type TtsUsage } from "./ttsUsageService";
+import { notifySpeechProviderUsed, type GlobalSpeechProvider } from "./speechProviderService";
 
 type SpeechCallbacks = {
   onStart?: () => void;
@@ -75,19 +76,22 @@ async function playBackendTts(
   language: LanguageCode,
 ) {
   try {
-    const token = localStorage.getItem("assist_ai_token");
     const response = await fetch(`${API_BASE_URL}/api/tts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...getSessionHeaders(),
         "X-Speech-Request-ID": crypto.randomUUID(),
+        "X-Browser-Speech-Supported": String("speechSynthesis" in window),
       },
       body: JSON.stringify({ text: message, language }),
       signal: abortController.signal,
     });
 
     const selectedProvider = response.headers.get("X-Speech-Provider");
+    if (selectedProvider) {
+      notifySpeechProviderUsed("tts", selectedProvider.replace("-cache", "") as GlobalSpeechProvider);
+    }
     if (response.status === 204 && selectedProvider === "browser") {
       playBrowserTts(message, language, callbacks, speechId);
       return;

@@ -1,18 +1,21 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.user import User
+from app.models.guest_session import GuestSession
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -73,3 +76,17 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
         )
 
     return current_user
+
+
+def get_speech_actor(
+    token: str | None = Depends(optional_oauth2_scheme),
+    guest_token: str | None = Header(default=None, alias="X-Guest-Session-Token"),
+    db: Session = Depends(get_db),
+) -> User | GuestSession:
+    if token:
+        return get_user_from_access_token(token, db)
+    if guest_token:
+        guest = db.scalar(select(GuestSession).where(GuestSession.guest_session_token == guest_token))
+        if guest is not None:
+            return guest
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")

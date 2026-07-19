@@ -395,22 +395,22 @@ def get_wav_duration_seconds(audio: bytes) -> int:
 
 def recognize_stt_with_usage(
     db: Session,
-    user_id: int,
+    user_id: int | None,
     audio: bytes,
     language: str,
     mode: str,
 ) -> SttRecognitionResult:
     seconds = get_wav_duration_seconds(audio)
-    snapshot = get_stt_usage_snapshot(db, user_id)
+    snapshot = get_stt_usage_snapshot(db, user_id) if user_id is not None else SttUsageSnapshot(0, 0, 0, get_next_weekly_reset_date())
     db.commit()
-    if snapshot.remaining_seconds <= 0:
+    if user_id is not None and snapshot.remaining_seconds <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="STT time limit reached",
         )
 
     transcript_result = recognize_azure_stt(audio, language, mode)
-    usage = record_stt_seconds(db, user_id, seconds)
+    usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else snapshot
     return SttRecognitionResult(
         transcript=transcript_result.transcript,
         detected_language=transcript_result.detected_language,

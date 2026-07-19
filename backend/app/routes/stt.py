@@ -1,25 +1,32 @@
 import json
+from datetime import date
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_speech_actor
 from app.database import get_db
 from app.models.user import User
+from app.models.guest_session import GuestSession
 from app.schemas.stt import SttRecognitionResponse, SttUsageRequest, SttUsageResponse
 from app.services.speech_provider_manager import (
     find_processed_request,
-    handle_provider_failure,
+    get_provider_chain,
+    mark_provider_failure,
+    log_provider_event,
+    is_quota_failure,
     record_request_result,
-    resolve_provider,
 )
 from app.services.stt_service import (
     get_or_create_stt_usage,
     get_stt_usage_snapshot,
     recognize_stt_with_usage,
     record_stt_seconds,
+    get_wav_duration_seconds,
+    SttUsageSnapshot,
 )
+from app.services.soniox_service import SonioxProviderError, recognize_soniox_stt
 
 router = APIRouter(prefix="/api/stt", tags=["stt"])
 
@@ -57,10 +64,12 @@ def create_stt_usage(
 @router.post("", response_model=SttRecognitionResponse)
 async def create_stt_transcript(
     request: Request,
+    response: Response,
     language: str = Query(default="en", pattern="^(en|es|de|tr|pt|fr)$"),
     mode: str = Query(default="name", pattern="^(name|pin)$"),
     speech_request_id: UUID | None = Header(default=None, alias="X-Speech-Request-ID"),
-    current_user: User = Depends(get_current_user),
+    browser_speech_supported: bool | None = Header(default=None, alias="X-Browser-Speech-Supported"),
+    current_user: User | GuestSession = Depends(get_speech_actor),
     db: Session = Depends(get_db),
 ) -> SttRecognitionResponse | Response:
     content_type = request.headers.get("content-type", "")
@@ -71,70 +80,64 @@ async def create_stt_transcript(
         )
 
     request_id = str(speech_request_id or uuid4())
+    user_id = current_user.id if isinstance(current_user, User) else None
     processed = find_processed_request(db, request_id, "stt")
     if processed and processed.outcome == "success" and processed.result_payload:
         stored = json.loads(processed.result_payload)
-        usage = get_stt_usage_snapshot(db, current_user.id)
+        usage = get_stt_usage_snapshot(db, user_id) if user_id is not None else None
         db.commit()
+        response.headers["X-Speech-Provider"] = processed.provider
         return SttRecognitionResponse(
             transcript=stored.get("transcript", ""),
             detected_language=stored.get("detected_language"),
             confidence=stored.get("confidence"),
-            stt_limit_seconds=usage.limit_seconds,
-            stt_used_seconds=usage.used_seconds,
-            stt_remaining_seconds=usage.remaining_seconds,
-            stt_reset_date=usage.reset_date,
+            stt_limit_seconds=usage.limit_seconds if usage else 0,
+            stt_used_seconds=usage.used_seconds if usage else 0,
+            stt_remaining_seconds=usage.remaining_seconds if usage else 0,
+            stt_reset_date=usage.reset_date if usage else date.today(),
         )
 
-    decision = resolve_provider(db, "stt")
+    decisions = get_provider_chain(db, "stt", browser_supported=browser_speech_supported)
     db.commit()
-    if decision.provider == "browser":
-        record_request_result(db, request_id, "stt", "browser", "success")
-        return Response(
-            status_code=status.HTTP_204_NO_CONTENT,
-            headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status},
-        )
-
     audio = await request.body()
-    try:
-        result = recognize_stt_with_usage(db, current_user.id, audio, language, mode)
-    except HTTPException as exc:
-        if exc.status_code not in {
-            status.HTTP_502_BAD_GATEWAY,
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            status.HTTP_504_GATEWAY_TIMEOUT,
-        }:
-            raise
-        handle_provider_failure(db, request_id, "stt", str(exc.detail))
-        return Response(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=json.dumps({"detail": "Azure STT is unavailable. Browser STT will be used on the next attempt."}),
-            media_type="application/json",
-            headers={"X-Speech-Provider": "browser", "X-Speech-Status": "unavailable"},
-        )
+    last_error: HTTPException | None = None
+    for index, decision in enumerate(decisions):
+        if decision.provider == "browser":
+            record_request_result(db, request_id, "stt", "browser", "success")
+            return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
+        try:
+            if decision.provider == "soniox":
+                seconds = get_wav_duration_seconds(audio)
+                transcript = recognize_soniox_stt(audio, request_id)
+                usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else SttUsageSnapshot(0, 0, 0, date.today())
+                detected_language = None
+                confidence = None
+            else:
+                result = recognize_stt_with_usage(db, user_id, audio, language, mode)
+                seconds = result.audio_seconds_charged
+                transcript = result.transcript
+                detected_language = result.detected_language
+                confidence = result.confidence
+                usage = result
+        except HTTPException as exc:
+            if exc.status_code not in {502, 503, 504}:
+                raise
+            last_error = exc
+            mark_provider_failure(
+                db, decision.provider, "stt", str(exc.detail),
+                quota_error=(isinstance(exc, SonioxProviderError) and exc.quota_error) or is_quota_failure(exc.detail),
+            )
+            if index + 1 < len(decisions):
+                log_provider_event(db, "stt", "automatic_provider_switch", "Provider request failed.", previous_provider=decision.provider, new_provider=decisions[index + 1].provider, provider_key=decision.provider)
+            db.commit()
+            continue
 
-    result_payload = json.dumps(
-        {
-            "transcript": result.transcript,
-            "detected_language": result.detected_language,
-            "confidence": result.confidence,
-        }
-    )
-    record_request_result(
-        db,
-        request_id,
-        "stt",
-        "azure",
-        "success",
-        audio_seconds_used=result.audio_seconds_charged,
-        result_payload=result_payload,
-    )
-    return SttRecognitionResponse(
-        transcript=result.transcript,
-        detected_language=result.detected_language,
-        confidence=result.confidence,
-        stt_limit_seconds=result.limit_seconds,
-        stt_used_seconds=result.used_seconds,
-        stt_remaining_seconds=result.remaining_seconds,
-        stt_reset_date=result.reset_date,
-    )
+        result_payload = json.dumps({"transcript": transcript, "detected_language": detected_language, "confidence": confidence})
+        record_request_result(db, request_id, "stt", decision.provider, "success", audio_seconds_used=seconds, result_payload=result_payload)
+        response.headers["X-Speech-Provider"] = decision.provider
+        return SttRecognitionResponse(
+            transcript=transcript, detected_language=detected_language, confidence=confidence,
+            stt_limit_seconds=usage.limit_seconds, stt_used_seconds=usage.used_seconds,
+            stt_remaining_seconds=usage.remaining_seconds, stt_reset_date=usage.reset_date,
+        )
+    raise last_error or HTTPException(status_code=503, detail="No STT provider is available on this device.")

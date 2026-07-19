@@ -15,9 +15,11 @@ import {
 } from "../services/ttsUsageService";
 import atmWallBackground from "../assets/atm-wall-background.png";
 import {
-  fetchSpeechProviderDashboard,
+  fetchGlobalSpeechDashboard,
   SPEECH_PROVIDER_UPDATED_EVENT,
-  type SpeechProviderDashboard,
+  SPEECH_PROVIDER_USED_EVENT,
+  type GlobalSpeechDashboard,
+  type GlobalSpeechProvider,
 } from "../services/speechProviderService";
 
 export function PageShell() {
@@ -26,7 +28,7 @@ export function PageShell() {
   const { user, isAuthenticated, isGuest, logout } = useAuth();
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
   const [sttUsage, setSttUsage] = useState<SttUsage | null>(null);
-  const [speechProviders, setSpeechProviders] = useState<SpeechProviderDashboard | null>(null);
+  const [speechProviders, setSpeechProviders] = useState<GlobalSpeechDashboard | null>(null);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
@@ -87,7 +89,7 @@ export function PageShell() {
       return;
     }
     let isMounted = true;
-    fetchSpeechProviderDashboard()
+    fetchGlobalSpeechDashboard()
       .then((dashboard) => {
         if (isMounted) setSpeechProviders(dashboard);
       })
@@ -95,12 +97,23 @@ export function PageShell() {
         if (isMounted) setSpeechProviders(null);
       });
     const handleProviderUpdate = (event: Event) => {
-      setSpeechProviders((event as CustomEvent<SpeechProviderDashboard>).detail);
+      setSpeechProviders((event as CustomEvent<GlobalSpeechDashboard>).detail);
+    };
+    const handleProviderUsed = (event: Event) => {
+      const detail = (event as CustomEvent<{ serviceType: "tts" | "stt"; provider: GlobalSpeechProvider }>).detail;
+      setSpeechProviders((current) => current ? {
+        ...current,
+        ...(detail.serviceType === "tts"
+          ? { active_tts_provider: detail.provider }
+          : { active_stt_provider: detail.provider }),
+      } : current);
     };
     window.addEventListener(SPEECH_PROVIDER_UPDATED_EVENT, handleProviderUpdate);
+    window.addEventListener(SPEECH_PROVIDER_USED_EVENT, handleProviderUsed);
     return () => {
       isMounted = false;
       window.removeEventListener(SPEECH_PROVIDER_UPDATED_EVENT, handleProviderUpdate);
+      window.removeEventListener(SPEECH_PROVIDER_USED_EVENT, handleProviderUsed);
     };
   }, [isAdmin]);
 
@@ -136,12 +149,12 @@ export function PageShell() {
               <Link
                 to="/admin/speech-providers"
                 className="hidden min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 2xl:inline-flex"
-                aria-label={`TTS: ${speechProviders.tts.current_provider}. STT: ${speechProviders.stt.current_provider}.`}
+                aria-label={`TTS: ${speechProviders.active_tts_provider}. STT: ${speechProviders.active_stt_provider}.`}
               >
                 <span className="h-2 w-2 rounded-full bg-teal-400" aria-hidden="true" />
-                {providerLabel(speechProviders.tts.current_provider)} TTS
+                {providerLabel(speechProviders.active_tts_provider)} TTS
                 <span className="text-slate-300" aria-hidden="true">|</span>
-                {providerLabel(speechProviders.stt.current_provider)} STT
+                {providerLabel(speechProviders.active_stt_provider)} STT
               </Link>
             )}
             {ttsUsage && (
@@ -248,6 +261,6 @@ function formatResetDate(resetDate: string) {
   return resetDate;
 }
 
-function providerLabel(provider: "azure" | "browser") {
-  return provider === "azure" ? "Azure" : "Browser";
+function providerLabel(provider: GlobalSpeechProvider) {
+  return provider === "azure" ? "Azure" : provider === "soniox" ? "Soniox" : "Browser";
 }

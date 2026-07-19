@@ -141,6 +141,11 @@ AZURE_TTS_MONTHLY_LIMIT_CHARACTERS=500000
 AZURE_STT_MONTHLY_LIMIT_SECONDS=18000
 SPEECH_WARNING_THRESHOLD_PERCENT=80
 SPEECH_SWITCH_THRESHOLD_PERCENT=95
+SONIOX_API_KEY=
+SONIOX_STT_MODEL=stt-async-v5
+SONIOX_STT_MONTHLY_LIMIT_SECONDS=36000
+SONIOX_API_TIMEOUT_SECONDS=30
+SPEECH_PROVIDER_COOLDOWN_SECONDS=300
 ```
 
 The voice assistant supports the site languages with Azure neural voices:
@@ -159,6 +164,8 @@ Generated audio is cached under `backend/media/tts-cache`, and metadata is store
 Administrators can open **Speech Provider Management** from the admin dashboard to monitor the internally estimated monthly Azure TTS character usage and STT audio duration. Automatic mode continues using Azure after the warning threshold and routes new requests to browser speech at the switch threshold. Azure provider failures also activate browser fallback until the next billing month. Automatic, Azure, and Browser modes can be configured independently for TTS and STT.
 
 The monthly provider totals are global estimates based only on ASSIST-AI requests; Azure does not provide a remaining-free-quota API. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Azure quota, and request IDs prevent retries from being counted twice.
+
+Global speech routing is stored in PostgreSQL and becomes effective immediately for every registered user and guest. Administrators can independently order TTS and STT providers, force a provider, disable providers, configure calendar or custom monthly periods, and edit provider-specific thresholds. Azure supports TTS and STT, Soniox currently supports STT, and browser speech is used only when the current client reports that capability. Soniox TTS is intentionally not selectable because it is not implemented in this project.
 
 ## Run the Backend
 

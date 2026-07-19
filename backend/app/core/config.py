@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     azure_stt_monthly_limit_seconds: int = 18000
     speech_warning_threshold_percent: int = 80
     speech_switch_threshold_percent: int = 95
+    soniox_api_key: str = ""
+    soniox_stt_model: str = "stt-async-v5"
+    soniox_stt_monthly_limit_seconds: int = 36000
+    soniox_api_timeout_seconds: int = 30
+    speech_provider_cooldown_seconds: int = 300
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

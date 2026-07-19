@@ -1,5 +1,5 @@
-import { API_BASE_URL, ApiError } from "./api";
-import { resolveSpeechProvider } from "./speechProviderService";
+import { API_BASE_URL, ApiError, getSessionHeaders } from "./api";
+import { notifySpeechProviderUsed, resolveSpeechProvider, type GlobalSpeechProvider } from "./speechProviderService";
 import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
@@ -186,15 +186,15 @@ async function transcribeAzureSpeech(
   language: SpeechRecognitionLanguage,
   mode: SpeechRecognitionMode,
 ) {
-  const token = localStorage.getItem("assist_ai_token");
   const response = await fetch(
     `${API_BASE_URL}/api/stt?language=${encodeURIComponent(language)}&mode=${mode}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "audio/wav",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...getSessionHeaders(),
         "X-Speech-Request-ID": crypto.randomUUID(),
+        "X-Browser-Speech-Supported": String(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)),
       },
       body: audio,
     },
@@ -214,10 +214,13 @@ async function transcribeAzureSpeech(
   }
 
   if (response.status === 204 && response.headers.get("X-Speech-Provider") === "browser") {
+    notifySpeechProviderUsed("stt", "browser");
     throw new ApiError("Browser speech recognition is now active. Hold Space and try again.", 503);
   }
 
   const data = (await response.json()) as AzureSttResponse;
+  const provider = response.headers.get("X-Speech-Provider");
+  if (provider) notifySpeechProviderUsed("stt", provider as GlobalSpeechProvider);
   notifySttUsageUpdated(mapSttUsage(data));
   return data.transcript;
 }
@@ -267,7 +270,7 @@ function encodeWav(samples: Float32Array, sampleRate: number) {
   return new Blob([view], { type: "audio/wav" });
 }
 
-class AzureSpeechRecognizer {
+class BackendSpeechRecognizer {
   private audioContext: AudioContext | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private processor: RecorderNode | null = null;
@@ -462,7 +465,7 @@ class BrowserSpeechRecognizer {
 }
 
 class ManagedSpeechRecognizer {
-  private delegate: AzureSpeechRecognizer | BrowserSpeechRecognizer | null = null;
+  private delegate: BackendSpeechRecognizer | BrowserSpeechRecognizer | null = null;
   private stopRequested = false;
   private ended = false;
 
@@ -485,6 +488,7 @@ class ManagedSpeechRecognizer {
   private async selectAndStart() {
     try {
       const decision = await resolveSpeechProvider("stt");
+      notifySpeechProviderUsed("stt", decision.provider);
       if (this.stopRequested) {
         this.endOnce();
         return;
@@ -495,7 +499,7 @@ class ManagedSpeechRecognizer {
       };
       this.delegate = decision.provider === "browser"
         ? new BrowserSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages)
-        : new AzureSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages);
+        : new BackendSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages);
       this.delegate.start();
     } catch {
       this.callbacks.onError(this.errorMessages.problem);
