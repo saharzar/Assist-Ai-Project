@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routes import admin, atm_analytics, auth, guests, speech_providers, stt, tts, users
+from app.routes import admin, atm_analytics, auth, guests, speech_providers, stt, tts, users, user_quotas
 from app.scenarios import SCENARIOS
 
 settings = get_settings()
@@ -42,6 +42,7 @@ app.include_router(tts.router)
 app.include_router(stt.router)
 app.include_router(atm_analytics.router)
 app.include_router(speech_providers.router)
+app.include_router(user_quotas.router)
 
 
 @app.get("/health")

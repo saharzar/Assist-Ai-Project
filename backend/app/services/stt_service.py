@@ -17,6 +17,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.stt_usage import UserSttUsage
+from app.services.quota_period_service import archive_usage
+from app.services.user_quota_notification_service import notify_threshold
+from app.services.quota_defaults_service import get_quota_defaults
 
 
 @dataclass(frozen=True)
@@ -148,15 +151,19 @@ def get_next_weekly_reset_date() -> date:
     return datetime.now(timezone.utc).date() + timedelta(days=7)
 
 
-def reset_stt_usage_if_due(usage: UserSttUsage) -> None:
+def reset_stt_usage_if_due(db: Session, usage: UserSttUsage) -> None:
     today = datetime.now(timezone.utc).date()
     if usage.stt_reset_date is None:
-        usage.stt_reset_date = today + timedelta(days=7)
+        usage.period_start = today
+        usage.stt_reset_date = today + (timedelta(days=30) if usage.period_type == "monthly" else timedelta(days=7))
         return
 
     if usage.stt_reset_date <= today:
+        archive_usage(db, usage.user_id, usage.period_start, usage.stt_reset_date, stt_used=usage.stt_used_seconds)
         usage.stt_used_seconds = 0
-        usage.stt_reset_date = today + timedelta(days=7)
+        usage.extra_seconds = 0
+        usage.period_start = today
+        usage.stt_reset_date = today + (timedelta(days=30) if usage.period_type == "monthly" else timedelta(days=7))
         usage.updated_at = datetime.now(timezone.utc)
 
 
@@ -168,14 +175,17 @@ def get_or_create_stt_usage(db: Session, user_id: int) -> UserSttUsage:
         .with_for_update(),
     )
     if usage is not None:
-        reset_stt_usage_if_due(usage)
+        reset_stt_usage_if_due(db, usage)
         return usage
 
+    defaults = get_quota_defaults(db)
     usage = UserSttUsage(
         user_id=user_id,
-        stt_limit_seconds=settings.stt_default_limit_seconds,
+        stt_limit_seconds=defaults.stt_limit_seconds,
         stt_used_seconds=0,
         stt_reset_date=get_next_weekly_reset_date(),
+        period_type=defaults.period_type,
+        period_start=datetime.now(timezone.utc).date(),
     )
     db.add(usage)
     db.flush()
@@ -184,11 +194,12 @@ def get_or_create_stt_usage(db: Session, user_id: int) -> UserSttUsage:
 
 def get_stt_usage_snapshot(db: Session, user_id: int) -> SttUsageSnapshot:
     usage = get_or_create_stt_usage(db, user_id)
-    remaining = usage.stt_limit_seconds - usage.stt_used_seconds
+    limit = usage.stt_limit_seconds + usage.extra_seconds
+    remaining = max(0, limit - usage.stt_used_seconds)
     return SttUsageSnapshot(
         used_seconds=usage.stt_used_seconds,
         remaining_seconds=remaining,
-        limit_seconds=usage.stt_limit_seconds,
+        limit_seconds=limit,
         reset_date=usage.stt_reset_date or get_next_weekly_reset_date(),
     )
 
@@ -196,24 +207,29 @@ def get_stt_usage_snapshot(db: Session, user_id: int) -> SttUsageSnapshot:
 def record_stt_seconds(db: Session, user_id: int, seconds: int) -> SttUsageSnapshot:
     try:
         usage = get_or_create_stt_usage(db, user_id)
-        remaining = usage.stt_limit_seconds - usage.stt_used_seconds
-        if remaining <= 0:
+        if not usage.enabled:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Speech access is disabled for this account.")
+        limit = usage.stt_limit_seconds + usage.extra_seconds
+        remaining = limit - usage.stt_used_seconds
+        if remaining < seconds:
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="STT time limit reached",
+                detail="You have reached your current speech allowance. Continue with keyboard input or request additional access.",
             )
 
-        charged_seconds = min(seconds, remaining)
+        charged_seconds = seconds
         usage.stt_used_seconds += charged_seconds
         usage.updated_at = datetime.now(timezone.utc)
+        notify_threshold(db, user_id, "stt", usage.stt_used_seconds, limit, str(usage.period_start))
         db.commit()
         db.refresh(usage)
 
         return SttUsageSnapshot(
             used_seconds=usage.stt_used_seconds,
-            remaining_seconds=usage.stt_limit_seconds - usage.stt_used_seconds,
-            limit_seconds=usage.stt_limit_seconds,
+            remaining_seconds=limit - usage.stt_used_seconds,
+            limit_seconds=limit,
             reset_date=usage.stt_reset_date or get_next_weekly_reset_date(),
         )
     except IntegrityError as exc:

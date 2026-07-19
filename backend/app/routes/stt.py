@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user, get_speech_actor
+from app.core.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.models.guest_session import GuestSession
@@ -39,9 +40,9 @@ def get_stt_usage(
     usage = get_or_create_stt_usage(db, current_user.id)
     db.commit()
     return SttUsageResponse(
-        stt_limit_seconds=usage.stt_limit_seconds,
+        stt_limit_seconds=usage.stt_limit_seconds + usage.extra_seconds,
         stt_used_seconds=usage.stt_used_seconds,
-        stt_remaining_seconds=usage.stt_limit_seconds - usage.stt_used_seconds,
+        stt_remaining_seconds=max(0, usage.stt_limit_seconds + usage.extra_seconds - usage.stt_used_seconds),
         stt_reset_date=usage.stt_reset_date,
     )
 
@@ -103,6 +104,8 @@ async def create_stt_transcript(
     last_error: HTTPException | None = None
     for index, decision in enumerate(decisions):
         if decision.provider == "browser":
+            if user_id is not None and get_settings().count_browser_usage_against_user_quota:
+                record_stt_seconds(db, user_id, get_wav_duration_seconds(audio))
             record_request_result(db, request_id, "stt", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
         try:

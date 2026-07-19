@@ -11,6 +11,7 @@ from app.models.stt_usage import UserSttUsage
 from app.models.tts_audio_cache import TtsAudioCache
 from app.models.tts_usage import UserTtsUsage
 from app.models.user import User
+from app.models.user_speech_quota import QuotaAdjustmentHistory, QuotaIncreaseRequest, UserNotification, UserQuotaDefaults, UserSpeechUsagePeriod
 
 __all__ = [
     "AtmScenarioEvent",
@@ -25,4 +26,9 @@ __all__ = [
     "User",
     "UserSttUsage",
     "UserTtsUsage",
+    "QuotaAdjustmentHistory",
+    "QuotaIncreaseRequest",
+    "UserNotification",
+    "UserSpeechUsagePeriod",
+    "UserQuotaDefaults",
 ]

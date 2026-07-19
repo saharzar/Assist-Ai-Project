@@ -799,6 +799,23 @@ def is_quota_failure(detail: object) -> bool:
 def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, administrator_id: int) -> None:
     settings = get_or_create_provider_settings(db)
     existing = {(item.provider_key, item.service_type): item for item in ensure_capability_configs(db)}
+    active_before = {service_type: resolve_global_provider(db, service_type).provider for service_type in VALID_SERVICES}
+    previous_settings = {
+        "tts": (settings.automatic_tts_routing_enabled, settings.forced_tts_provider_key),
+        "stt": (settings.automatic_stt_routing_enabled, settings.forced_stt_provider_key),
+    }
+    previous_capabilities = {
+        key: {
+            "enabled": item.enabled,
+            "priority": item.priority,
+            "quota_limit": item.quota_limit,
+            "warning_threshold_value": item.warning_threshold_value,
+            "switch_threshold_value": item.switch_threshold_value,
+            "billing_period_type": item.billing_period_type,
+            "reset_day": item.reset_day,
+        }
+        for key, item in existing.items()
+    }
     submitted = {(item.provider_key, item.service_type) for item in payload.capabilities}
     if submitted != set(existing):
         raise HTTPException(status_code=422, detail="The complete supported provider configuration is required.")
@@ -831,6 +848,53 @@ def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, adminis
     settings.forced_stt_provider_key = payload.forced_stt_provider_key
     settings.updated_by_admin_id = administrator_id
     settings.updated_at = utc_now()
+    db.flush()
+    active_after = {service_type: resolve_global_provider(db, service_type).provider for service_type in VALID_SERVICES}
+    payload_by_service = {
+        service_type: [item for item in payload.capabilities if item.service_type == service_type]
+        for service_type in VALID_SERVICES
+    }
     for service_type in VALID_SERVICES:
-        log_provider_event(db, service_type, "settings_changed", "Administrator changed global speech routing.", administrator_id=administrator_id)
+        automatic = payload.automatic_tts_routing_enabled if service_type == "tts" else payload.automatic_stt_routing_enabled
+        forced = payload.forced_tts_provider_key if service_type == "tts" else payload.forced_stt_provider_key
+        previous_automatic, previous_forced = previous_settings[service_type]
+        changes: list[str] = []
+        provider_changed = active_before[service_type] != active_after[service_type]
+        if provider_changed:
+            changes.append(f"active provider: {active_before[service_type]} to {active_after[service_type]}")
+        if previous_automatic != automatic:
+            changes.append(f"automatic routing: {'on' if previous_automatic else 'off'} to {'on' if automatic else 'off'}")
+        if previous_forced != forced:
+            changes.append(f"forced provider: {previous_forced or 'none'} to {forced or 'none'}")
+        for item in sorted(payload_by_service[service_type], key=lambda value: value.priority):
+            before = previous_capabilities[(item.provider_key, service_type)]
+            provider_changes: list[str] = []
+            for field, label in (
+                ("enabled", "enabled"),
+                ("priority", "priority"),
+                ("quota_limit", "quota"),
+                ("warning_threshold_value", "warning threshold"),
+                ("switch_threshold_value", "switch threshold"),
+                ("billing_period_type", "billing period"),
+                ("reset_day", "reset day"),
+            ):
+                old_value = before[field]
+                new_value = getattr(item, field)
+                if old_value != new_value:
+                    if field == "enabled":
+                        old_value = "on" if old_value else "off"
+                        new_value = "on" if new_value else "off"
+                    provider_changes.append(f"{label}: {old_value if old_value is not None else 'none'} to {new_value if new_value is not None else 'none'}")
+            if provider_changes:
+                changes.append(f"{item.provider_key.title()} ({'; '.join(provider_changes)})")
+        reason = f"Updated {service_type.upper()} routing: " + ("; ".join(changes) if changes else "no configuration values changed") + "."
+        log_provider_event(
+            db,
+            service_type,
+            "settings_changed",
+            reason[:1000],
+            previous_provider=active_before[service_type] if provider_changed else None,
+            new_provider=active_after[service_type] if provider_changed else None,
+            administrator_id=administrator_id,
+        )
     db.commit()

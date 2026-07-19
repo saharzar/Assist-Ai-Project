@@ -34,6 +34,7 @@ export function AdminSpeechProvidersPage() {
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeView, setActiveView] = useState<"routing" | "activity">("routing");
+  const [activeService, setActiveService] = useState<"stt" | "tts">("stt");
   const isAdmin = isAuthenticated && user?.role === "admin";
 
   useEffect(() => {
@@ -86,12 +87,25 @@ export function AdminSpeechProvidersPage() {
         <div className="flex gap-1" role="tablist" aria-label="Speech provider views">
           {(["routing", "activity"] as const).map((view) => <button key={view} type="button" role="tab" aria-selected={activeView === view} onClick={() => setActiveView(view)} className={`border-b-2 px-4 py-3 text-sm font-bold capitalize ${activeView === view ? "border-teal-600 text-teal-800" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{view}</button>)}
         </div>
+        {activeView === "routing" && (
+          <div className="mb-2 inline-flex rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Speech service">
+            {(["stt", "tts"] as const).map((service) => (
+              <button
+                key={service}
+                type="button"
+                role="tab"
+                aria-selected={activeService === service}
+                onClick={() => setActiveService(service)}
+                className={`min-h-[40px] rounded-md px-6 text-sm font-bold uppercase transition ${activeService === service ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                {service}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {activeView === "routing" ? <>
-        <div className="grid gap-5 xl:grid-cols-2">
-          <CompactProviderSection service="stt" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
-          <CompactProviderSection service="tts" draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
-        </div>
+        <CompactProviderSection service={activeService} draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
         <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[44px] self-start rounded-lg bg-teal-700 px-5 text-sm font-bold text-white disabled:opacity-60">{labels.save}</button>
       </> : <CompactHistory dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />}
     </>}
@@ -155,7 +169,7 @@ function CompactHistory({ dashboard, title, eventTitle, locale }: { dashboard: G
   const eventItems = dashboard.events.slice(eventPage * pageSize, (eventPage + 1) * pageSize);
   return <div className="mt-6 grid gap-6 lg:grid-cols-2">
     <ActivityList title={title} page={usagePage} total={dashboard.usage_history.length} pageSize={pageSize} onPage={setUsagePage}>{usageItems.map((item) => <div key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="flex items-center justify-between border-b border-slate-100 py-3 text-sm last:border-0"><div><strong>{item.provider.toUpperCase()}</strong><span className="ml-2 text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span><p className="text-xs text-slate-500">{new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)}</p></div><strong>{item.service_type === "tts" ? item.characters_used.toLocaleString(locale) : `${item.audio_seconds_used}s`}</strong></div>)}</ActivityList>
-    <ActivityList title={eventTitle} page={eventPage} total={dashboard.events.length} pageSize={pageSize} onPage={setEventPage}>{eventItems.map((item) => <div key={item.id} className="border-b border-slate-100 py-3 text-sm last:border-0"><div className="flex items-center justify-between gap-3"><strong className="capitalize">{item.event_type.replace(/_/g, " ")}</strong><span className="text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span></div><p className="mt-1 text-xs text-slate-600">{item.reason}</p></div>)}</ActivityList>
+    <ActivityList title={eventTitle} page={eventPage} total={dashboard.events.length} pageSize={pageSize} onPage={setEventPage}>{eventItems.map((item) => <div key={item.id} className="border-b border-slate-100 py-3 text-sm last:border-0"><div className="flex items-start justify-between gap-3"><div><strong className="capitalize">{item.event_type.replace(/_/g, " ")}</strong><p className="mt-0.5 text-xs text-slate-500">{formatDate(item.created_at, locale)}{item.administrator_name ? ` · ${item.administrator_name}` : ""}</p></div><span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{item.service_type.toUpperCase()}</span></div>{(item.previous_provider || item.new_provider) && <p className="mt-2 text-xs font-bold text-teal-800">{providerName((item.previous_provider ?? item.new_provider) as GlobalSpeechProvider)} → {providerName((item.new_provider ?? item.previous_provider) as GlobalSpeechProvider)}</p>}<p className="mt-2 text-sm leading-5 text-slate-700">{item.reason}</p></div>)}</ActivityList>
   </div>;
 }
 

@@ -1,0 +1,12 @@
+import { apiRequest } from "./api";
+export type QuotaRequest={id:number;user_id:number;service_type:"tts"|"stt"|"both";requested_tts_characters:number|null;requested_stt_seconds:number|null;reason:string;status:string;admin_response:string|null;approved_tts_characters:number|null;approved_stt_seconds:number|null;created_at:string;reviewed_at:string|null};
+export type UserQuota={user_id:number;full_name:string;email:string;role:string;tts_limit:number;tts_extra:number;tts_used:number;tts_remaining:number;stt_limit:number;stt_extra:number;stt_used:number;stt_remaining:number;period_type:string;period_start:string|null;reset_date:string|null;enabled:boolean;uses_default:boolean;status:string;pending_request:QuotaRequest|null};
+export type QuotaUpdate={tts_limit_characters?:number;stt_limit_seconds?:number;add_tts_characters?:number;add_stt_seconds?:number;period_type?:"weekly"|"monthly";enabled?:boolean;restore_default?:boolean;reset_usage?:boolean;reason:string};
+export const getMyQuota=()=>apiRequest<UserQuota>("/api/speech-quotas/me");
+export const getMyRequests=()=>apiRequest<QuotaRequest[]>("/api/speech-quotas/me/requests");
+export const submitQuotaRequest=(body:{service_type:string;requested_tts_characters?:number;requested_stt_seconds?:number;reason:string})=>apiRequest<QuotaRequest>("/api/speech-quotas/me/requests",{method:"POST",body:JSON.stringify(body)});
+export const getAdminQuotas=()=>apiRequest<UserQuota[]>("/api/speech-quotas/admin/users");
+export const updateUserQuota=(id:number,body:QuotaUpdate)=>apiRequest<UserQuota>(`/api/speech-quotas/admin/users/${id}`,{method:"PUT",body:JSON.stringify(body)});
+export const bulkUpdateQuotas=(user_ids:number[],body:QuotaUpdate)=>apiRequest<{updated:number}>("/api/speech-quotas/admin/bulk",{method:"POST",body:JSON.stringify({...body,user_ids})});
+export const getQuotaRequests=()=>apiRequest<QuotaRequest[]>("/api/speech-quotas/admin/requests");
+export const reviewQuotaRequest=(id:number,body:{action:string;approved_tts_characters:number;approved_stt_seconds:number;permanent:boolean;admin_response:string})=>apiRequest(`/api/speech-quotas/admin/requests/${id}/review`,{method:"POST",body:JSON.stringify(body)});

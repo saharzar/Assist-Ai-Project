@@ -476,6 +476,23 @@ def send_speech_quota_warning_email(
     send_email(recipient, subject, body)
 
 
+def send_admin_quota_request_email(user: User, requested_tts: int | None, requested_stt: int | None, reason: str) -> None:
+    settings = get_settings()
+    recipient = settings.admin_quota_request_email or settings.admin_notification_email or settings.admin_email
+    body = (
+        f"{user.full_name} ({user.email}) submitted a speech quota request.\n\n"
+        f"Requested TTS increase: {requested_tts or 0:,} characters\n"
+        f"Requested STT increase: {requested_stt or 0:,} seconds\n"
+        f"Reason: {reason}\n\n"
+        f"Review: {settings.app_frontend_url}/admin/user-quotas"
+    )
+    send_email(recipient, f"New speech quota request from {user.full_name}", body)
+
+
+def send_quota_request_review_email(user: User, status_value: str, response: str) -> None:
+    send_email(user.email, f"Your ASSIST-AI quota request was {status_value.replace('_', ' ')}", f"Hello {user.full_name},\n\nYour speech quota request was {status_value.replace('_', ' ')}.\n\nAdministrator response: {response}")
+
+
 def _copy_for_user(user: User) -> dict[str, str]:
     language = (user.preferred_language or "en").lower()
     if language not in SUPPORTED_EMAIL_LANGUAGES:

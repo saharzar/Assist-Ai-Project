@@ -173,6 +173,9 @@ export function PageShell() {
             >
               {t("scenarios")}
             </Link>}
+            {isAuthenticated && !isAdmin && (
+              <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">Speech usage</Link>
+            )}
             <label className="sr-only" htmlFor="language-select">
               {t("language")}
             </label>
@@ -221,6 +224,7 @@ export function PageShell() {
                 <AdminNavLink to="/admin/users" label={adminMenuText(language).users} active={location.pathname === "/admin/users"} />
                 <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics")} />
                 <AdminNavLink to="/admin/speech-providers" label={adminMenuText(language).speech} active={location.pathname === "/admin/speech-providers"} />
+                <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />
                 <AdminNavLink to="/scenarios" label={t("scenarios")} active={location.pathname === "/scenarios"} />
               </div>
               {speechProviders && (
@@ -275,13 +279,13 @@ function AdminNavLink({ to, label, active }: { to: string; label: string; active
 }
 
 function adminMenuText(language: string) {
-  const copy: Record<string, { users: string; analytics: string; speech: string }> = {
-    en: { users: "Users", analytics: "Scenario analytics", speech: "Speech providers" },
-    es: { users: "Usuarios", analytics: "Analitica de escenarios", speech: "Proveedores de voz" },
-    de: { users: "Benutzer", analytics: "Szenarioanalysen", speech: "Sprachanbieter" },
-    tr: { users: "Kullanicilar", analytics: "Senaryo analizleri", speech: "Konusma saglayicilari" },
-    pt: { users: "Utilizadores", analytics: "Analise de cenarios", speech: "Provedores de voz" },
-    fr: { users: "Utilisateurs", analytics: "Analyse des scenarios", speech: "Fournisseurs vocaux" },
+  const copy: Record<string, { users: string; analytics: string; speech: string; quotas: string }> = {
+    en: { users: "Users", analytics: "Scenario analytics", speech: "Speech providers", quotas: "User quotas" },
+    es: { users: "Usuarios", analytics: "Analitica de escenarios", speech: "Proveedores de voz", quotas: "Cuotas" },
+    de: { users: "Benutzer", analytics: "Szenarioanalysen", speech: "Sprachanbieter", quotas: "Kontingente" },
+    tr: { users: "Kullanicilar", analytics: "Senaryo analizleri", speech: "Konusma saglayicilari", quotas: "Kullanici kotalari" },
+    pt: { users: "Utilizadores", analytics: "Analise de cenarios", speech: "Provedores de voz", quotas: "Cotas" },
+    fr: { users: "Utilisateurs", analytics: "Analyse des scenarios", speech: "Fournisseurs vocaux", quotas: "Quotas" },
   };
   return copy[language] ?? copy.en;
 }

@@ -25,6 +25,7 @@ This version includes:
 - Scenario catalogue with the ATM scenario enabled
 - Realistic ATM practice interface with clickable keypad and keyboard overlays
 - Azure Speech voice assistant prompts with per-user TTS character usage tracking
+- Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, audit history, and admin bulk management
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
 - Speech input for supported steps and applause feedback on success
 - `GET /health`
@@ -149,6 +150,13 @@ SONIOX_TTS_VOICE=Adrian
 SONIOX_TTS_MONTHLY_LIMIT_CHARACTERS=500000
 SONIOX_API_TIMEOUT_SECONDS=30
 SPEECH_PROVIDER_COOLDOWN_SECONDS=300
+DEFAULT_USER_TTS_LIMIT_CHARACTERS=5000
+DEFAULT_USER_STT_LIMIT_SECONDS=300
+DEFAULT_USER_QUOTA_PERIOD=weekly
+USER_QUOTA_WARNING_PERCENT=80
+USER_QUOTA_CRITICAL_PERCENT=95
+COUNT_BROWSER_USAGE_AGAINST_USER_QUOTA=false
+ADMIN_QUOTA_REQUEST_EMAIL=admin@example.com
 ```
 
 The voice assistant supports the site languages with Azure neural voices:
@@ -171,6 +179,14 @@ The monthly provider totals are global estimates based only on ASSIST-AI request
 Global speech routing is stored in PostgreSQL and becomes effective immediately for every registered user and guest. Administrators can independently order TTS and STT providers, force a provider, disable providers, configure calendar or custom monthly periods, and edit provider-specific thresholds. Azure and Soniox support both TTS and STT, and browser speech is used only when the current client reports that capability.
 
 Provider warning and automatic-switch levels are configured as real usage values rather than percentages. TTS levels use characters and STT levels use audio seconds. Crossing a warning level sends one email per provider and billing period to `ADMIN_NOTIFICATION_EMAIL` (or `ADMIN_EMAIL` when no notification address is set). Crossing the switch level makes the next eligible provider in the configured priority order active for subsequent requests.
+
+## Per-User Speech Quotas
+
+Personal quotas are separate from global provider quotas. A registered user must have enough personal allowance before an enabled, healthy provider can process a request. TTS is measured in generated characters and cached playback is free. STT is measured in audio seconds. Browser speech is excluded by default and can be included with `COUNT_BROWSER_USAGE_AGAINST_USER_QUOTA=true`.
+
+Users can open **My Speech Usage** to see usage, remaining allowance, reset dates, threshold status, and request more access. Administrators can open **User Speech Quotas** to search users, edit permanent limits, add temporary current-period allowance, disable speech, make bulk changes, and review requests. Temporary allowance expires at reset; permanent changes remain. All adjustments are audited, and previous periods are preserved.
+
+Default quotas are stored in PostgreSQL with environment-backed initial values. Admin all-user updates distinguish future users, users still using defaults, and explicit overrides of every user. Quota-request email uses `ADMIN_QUOTA_REQUEST_EMAIL`, then falls back to the existing admin notification addresses.
 
 ## Run the Backend
 

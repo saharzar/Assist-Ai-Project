@@ -14,6 +14,7 @@ from app.services.tts_service import (
     get_cached_tts_audio,
     get_or_create_tts_usage,
     synthesize_tts_with_cache,
+    reserve_tts_characters,
 )
 from app.services.soniox_service import get_soniox_tts_cache_voice
 from app.services.speech_provider_manager import (
@@ -35,9 +36,9 @@ def get_tts_usage(
     usage = get_or_create_tts_usage(db, current_user.id)
     db.commit()
     return TtsUsageResponse(
-        tts_limit_characters=usage.tts_limit_characters,
+        tts_limit_characters=usage.tts_limit_characters + usage.extra_characters,
         tts_used_characters=usage.tts_used_characters,
-        tts_remaining_characters=usage.tts_limit_characters - usage.tts_used_characters,
+        tts_remaining_characters=max(0, usage.tts_limit_characters + usage.extra_characters - usage.tts_used_characters),
         tts_reset_date=usage.tts_reset_date,
     )
 
@@ -72,6 +73,8 @@ def create_tts_audio(
     last_error: HTTPException | None = None
     for index, decision in enumerate(decisions):
         if decision.provider == "browser":
+            if user_id is not None and settings.count_browser_usage_against_user_quota:
+                reserve_tts_characters(db, user_id, character_count)
             record_request_result(db, request_id, "tts", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
 
@@ -85,8 +88,8 @@ def create_tts_audio(
             usage = get_or_create_tts_usage(db, user_id) if user_id is not None else None
             record_request_result(db, request_id, "tts", decision.provider, "cached", was_cached=True)
             return Response(content=cached_audio.audio, media_type=cached_audio.content_type, headers={
-                "X-Speech-Provider": f"{decision.provider}-cache", "X-TTS-Remaining-Characters": str(usage.tts_limit_characters - usage.tts_used_characters) if usage else "0",
-                "X-TTS-Used-Characters": "0", "X-TTS-Limit-Characters": str(usage.tts_limit_characters) if usage else "0",
+                "X-Speech-Provider": f"{decision.provider}-cache", "X-TTS-Remaining-Characters": str(max(0, usage.tts_limit_characters + usage.extra_characters - usage.tts_used_characters)) if usage else "0",
+                "X-TTS-Used-Characters": "0", "X-TTS-Limit-Characters": str(usage.tts_limit_characters + usage.extra_characters) if usage else "0",
                 "X-TTS-Reset-Date": usage.tts_reset_date.isoformat() if usage and usage.tts_reset_date else "", "X-TTS-Language": payload.language, "X-TTS-Cache": "HIT",
             })
         try:
