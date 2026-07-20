@@ -60,10 +60,14 @@ export function completeAtmAnalyticsSession(sessionId: string, finalStep: string
     body: JSON.stringify({ final_step_reached: finalStep }),
   });
 }
-export function terminateAtmAnalyticsSession(sessionId: string) {
+export function terminateAtmAnalyticsSession(
+  sessionId: string,
+  reason: "verification_failed" | "pin_failed_after_verification",
+) {
   return apiRequest(`/api/atm-sessions/${sessionId}/terminate`, {
     method: "POST",
     headers: guestHeaders(),
+    body: JSON.stringify({ reason }),
   });
 }
 
