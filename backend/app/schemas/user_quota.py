@@ -31,10 +31,7 @@ class QuotaUpdate(BaseModel):
     enabled: bool | None = None
     restore_default: bool = False
     reset_usage: bool = False
-    reason: str = Field(min_length=3, max_length=500)
-
-class BulkQuotaUpdate(QuotaUpdate):
-    user_ids: list[int] = Field(min_length=1, max_length=1000)
+    reason: str | None = Field(default=None, min_length=3, max_length=500)
 
 class AllUsersQuotaUpdate(QuotaUpdate):
     scope: Literal["future_only", "default_users", "all_users"]

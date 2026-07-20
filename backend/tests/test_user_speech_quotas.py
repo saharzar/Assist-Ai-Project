@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
-from app.models import QuotaAdjustmentHistory, QuotaIncreaseRequest, User, UserSttUsage, UserTtsUsage
+from app.models import QuotaAdjustmentHistory, QuotaIncreaseRequest, User, UserNotification, UserSttUsage, UserTtsUsage
 from app.services.stt_service import record_stt_seconds
 from app.services.tts_service import reserve_tts_characters
 
@@ -32,13 +32,24 @@ def test_request_duplicate_review_and_audit():
         quota=client.get("/api/speech-quotas/me",headers=headers(user)).json();assert quota["tts_extra"]==500;assert quota["stt_extra"]==30
         assert db.scalar(select(QuotaAdjustmentHistory).where(QuotaAdjustmentHistory.related_request_id==request_id)) is not None
 
-def test_admin_permanent_temporary_restore_and_bulk_updates():
+def test_admin_permanent_temporary_and_restore_updates():
     with Ctx() as (client,db):
-        one=make_user(db,"one@test.local");two=make_user(db,"two@test.local");admin=make_user(db,"admin@test.local","admin")
+        one=make_user(db,"one@test.local");admin=make_user(db,"admin@test.local","admin")
         update={"tts_limit_characters":7000,"stt_limit_seconds":420,"add_tts_characters":500,"add_stt_seconds":20,"reason":"Accessibility accommodation"}
         assert client.put(f"/api/speech-quotas/admin/users/{one.id}",headers=headers(admin),json=update).status_code==200
-        bulk={"user_ids":[one.id,two.id],"add_tts_characters":100,"reason":"Group workshop"};assert client.post("/api/speech-quotas/admin/bulk",headers=headers(admin),json=bulk).json()["updated"]==2
         restored=client.put(f"/api/speech-quotas/admin/users/{one.id}",headers=headers(admin),json={"restore_default":True,"reason":"Restore standard allowance"}).json();assert restored["tts_limit"]==5000;assert restored["uses_default"] is True
+
+def test_admin_can_update_without_reason_but_user_request_still_requires_one():
+    with Ctx() as (client,db):
+        user=make_user(db,"optional-reason@test.local");admin=make_user(db,"admin@test.local","admin")
+        updated=client.put(f"/api/speech-quotas/admin/users/{user.id}",headers=headers(admin),json={"add_tts_characters":100})
+        assert updated.status_code==200
+        history=db.scalar(select(QuotaAdjustmentHistory).where(QuotaAdjustmentHistory.user_id==user.id))
+        assert history is not None;assert history.reason=="Quota updated by administrator."
+        notification=db.scalar(select(UserNotification).where(UserNotification.user_id==user.id,UserNotification.notification_type=="quota_adjusted"))
+        assert notification is not None;assert "TTS allowance: 5,000 to 5,100 characters" in notification.message
+        request=client.post("/api/speech-quotas/me/requests",headers=headers(user),json={"service_type":"tts","requested_tts_characters":100})
+        assert request.status_code==422
 
 def test_atomic_personal_quota_enforcement():
     with Ctx() as (_,db):

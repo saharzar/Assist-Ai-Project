@@ -1,9 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
+import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 
 export function LandingPage() {
+  const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
+
+  if (isAuthenticated) {
+    return <Navigate to="/scenarios" replace />;
+  }
 
   return (
     <section className="flex min-h-[70vh] flex-1 flex-col items-center justify-center py-10 text-center">

@@ -33,6 +33,10 @@ def create_request(db: Session, user: User, payload: QuotaRequestCreate) -> Quot
 def apply_update(db: Session, user: User, payload: QuotaUpdate, admin_id: int, source: str = "manual_edit", request_id: int | None = None) -> None:
     tts = get_or_create_tts_usage(db, user.id); stt = get_or_create_stt_usage(db, user.id); settings = get_settings()
     old_tts, old_stt = tts.tts_limit_characters, stt.stt_limit_seconds
+    old_tts_total = tts.tts_limit_characters + tts.extra_characters
+    old_stt_total = stt.stt_limit_seconds + stt.extra_seconds
+    old_period = tts.period_type
+    old_enabled = tts.enabled and stt.enabled
     if payload.restore_default:
         defaults=get_quota_defaults(db);tts.tts_limit_characters=defaults.tts_limit_characters;stt.stt_limit_seconds=defaults.stt_limit_seconds;tts.period_type=stt.period_type=defaults.period_type;tts.uses_default=stt.uses_default=True
     if payload.tts_limit_characters is not None: tts.tts_limit_characters=payload.tts_limit_characters; tts.uses_default=False
@@ -42,8 +46,28 @@ def apply_update(db: Session, user: User, payload: QuotaUpdate, admin_id: int, s
     if payload.enabled is not None: tts.enabled=stt.enabled=payload.enabled
     if payload.reset_usage: tts.tts_used_characters=0; stt.stt_used_seconds=0
     tts.updated_by_admin_id=stt.updated_by_admin_id=admin_id
-    db.add(QuotaAdjustmentHistory(user_id=user.id, adjustment_type=source, previous_tts_limit=old_tts, new_tts_limit=tts.tts_limit_characters, previous_stt_limit=old_stt, new_stt_limit=stt.stt_limit_seconds, added_tts_characters=payload.add_tts_characters, added_stt_seconds=payload.add_stt_seconds, reason=payload.reason, admin_id=admin_id, related_request_id=request_id))
-    db.add(UserNotification(user_id=user.id, notification_type="quota_adjusted", title="Speech quota updated", message="An administrator updated your speech allowance."))
+    audit_reason = payload.reason or "Quota updated by administrator."
+    db.add(QuotaAdjustmentHistory(user_id=user.id, adjustment_type=source, previous_tts_limit=old_tts, new_tts_limit=tts.tts_limit_characters, previous_stt_limit=old_stt, new_stt_limit=stt.stt_limit_seconds, added_tts_characters=payload.add_tts_characters, added_stt_seconds=payload.add_stt_seconds, reason=audit_reason, admin_id=admin_id, related_request_id=request_id))
+    changes: list[str] = []
+    new_tts_total = tts.tts_limit_characters + tts.extra_characters
+    new_stt_total = stt.stt_limit_seconds + stt.extra_seconds
+    if old_tts_total != new_tts_total:
+        changes.append(f"TTS allowance: {old_tts_total:,} to {new_tts_total:,} characters")
+    if old_stt_total != new_stt_total:
+        changes.append(f"STT allowance: {old_stt_total:,} to {new_stt_total:,} seconds")
+    if old_period != tts.period_type:
+        changes.append(f"Reset period: {old_period} to {tts.period_type}")
+    new_enabled = tts.enabled and stt.enabled
+    if old_enabled != new_enabled:
+        changes.append(f"Speech access: {'enabled' if new_enabled else 'disabled'}")
+    if payload.reset_usage:
+        changes.append("Current usage was reset")
+    if not changes:
+        changes.append("Your quota settings were reviewed")
+    notification_message = ". ".join(changes) + "."
+    if payload.reason:
+        notification_message += f" Reason: {payload.reason}"
+    db.add(UserNotification(user_id=user.id, notification_type="quota_adjusted", title="Speech quota updated", message=notification_message))
 
 def review_request(db: Session, request: QuotaIncreaseRequest, payload: QuotaRequestReview, admin_id: int) -> None:
     request = db.scalar(select(QuotaIncreaseRequest).where(QuotaIncreaseRequest.id == request.id).with_for_update())

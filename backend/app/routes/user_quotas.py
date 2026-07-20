@@ -5,7 +5,7 @@ from app.core.security import get_current_admin, get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.models.user_speech_quota import QuotaAdjustmentHistory, QuotaIncreaseRequest, UserNotification, UserSpeechUsagePeriod
-from app.schemas.user_quota import AllUsersQuotaUpdate, BulkQuotaUpdate, QuotaRequestCreate, QuotaRequestRead, QuotaRequestReview, QuotaUpdate, UserQuotaRead
+from app.schemas.user_quota import AllUsersQuotaUpdate, QuotaRequestCreate, QuotaRequestRead, QuotaRequestReview, QuotaUpdate, UserQuotaRead
 from app.services.user_quota_service import apply_update, create_request, quota_snapshot, review_request
 from app.services.quota_defaults_service import get_quota_defaults
 
@@ -27,11 +27,6 @@ def edit_quota(user_id:int,payload:QuotaUpdate,admin:User=Depends(get_current_ad
     user=db.get(User,user_id)
     if not user or user.role=="admin": raise HTTPException(404,"User not found.")
     apply_update(db,user,payload,admin.id);db.commit();return quota_snapshot(db,user)
-@router.post("/admin/bulk")
-def bulk(payload:BulkQuotaUpdate,admin:User=Depends(get_current_admin),db:Session=Depends(get_db)):
-    users=list(db.scalars(select(User).where(User.id.in_(payload.user_ids),User.role!="admin")).all()); update=QuotaUpdate(**payload.model_dump(exclude={"user_ids"}))
-    for user in users: apply_update(db,user,update,admin.id,"bulk_edit")
-    db.commit();return {"updated":len(users)}
 @router.post("/admin/all")
 def update_all(payload:AllUsersQuotaUpdate,admin:User=Depends(get_current_admin),db:Session=Depends(get_db)):
     defaults=get_quota_defaults(db)

@@ -167,12 +167,12 @@ export function PageShell() {
                 {formatSeconds(sttUsage.limit)}
               </div>
             )}
-            {!isAdmin && <Link
+            <Link
               to="/scenarios"
               className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {t("scenarios")}
-            </Link>}
+            </Link>
             {isAuthenticated && !isAdmin && (
               <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">Speech usage</Link>
             )}
@@ -225,7 +225,6 @@ export function PageShell() {
                 <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics")} />
                 <AdminNavLink to="/admin/speech-providers" label={adminMenuText(language).speech} active={location.pathname === "/admin/speech-providers"} />
                 <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />
-                <AdminNavLink to="/scenarios" label={t("scenarios")} active={location.pathname === "/scenarios"} />
               </div>
               {speechProviders && (
                 <Link to="/admin/speech-providers" className="hidden shrink-0 items-center gap-2 text-xs font-bold text-slate-600 lg:flex">
