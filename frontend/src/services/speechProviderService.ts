@@ -95,10 +95,7 @@ export type GlobalSpeechDashboard = {
   capabilities: SpeechCapability[]; usage_history: SpeechUsageHistory[]; events: SpeechProviderEvent[];
 };
 
-export type GlobalSpeechRoutingUpdate = Pick<GlobalSpeechDashboard,
-  "automatic_tts_routing_enabled" | "automatic_stt_routing_enabled" |
-  "forced_tts_provider_key" | "forced_stt_provider_key"
-> & {
+export type GlobalSpeechRoutingUpdate = {
   capabilities: Array<Pick<SpeechCapability,
     "provider_key" | "service_type" | "enabled" | "priority" | "quota_limit" |
     "warning_threshold_value" | "switch_threshold_value" | "billing_period_type" | "reset_day"

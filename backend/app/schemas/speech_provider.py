@@ -51,18 +51,10 @@ class SpeechCapabilityConfigUpdate(BaseModel):
 
 
 class GlobalSpeechRoutingUpdate(BaseModel):
-    automatic_tts_routing_enabled: bool
-    automatic_stt_routing_enabled: bool
-    forced_tts_provider_key: ProviderKey | None = None
-    forced_stt_provider_key: ProviderKey | None = None
     capabilities: list[SpeechCapabilityConfigUpdate]
 
     @model_validator(mode="after")
     def validate_orders(self):
-        if not self.automatic_tts_routing_enabled and self.forced_tts_provider_key is None:
-            raise ValueError("Forced TTS mode requires a provider.")
-        if not self.automatic_stt_routing_enabled and self.forced_stt_provider_key is None:
-            raise ValueError("Forced STT mode requires a provider.")
         for service in ("tts", "stt"):
             items = [item for item in self.capabilities if item.service_type == service]
             keys = [item.provider_key for item in items]
@@ -71,9 +63,6 @@ class GlobalSpeechRoutingUpdate(BaseModel):
                 raise ValueError(f"{service.upper()} providers and priorities must be unique.")
             if not any(item.enabled for item in items):
                 raise ValueError(f"At least one {service.upper()} provider must remain enabled.")
-            forced = self.forced_tts_provider_key if service == "tts" else self.forced_stt_provider_key
-            if forced and not any(item.provider_key == forced and item.enabled for item in items):
-                raise ValueError(f"Forced {service.upper()} provider must be enabled.")
         return self
 
 

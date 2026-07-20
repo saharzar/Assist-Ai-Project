@@ -151,10 +151,6 @@ def test_admin_dashboard_and_settings_permissions(monkeypatch):
 def routing_payload(db: Session, **overrides) -> GlobalSpeechRoutingUpdate:
     capabilities = manager.ensure_capability_configs(db)
     values = {
-        "automatic_tts_routing_enabled": True,
-        "automatic_stt_routing_enabled": True,
-        "forced_tts_provider_key": None,
-        "forced_stt_provider_key": None,
         "capabilities": [
             {
                 "provider_key": item.provider_key,
@@ -174,7 +170,7 @@ def routing_payload(db: Session, **overrides) -> GlobalSpeechRoutingUpdate:
     return GlobalSpeechRoutingUpdate.model_validate(values)
 
 
-def test_global_priority_forcing_and_disabled_provider_apply_to_every_user(monkeypatch):
+def test_global_priority_and_disabled_provider_apply_to_every_user(monkeypatch):
     monkeypatch.setattr(manager, "get_settings", fake_config)
     with SpeechTestContext() as (_, db):
         admin = make_user(db, "routing-admin@example.com", "admin")
@@ -184,14 +180,6 @@ def test_global_priority_forcing_and_disabled_provider_apply_to_every_user(monke
                 item.priority = {"soniox": 1, "azure": 2, "browser": 3}[item.provider_key]
         manager.save_global_routing(db, payload, admin.id)
         assert manager.get_provider_chain(db, "stt")[0].provider == "soniox"
-
-        forced = routing_payload(
-            db,
-            automatic_stt_routing_enabled=False,
-            forced_stt_provider_key="browser",
-        )
-        manager.save_global_routing(db, forced, admin.id)
-        assert manager.get_provider_chain(db, "stt")[0].provider == "browser"
 
         automatic = routing_payload(db)
         for item in automatic.capabilities:
@@ -344,10 +332,6 @@ def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):
         assert "test-soniox-key" not in serialized
         body = response.json()
         payload = {
-            "automatic_tts_routing_enabled": body["automatic_tts_routing_enabled"],
-            "automatic_stt_routing_enabled": body["automatic_stt_routing_enabled"],
-            "forced_tts_provider_key": body["forced_tts_provider_key"],
-            "forced_stt_provider_key": body["forced_stt_provider_key"],
             "capabilities": [
                 {key: item[key] for key in (
                     "provider_key", "service_type", "enabled", "priority", "quota_limit",
@@ -372,13 +356,11 @@ def test_global_browser_routing_applies_to_guest_speech(monkeypatch):
     with SpeechTestContext() as (client, db):
         guest = client.post("/guests/session", json={"save_progress": False, "preferred_language": "en"})
         guest_token = guest.json()["guest_session_token"]
-        settings = manager.get_or_create_provider_settings(db)
-        manager.ensure_capability_configs(db)
-        settings.automatic_tts_routing_enabled = False
-        settings.forced_tts_provider_key = "browser"
-        settings.automatic_stt_routing_enabled = False
-        settings.forced_stt_provider_key = "browser"
-        db.commit()
+        admin = make_user(db, "guest-routing-admin@example.com", "admin")
+        payload = routing_payload(db)
+        for item in payload.capabilities:
+            item.priority = 1 if item.provider_key == "browser" else item.priority + 1
+        manager.save_global_routing(db, payload, admin.id)
         guest_headers = {
             "X-Guest-Session-Token": guest_token,
             "X-Browser-Speech-Supported": "true",
