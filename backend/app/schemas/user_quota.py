@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Literal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 ServiceType = Literal["tts", "stt", "both"]
 
@@ -16,7 +16,7 @@ class QuotaRequestCreate(BaseModel):
         return self
 
 class QuotaRequestReview(BaseModel):
-    action: Literal["approve", "partial", "reject"]
+    action: Literal["approve", "reject"]
     approved_tts_characters: int = Field(default=0, ge=0, le=1000000)
     approved_stt_seconds: int = Field(default=0, ge=0, le=86400)
     permanent: bool = False
@@ -40,6 +40,10 @@ class QuotaRequestRead(BaseModel):
     id: int; user_id: int; service_type: str; requested_tts_characters: int | None; requested_stt_seconds: int | None
     reason: str; status: str; admin_response: str | None; approved_tts_characters: int | None; approved_stt_seconds: int | None
     reviewed_at: datetime | None; created_at: datetime
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_legacy_status(cls, value: str) -> str:
+        return "approved" if value == "partially_approved" else value
     model_config = {"from_attributes": True}
 
 class UserQuotaRead(BaseModel):

@@ -17,6 +17,7 @@ from app.schemas.atm_analytics import (
     AtmSessionRead,
     AtmSessionStart,
     AtmSessionStartResponse,
+    AtmSessionTerminate,
 )
 from app.services.atm_analytics_service import (
     create_atm_session,
@@ -109,13 +110,14 @@ def abandon_atm_session(
 @router.post("/api/atm-sessions/{session_id}/terminate", response_model=AtmSessionRead)
 def terminate_security_session(
     session_id: str,
+    payload: AtmSessionTerminate,
     db: Session = Depends(get_db),
     authorization: str | None = Header(default=None),
     guest_token: str | None = Header(default=None, alias="X-Guest-Session-Token"),
 ) -> AtmSessionRead:
     actor = resolve_analytics_actor(db, authorization, guest_token)
     session = get_owned_session(db, session_id, actor)
-    return _session_read(terminate_atm_session(db, session))
+    return _session_read(terminate_atm_session(db, session, payload.reason))
 
 
 def _filtered_sessions_query(

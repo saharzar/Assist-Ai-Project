@@ -72,7 +72,7 @@ def apply_update(db: Session, user: User, payload: QuotaUpdate, admin_id: int, s
 def review_request(db: Session, request: QuotaIncreaseRequest, payload: QuotaRequestReview, admin_id: int) -> None:
     request = db.scalar(select(QuotaIncreaseRequest).where(QuotaIncreaseRequest.id == request.id).with_for_update())
     if request is None or request.status != "pending": raise HTTPException(409, "This request has already been reviewed.")
-    request.status = "rejected" if payload.action == "reject" else "partially_approved" if payload.action == "partial" else "approved"
+    request.status = "rejected" if payload.action == "reject" else "approved"
     request.admin_response=payload.admin_response; request.approved_tts_characters=payload.approved_tts_characters; request.approved_stt_seconds=payload.approved_stt_seconds; request.reviewed_by_admin_id=admin_id; request.reviewed_at=datetime.now(timezone.utc)
     if payload.action != "reject":
         user=db.get(User, request.user_id); update=QuotaUpdate(tts_limit_characters=None, stt_limit_seconds=None, add_tts_characters=0 if payload.permanent else payload.approved_tts_characters, add_stt_seconds=0 if payload.permanent else payload.approved_stt_seconds, reason=payload.admin_response)

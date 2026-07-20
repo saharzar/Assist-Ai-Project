@@ -67,10 +67,6 @@ export function AdminSpeechProvidersPage() {
     setSaving(true); setError(""); setSuccess("");
     try {
       const updated = await updateGlobalSpeechRouting({
-        automatic_tts_routing_enabled: draft.automatic_tts_routing_enabled,
-        automatic_stt_routing_enabled: draft.automatic_stt_routing_enabled,
-        forced_tts_provider_key: draft.forced_tts_provider_key,
-        forced_stt_provider_key: draft.forced_stt_provider_key,
         capabilities: draft.capabilities.map(({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day }) => ({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day })),
       });
       setDashboard(updated); setDraft(updated); setSuccess(labels.saved); notifySpeechProviderUpdated(updated);
@@ -105,7 +101,7 @@ export function AdminSpeechProvidersPage() {
         )}
       </div>
       {activeView === "routing" ? <>
-        <CompactProviderSection service={activeService} draft={draft} labels={labels} text={text} language={language} updateDashboard={setDraft} updateCapability={updateCapability} move={move} />
+        <CompactProviderSection service={activeService} draft={draft} labels={labels} text={text} language={language} updateCapability={updateCapability} move={move} />
         <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[44px] self-start rounded-lg bg-teal-700 px-5 text-sm font-bold text-white disabled:opacity-60">{labels.save}</button>
       </> : <CompactHistory dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />}
     </>}
@@ -118,28 +114,22 @@ type ProviderSectionProps = {
   labels: Record<string, string>;
   text: ReturnType<typeof getText>;
   language: LanguageCode;
-  updateDashboard: React.Dispatch<React.SetStateAction<GlobalSpeechDashboard | null>>;
   updateCapability: (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => void;
   move: (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => void;
 };
 
-function CompactProviderSection({ service, draft, labels, text, language, updateDashboard, updateCapability, move }: ProviderSectionProps) {
+function CompactProviderSection({ service, draft, labels, text, language, updateCapability, move }: ProviderSectionProps) {
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const items = useMemo(
     () => draft.capabilities.filter((item) => item.service_type === service).sort((a, b) => a.priority - b.priority),
     [draft.capabilities, service],
   );
-  const automaticKey = service === "tts" ? "automatic_tts_routing_enabled" : "automatic_stt_routing_enabled";
-  const forcedKey = service === "tts" ? "forced_tts_provider_key" : "forced_stt_provider_key";
   const active = service === "tts" ? draft.active_tts_provider : draft.active_stt_provider;
 
   return <section className="mt-5">
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
       <div><p className="text-xs font-bold uppercase text-slate-500">{service}</p><p className="font-bold text-teal-800">{labels.active}: {providerName(active)}</p></div>
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={Boolean(draft[automaticKey])} onChange={(event) => updateDashboard((current) => current ? { ...current, [automaticKey]: event.target.checked, ...(!event.target.checked && !current[forcedKey] ? { [forcedKey]: active } : {}) } : current)} />{labels.automatic}</label>
-        {!draft[automaticKey] && <label className="text-sm font-bold">{labels.forced}<select value={draft[forcedKey] ?? active} onChange={(event) => updateDashboard((current) => current ? { ...current, [forcedKey]: event.target.value as GlobalSpeechProvider } : current)} className="ml-2 min-h-[40px] rounded-lg border border-slate-300 px-3">{items.filter((item) => item.enabled && item.configured).map((item) => <option key={item.provider_key} value={item.provider_key}>{item.display_name}</option>)}</select></label>}
-      </div>
+      <p className="max-w-xl text-sm font-semibold text-slate-600">Requests use the first available provider in the priority order below.</p>
     </div>
     <div className="mt-3 space-y-3">{items.map((item, index) => <article key={item.provider_key} className="rounded-lg border border-slate-200 bg-white">
       <div className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(180px,1.5fr)_1fr_1fr_auto]">

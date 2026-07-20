@@ -482,7 +482,7 @@ def send_admin_quota_request_email(user: User, requested_tts: int | None, reques
     body = (
         f"{user.full_name} ({user.email}) submitted a speech quota request.\n\n"
         f"Requested TTS increase: {requested_tts or 0:,} characters\n"
-        f"Requested STT increase: {requested_stt or 0:,} seconds\n"
+        f"Requested STT increase: {(requested_stt or 0) / 60:g} minutes\n"
         f"Reason: {reason}\n\n"
         f"Review: {settings.app_frontend_url}/admin/user-quotas"
     )

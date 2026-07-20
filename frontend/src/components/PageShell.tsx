@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation } from "../i18n";
+import { speechUsageTranslations } from "../lib/speechUsageTranslations";
 import {
   getSttUsage,
   STT_USAGE_UPDATED_EVENT,
@@ -174,7 +175,7 @@ export function PageShell() {
               {t("scenarios")}
             </Link>
             {isAuthenticated && !isAdmin && (
-              <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">Speech usage</Link>
+              <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">{speechUsageTranslations[language].title}</Link>
             )}
             <label className="sr-only" htmlFor="language-select">
               {t("language")}

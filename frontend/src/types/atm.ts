@@ -23,6 +23,8 @@ export type AtmState = {
   identityVerified: boolean;
   pinWasCorrectBeforeVerification: boolean | null;
   verificationAttemptCount: number;
+  postVerificationPinFailureCount: number;
+  securityTerminationReason: "verification_failed" | "pin_failed_after_verification" | null;
   lockoutSecondsRemaining: number;
   errorMessage: string;
   assistantMessage: string;
@@ -44,6 +46,7 @@ export type AtmAction =
   | { type: "LETTER_CLEAR" }
   | { type: "LETTER_SUBMIT" }
   | { type: "LOCKOUT_TICK" }
+  | { type: "SECURITY_TICK" }
   | { type: "TRY_AGAIN" }
   | { type: "RESET" };
 

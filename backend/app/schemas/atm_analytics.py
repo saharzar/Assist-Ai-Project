@@ -45,6 +45,10 @@ class AtmSessionFinish(BaseModel):
     final_step_reached: str = Field(min_length=1, max_length=32)
 
 
+class AtmSessionTerminate(BaseModel):
+    reason: Literal["verification_failed", "pin_failed_after_verification"]
+
+
 class AtmSessionRead(BaseModel):
     session_id: str
     completion_status: AtmCompletionStatus

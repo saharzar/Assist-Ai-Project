@@ -75,6 +75,10 @@ def verification_event(
     )
 
 
+def initial_system_error(client: TestClient, session_id: str, headers: dict[str, str], event_id: str):
+    return event(client, session_id, headers, event_id, "simulated_system_error")
+
+
 def test_registered_and_consenting_guest_sessions_are_saved_but_nonconsenting_is_not():
     with test_context() as (client, db):
         user = make_user(db, email="user@example.com")
@@ -115,10 +119,12 @@ def test_first_pin_result_is_recorded_and_verification_events_are_idempotent():
         headers = auth_headers(user)
         session_id = start_session(client, headers)
 
-        pin_id = "00000000-0000-4000-8000-000000000001"
+        system_id = "00000000-0000-4000-8000-000000000001"
+        assert initial_system_error(client, session_id, headers, system_id).status_code == 200
+        assert initial_system_error(client, session_id, headers, system_id).status_code == 200
+        pin_id = "00000000-0000-4000-8000-000000000002"
         assert event(client, session_id, headers, pin_id, "incorrect").status_code == 200
-        assert event(client, session_id, headers, pin_id, "incorrect").status_code == 200
-        verification_id = "00000000-0000-4000-8000-000000000002"
+        verification_id = "00000000-0000-4000-8000-000000000003"
         assert verification_event(
             client,
             session_id,
@@ -136,7 +142,7 @@ def test_first_pin_result_is_recorded_and_verification_events_are_idempotent():
         assert session.incorrect_user_pin_count == 1
         assert session.identity_verification_attempt_count == 1
         assert session.incorrect_identity_verification_count == 1
-        assert db.query(AtmScenarioEvent).count() == 2
+        assert db.query(AtmScenarioEvent).count() == 3
 
 
 def test_completion_is_idempotent_and_duration_is_calculated_server_side():
@@ -144,6 +150,7 @@ def test_completion_is_idempotent_and_duration_is_calculated_server_side():
         user = make_user(db, email="complete@example.com")
         headers = auth_headers(user)
         session_id = start_session(client, headers)
+        assert initial_system_error(client, session_id, headers, "00000000-0000-4000-8000-000000000010").status_code == 200
         assert event(
             client,
             session_id,
@@ -192,6 +199,7 @@ def test_incorrect_first_pin_returns_to_pin_only_after_successful_verification()
         user = make_user(db, email="return@example.com")
         headers = auth_headers(user)
         session_id = start_session(client, headers)
+        assert initial_system_error(client, session_id, headers, "00000000-0000-4000-8000-000000000020").status_code == 200
         assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000021", "incorrect").status_code == 200
         blocked_pin = event(client, session_id, headers, "00000000-0000-4000-8000-000000000022", "success")
         assert blocked_pin.status_code == 409
@@ -219,6 +227,7 @@ def test_three_failed_verifications_terminate_once_and_cannot_succeed():
         user = make_user(db, email="terminated@example.com")
         headers = auth_headers(user)
         session_id = start_session(client, headers)
+        assert initial_system_error(client, session_id, headers, "00000000-0000-4000-8000-000000000030").status_code == 200
         assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000031", "success").status_code == 200
         for index in range(3):
             response = verification_event(
@@ -230,8 +239,8 @@ def test_three_failed_verifications_terminate_once_and_cannot_succeed():
             )
             assert response.status_code == 200
 
-        first = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers)
-        second = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers)
+        first = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers, json={"reason": "verification_failed"})
+        second = client.post(f"/api/atm-sessions/{session_id}/terminate", headers=headers, json={"reason": "verification_failed"})
         assert first.status_code == second.status_code == 200
         assert first.json()["security_terminated"] is True
         assert first.json()["success"] is False
@@ -244,6 +253,31 @@ def test_three_failed_verifications_terminate_once_and_cannot_succeed():
             "success",
         ).status_code == 200
         assert db.query(AtmScenarioEvent).filter(AtmScenarioEvent.event_type == "identity_verification").count() == 3
+
+
+def test_two_wrong_pins_after_verification_end_the_session_for_security():
+    with test_context() as (client, db):
+        user = make_user(db, email="pin-security@example.com")
+        headers = auth_headers(user)
+        session_id = start_session(client, headers)
+        assert initial_system_error(client, session_id, headers, "00000000-0000-4000-8000-000000000040").status_code == 200
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000041", "incorrect").status_code == 200
+        assert verification_event(client, session_id, headers, "00000000-0000-4000-8000-000000000042", "success").status_code == 200
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000043", "incorrect").status_code == 200
+        assert event(client, session_id, headers, "00000000-0000-4000-8000-000000000044", "incorrect").status_code == 200
+
+        terminated = client.post(
+            f"/api/atm-sessions/{session_id}/terminate",
+            headers=headers,
+            json={"reason": "pin_failed_after_verification"},
+        )
+        assert terminated.status_code == 200
+        assert terminated.json()["security_terminated"] is True
+        assert terminated.json()["termination_reason"] == "pin_failed_twice_after_verification"
+        session = db.scalar(select(AtmScenarioSession).where(AtmScenarioSession.public_id == session_id))
+        assert session is not None
+        assert session.incorrect_user_pin_count == 3
+        assert session.total_pin_submission_count == 3
 
 
 def test_abandoned_session_and_session_ownership_are_enforced():

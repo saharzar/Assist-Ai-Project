@@ -126,9 +126,22 @@ def record_atm_event(
 
     if payload.event_type == "pin_submission":
         if payload.pin_outcome == "simulated_system_error":
+            if locked_session.simulated_system_error_count > 0 or locked_session.total_pin_submission_count > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The simulated system error can only occur on the first PIN submission.",
+                )
+            db.add(AtmScenarioEvent(session_id=locked_session.id, client_event_id=str(payload.client_event_id), event_type=payload.event_type, event_outcome=payload.pin_outcome))
+            locked_session.simulated_system_error_count = 1
+            if payload.final_step_reached:
+                locked_session.final_step_reached = payload.final_step_reached
+            db.commit()
+            db.refresh(locked_session)
+            return locked_session
+        if locked_session.simulated_system_error_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="The simulated system error can only occur on the first PIN submission.",
+                detail="The initial simulated system error is required before PIN evaluation.",
             )
         if locked_session.total_pin_submission_count > 0 and not locked_session.identity_verification_succeeded:
             raise HTTPException(
@@ -147,7 +160,6 @@ def record_atm_event(
         locked_session.total_pin_submission_count += 1
         if locked_session.total_pin_submission_count == 1:
             locked_session.first_pin_was_correct = pin_outcome == "success"
-            locked_session.simulated_system_error_count += 1
         locked_session.retry_count = max(0, locked_session.total_pin_submission_count - 1)
         if pin_outcome == "incorrect":
             locked_session.incorrect_user_pin_count += 1
@@ -242,7 +254,7 @@ def finish_atm_session(
     db.refresh(locked_session)
     return locked_session
 
-def terminate_atm_session(db: Session, session: AtmScenarioSession) -> AtmScenarioSession:
+def terminate_atm_session(db: Session, session: AtmScenarioSession, reason: str) -> AtmScenarioSession:
     locked = db.scalar(
         select(AtmScenarioSession)
         .where(AtmScenarioSession.id == session.id)
@@ -252,10 +264,18 @@ def terminate_atm_session(db: Session, session: AtmScenarioSession) -> AtmScenar
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ATM session not found.")
     if locked.completion_status != "in_progress":
         return locked
-    if locked.incorrect_identity_verification_count < 3:
+    verification_failed = reason == "verification_failed" and locked.incorrect_identity_verification_count >= 3
+    pin_failed = (
+        reason == "pin_failed_after_verification"
+        and locked.identity_verification_succeeded
+        and locked.first_pin_was_correct is False
+        and locked.total_pin_submission_count >= 3
+        and locked.incorrect_user_pin_count >= 3
+    )
+    if not verification_failed and not pin_failed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Three failed verification attempts are required.",
+            detail="The security termination conditions have not been met.",
         )
 
     now = datetime.now(timezone.utc)
@@ -268,7 +288,11 @@ def terminate_atm_session(db: Session, session: AtmScenarioSession) -> AtmScenar
     locked.completion_status = "completed"
     locked.success = False
     locked.security_terminated = True
-    locked.termination_reason = "identity_verification_failed_three_times"
+    locked.termination_reason = (
+        "identity_verification_failed_three_times"
+        if verification_failed
+        else "pin_failed_twice_after_verification"
+    )
     locked.final_step_reached = "security_terminated"
     db.commit()
     db.refresh(locked)

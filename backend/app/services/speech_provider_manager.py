@@ -711,13 +711,9 @@ def get_provider_chain(
 ) -> list[ProviderDecision]:
     if service_type not in VALID_SERVICES:
         raise HTTPException(status_code=422, detail="Invalid speech service.")
-    settings = get_or_create_provider_settings(db)
+    get_or_create_provider_settings(db)
     configs = [item for item in ensure_capability_configs(db) if item.service_type == service_type]
-    automatic = settings.automatic_tts_routing_enabled if service_type == "tts" else settings.automatic_stt_routing_enabled
-    forced = settings.forced_tts_provider_key if service_type == "tts" else settings.forced_stt_provider_key
     ordered = sorted(configs, key=lambda item: item.priority)
-    if not automatic and forced:
-        ordered = sorted(ordered, key=lambda item: item.provider_key != forced)
     decisions: list[ProviderDecision] = []
     for capability in ordered:
         if capability.provider_key == "browser" and browser_supported is False:
@@ -730,7 +726,7 @@ def get_provider_chain(
         decisions.append(ProviderDecision(
             service_type=service_type,
             provider=capability.provider_key,
-            mode="automatic" if automatic else "forced",
+            mode="automatic",
             status="quota_reached" if quota_status == "reached" else quota_status,
             usage=usage,
             limit=capability.quota_limit or 0,
@@ -819,13 +815,6 @@ def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, adminis
     submitted = {(item.provider_key, item.service_type) for item in payload.capabilities}
     if submitted != set(existing):
         raise HTTPException(status_code=422, detail="The complete supported provider configuration is required.")
-    forced_by_service = {
-        "tts": payload.forced_tts_provider_key,
-        "stt": payload.forced_stt_provider_key,
-    }
-    for service_type, forced_key in forced_by_service.items():
-        if forced_key and (forced_key, service_type) not in existing:
-            raise HTTPException(status_code=422, detail=f"Forced {service_type.upper()} provider is unsupported.")
     for offset, item in enumerate(existing.values(), start=100):
         item.priority = offset
     db.flush()
@@ -842,10 +831,10 @@ def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, adminis
         target.switch_threshold_value = item.switch_threshold_value
         target.billing_period_type = item.billing_period_type if target.quota_type == "limited" else "no_reset"
         target.reset_day = item.reset_day if target.billing_period_type == "custom_monthly" else None
-    settings.automatic_tts_routing_enabled = payload.automatic_tts_routing_enabled
-    settings.automatic_stt_routing_enabled = payload.automatic_stt_routing_enabled
-    settings.forced_tts_provider_key = payload.forced_tts_provider_key
-    settings.forced_stt_provider_key = payload.forced_stt_provider_key
+    settings.automatic_tts_routing_enabled = True
+    settings.automatic_stt_routing_enabled = True
+    settings.forced_tts_provider_key = None
+    settings.forced_stt_provider_key = None
     settings.updated_by_admin_id = administrator_id
     settings.updated_at = utc_now()
     db.flush()
@@ -855,8 +844,8 @@ def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, adminis
         for service_type in VALID_SERVICES
     }
     for service_type in VALID_SERVICES:
-        automatic = payload.automatic_tts_routing_enabled if service_type == "tts" else payload.automatic_stt_routing_enabled
-        forced = payload.forced_tts_provider_key if service_type == "tts" else payload.forced_stt_provider_key
+        automatic = True
+        forced = None
         previous_automatic, previous_forced = previous_settings[service_type]
         changes: list[str] = []
         provider_changed = active_before[service_type] != active_after[service_type]

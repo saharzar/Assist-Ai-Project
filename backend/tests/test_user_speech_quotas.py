@@ -26,10 +26,11 @@ def test_request_duplicate_review_and_audit():
         user=make_user(db,"request@test.local");admin=make_user(db,"admin@test.local","admin");body={"service_type":"both","requested_tts_characters":800,"requested_stt_seconds":60,"reason":"I need more practice time."}
         created=client.post("/api/speech-quotas/me/requests",headers=headers(user),json=body);assert created.status_code==201
         assert client.post("/api/speech-quotas/me/requests",headers=headers(user),json=body).status_code==409
-        request_id=created.json()["id"];review={"action":"partial","approved_tts_characters":500,"approved_stt_seconds":30,"permanent":False,"admin_response":"A smaller temporary increase was approved."}
-        assert client.post(f"/api/speech-quotas/admin/requests/{request_id}/review",headers=headers(admin),json=review).status_code==200
+        request_id=created.json()["id"];review={"action":"approve","approved_tts_characters":500,"approved_stt_seconds":30,"permanent":False,"admin_response":"A smaller temporary increase was approved."}
+        reviewed=client.post(f"/api/speech-quotas/admin/requests/{request_id}/review",headers=headers(admin),json=review);assert reviewed.status_code==200
         assert client.post(f"/api/speech-quotas/admin/requests/{request_id}/review",headers=headers(admin),json=review).status_code==409
         quota=client.get("/api/speech-quotas/me",headers=headers(user)).json();assert quota["tts_extra"]==500;assert quota["stt_extra"]==30
+        assert client.get("/api/speech-quotas/me/requests",headers=headers(user)).json()[0]["status"]=="approved"
         assert db.scalar(select(QuotaAdjustmentHistory).where(QuotaAdjustmentHistory.related_request_id==request_id)) is not None
 
 def test_admin_permanent_temporary_and_restore_updates():
