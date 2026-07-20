@@ -24,6 +24,7 @@ from app.services.atm_analytics_service import (
     get_owned_session,
     record_atm_event,
     resolve_analytics_actor,
+    terminate_atm_session,
 )
 
 router = APIRouter(tags=["ATM analytics"])
@@ -40,6 +41,13 @@ def _session_read(session: AtmScenarioSession) -> AtmSessionRead:
         total_pin_submission_count=session.total_pin_submission_count,
         retry_count=session.retry_count,
         final_step_reached=session.final_step_reached,
+        first_pin_was_correct=session.first_pin_was_correct,
+        identity_verification_attempt_count=session.identity_verification_attempt_count,
+        incorrect_identity_verification_count=session.incorrect_identity_verification_count,
+        identity_verification_succeeded=session.identity_verification_succeeded,
+        returned_to_pin_after_verification=session.returned_to_pin_after_verification,
+        security_terminated=session.security_terminated,
+        termination_reason=session.termination_reason,
     )
 
 
@@ -97,6 +105,17 @@ def abandon_atm_session(
     actor = resolve_analytics_actor(db, authorization, guest_token)
     session = get_owned_session(db, session_id, actor)
     return _session_read(finish_atm_session(db, session, payload.final_step_reached, success=False))
+
+@router.post("/api/atm-sessions/{session_id}/terminate", response_model=AtmSessionRead)
+def terminate_security_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    authorization: str | None = Header(default=None),
+    guest_token: str | None = Header(default=None, alias="X-Guest-Session-Token"),
+) -> AtmSessionRead:
+    actor = resolve_analytics_actor(db, authorization, guest_token)
+    session = get_owned_session(db, session_id, actor)
+    return _session_read(terminate_atm_session(db, session))
 
 
 def _filtered_sessions_query(
@@ -176,6 +195,13 @@ def _admin_session_rows(db: Session, query: Select) -> list[AtmAdminSessionRead]
                 used_voice_input=item.used_voice_input,
                 used_keyboard_input=item.used_keyboard_input,
                 final_step_reached=item.final_step_reached,
+                first_pin_was_correct=item.first_pin_was_correct,
+                identity_verification_attempt_count=item.identity_verification_attempt_count,
+                incorrect_identity_verification_count=item.incorrect_identity_verification_count,
+                identity_verification_succeeded=item.identity_verification_succeeded,
+                returned_to_pin_after_verification=item.returned_to_pin_after_verification,
+                security_terminated=item.security_terminated,
+                termination_reason=item.termination_reason,
             )
         )
     return rows
@@ -232,6 +258,13 @@ def get_atm_analytics_summary(
         average_retries=average([item.retry_count for item in sessions]),
         registered_user_sessions=sum(item.user_id is not None for item in sessions),
         consenting_guest_sessions=sum(item.guest_session_id is not None for item in sessions),
+        unsuccessful_sessions=sum(item.completion_status == "completed" and not item.success for item in sessions),
+        security_terminated_sessions=sum(item.security_terminated for item in sessions),
+        average_pin_attempts=average([item.total_pin_submission_count for item in sessions]),
+        average_verification_attempts=average([item.identity_verification_attempt_count for item in sessions]),
+        returned_to_pin_sessions=sum(item.returned_to_pin_after_verification for item in sessions),
+        correct_first_pin_sessions=sum(item.first_pin_was_correct is True for item in sessions),
+        incorrect_first_pin_sessions=sum(item.first_pin_was_correct is False for item in sessions),
     )
 
 

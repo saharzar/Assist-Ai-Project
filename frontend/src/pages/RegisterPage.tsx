@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import type { UserCategory } from "../services/authService";
@@ -11,7 +12,7 @@ const categoryOptions: Array<{ value: UserCategory; labelKey: "personalUser" | "
 ];
 
 export function RegisterPage() {
-  const { register } = useAuth();
+  const { isAuthenticated, register } = useAuth();
   const { language, t } = useTranslation();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,6 +24,10 @@ export function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (isAuthenticated) {
+    return <Navigate to="/scenarios" replace />;
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

@@ -145,19 +145,7 @@ export function PageShell() {
             <span>ASSIST-AI</span>
           </Link>
           <div className="flex items-center gap-3">
-            {isAdmin && speechProviders && (
-              <Link
-                to="/admin/speech-providers"
-                className="hidden min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 2xl:inline-flex"
-                aria-label={`TTS: ${speechProviders.active_tts_provider}. STT: ${speechProviders.active_stt_provider}.`}
-              >
-                <span className="h-2 w-2 rounded-full bg-teal-400" aria-hidden="true" />
-                {providerLabel(speechProviders.active_tts_provider)} TTS
-                <span className="text-slate-300" aria-hidden="true">|</span>
-                {providerLabel(speechProviders.active_stt_provider)} STT
-              </Link>
-            )}
-            {ttsUsage && (
+            {ttsUsage && !isAdmin && (
               <div
                 className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm lg:inline-flex"
                 aria-label={`${t("voiceCredits")}: ${ttsUsage.remaining} left from ${ttsUsage.limit}`}
@@ -168,7 +156,7 @@ export function PageShell() {
                 {ttsUsage.limit.toLocaleString()}
               </div>
             )}
-            {sttUsage && (
+            {sttUsage && !isAdmin && (
               <div
                 className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm xl:inline-flex"
                 aria-label={`${t("speechCredits")}: ${formatSeconds(sttUsage.remaining)} left from ${formatSeconds(sttUsage.limit)}`}
@@ -185,6 +173,9 @@ export function PageShell() {
             >
               {t("scenarios")}
             </Link>
+            {isAuthenticated && !isAdmin && (
+              <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">Speech usage</Link>
+            )}
             <label className="sr-only" htmlFor="language-select">
               {t("language")}
             </label>
@@ -202,17 +193,9 @@ export function PageShell() {
             </select>
             {hasSession ? (
               <>
-                {isAdmin && (
-                  <Link
-                    to="/admin/users"
-                    className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 md:inline-flex"
-                  >
-                    {t("adminUsers")}
-                  </Link>
-                )}
                 <Link
                   to="/profile"
-                  className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                  className="inline-flex min-h-[44px] items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 >
                   {t("profile")}
                 </Link>
@@ -234,6 +217,24 @@ export function PageShell() {
             )}
           </div>
         </nav>
+        {isAdmin && (
+          <nav aria-label="Admin navigation" className="border-t border-slate-100 bg-slate-50/95">
+            <div className="mx-auto flex min-h-[46px] max-w-6xl items-center justify-between gap-4 overflow-x-auto px-5">
+              <div className="flex h-full items-center gap-1">
+                <AdminNavLink to="/admin/users" label={adminMenuText(language).users} active={location.pathname === "/admin/users"} />
+                <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics")} />
+                <AdminNavLink to="/admin/speech-providers" label={adminMenuText(language).speech} active={location.pathname === "/admin/speech-providers"} />
+                <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />
+              </div>
+              {speechProviders && (
+                <Link to="/admin/speech-providers" className="hidden shrink-0 items-center gap-2 text-xs font-bold text-slate-600 lg:flex">
+                  <span className="h-2 w-2 rounded-full bg-teal-400" />
+                  TTS {providerLabel(speechProviders.active_tts_provider)} / STT {providerLabel(speechProviders.active_stt_provider)}
+                </Link>
+              )}
+            </div>
+          </nav>
+        )}
       </header>
       <main
         className={`mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 ${
@@ -263,4 +264,27 @@ function formatResetDate(resetDate: string) {
 
 function providerLabel(provider: GlobalSpeechProvider) {
   return provider === "azure" ? "Azure" : provider === "soniox" ? "Soniox" : "Browser";
+}
+
+function AdminNavLink({ to, label, active }: { to: string; label: string; active: boolean }) {
+  return (
+    <Link
+      to={to}
+      className={`inline-flex min-h-[45px] shrink-0 items-center border-b-2 px-3 text-sm font-bold transition-colors ${active ? "border-teal-600 text-teal-800" : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"}`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function adminMenuText(language: string) {
+  const copy: Record<string, { users: string; analytics: string; speech: string; quotas: string }> = {
+    en: { users: "Users", analytics: "Scenario analytics", speech: "Speech providers", quotas: "User quotas" },
+    es: { users: "Usuarios", analytics: "Analitica de escenarios", speech: "Proveedores de voz", quotas: "Cuotas" },
+    de: { users: "Benutzer", analytics: "Szenarioanalysen", speech: "Sprachanbieter", quotas: "Kontingente" },
+    tr: { users: "Kullanicilar", analytics: "Senaryo analizleri", speech: "Konusma saglayicilari", quotas: "Kullanici kotalari" },
+    pt: { users: "Utilizadores", analytics: "Analise de cenarios", speech: "Provedores de voz", quotas: "Cotas" },
+    fr: { users: "Utilisateurs", analytics: "Analyse des scenarios", speech: "Fournisseurs vocaux", quotas: "Quotas" },
+  };
+  return copy[language] ?? copy.en;
 }

@@ -63,6 +63,11 @@ type AtmTranslation = {
   retryPinAfterLettersAssistant: (pin: string) => string;
   lockoutAssistant: string;
   successAssistant: string;
+  securityMessage: string;
+  securityTerminatedTitle: string;
+  securityTerminatedBody: string;
+  securityTerminatedAssistant: string;
+  returnToStart: string;
   speechNameUnsupported: string;
   speechNameStartError: string;
   speechPinUnsupported: string;
@@ -136,6 +141,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Thank you. Please enter the practice password again: ${pin}.`,
     lockoutAssistant: "There is a temporary problem. Please wait calmly before trying again.",
     successAssistant: "Well done. You completed this ATM practice step successfully.",
+    securityMessage: "For your security, we need to verify your identity before continuing.",
+    securityTerminatedTitle: "Session Ended",
+    securityTerminatedBody: "For your security, this ATM session ended because the verification information did not match after three attempts.",
+    securityTerminatedAssistant: "For your security, this ATM session has ended. Please start again.",
+    returnToStart: "Return to Start",
     speechNameUnsupported: "Voice input is not supported in this browser. Please type your name.",
     speechNameStartError: "Voice input could not start. Please try again or type your name.",
     speechPinUnsupported: "Voice input is not supported in this browser. Please use the keypad.",
@@ -207,6 +217,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Gracias. Ingresa otra vez la contrasena de practica ${pin}.`,
     lockoutAssistant: "Hay un problema temporal. Espera con calma antes de intentarlo de nuevo.",
     successAssistant: "Bien hecho. Completaste este paso de practica del cajero.",
+    securityMessage: "Por tu seguridad, necesitamos verificar tu identidad antes de continuar.",
+    securityTerminatedTitle: "Sesion finalizada",
+    securityTerminatedBody: "Por tu seguridad, la sesion termino despues de tres intentos de verificacion incorrectos.",
+    securityTerminatedAssistant: "Por tu seguridad, esta sesion ha terminado. Vuelve a empezar.",
+    returnToStart: "Volver al inicio",
     speechNameUnsupported: "La entrada de voz no es compatible en este navegador. Escribe tu nombre.",
     speechNameStartError: "La entrada de voz no pudo iniciar. Intenta de nuevo o escribe tu nombre.",
     speechPinUnsupported: "La entrada de voz no es compatible en este navegador. Usa el teclado.",
@@ -278,6 +293,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Danke. Bitte gib das Uebungspasswort erneut ein: ${pin}.`,
     lockoutAssistant: "Es gibt ein voruebergehendes Problem. Bitte warte ruhig, bevor du es erneut versuchst.",
     successAssistant: "Gut gemacht. Du hast diesen Geldautomaten-Schritt erfolgreich abgeschlossen.",
+    securityMessage: "Zu deiner Sicherheit mussen wir deine Identitat prufen, bevor es weitergeht.",
+    securityTerminatedTitle: "Sitzung beendet",
+    securityTerminatedBody: "Zu deiner Sicherheit wurde die Sitzung nach drei nicht passenden Verifizierungsversuchen beendet.",
+    securityTerminatedAssistant: "Zu deiner Sicherheit wurde diese Sitzung beendet. Bitte starte erneut.",
+    returnToStart: "Zum Start zuruck",
     speechNameUnsupported: "Spracheingabe wird in diesem Browser nicht unterstuetzt. Bitte tippe deinen Namen.",
     speechNameStartError: "Spracheingabe konnte nicht starten. Versuche es erneut oder tippe deinen Namen.",
     speechPinUnsupported: "Spracheingabe wird in diesem Browser nicht unterstuetzt. Bitte nutze das Tastenfeld.",
@@ -349,6 +369,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Teşekkürler. Lütfen pratik şifresini tekrar gir: ${pin}.`,
     lockoutAssistant: "Geçici bir problem var. Tekrar denemeden önce lütfen sakin şekilde bekle.",
     successAssistant: "Aferin. Bu ATM pratik adımını başarıyla tamamladın.",
+    securityMessage: "Guvenligin icin devam etmeden once kimligini dogrulamamiz gerekiyor.",
+    securityTerminatedTitle: "Oturum sona erdi",
+    securityTerminatedBody: "Guvenligin icin, dogrulama bilgileri uc kez eslesmedigi icin bu ATM oturumu sona erdi.",
+    securityTerminatedAssistant: "Guvenligin icin bu ATM oturumu sona erdi. Lutfen yeniden basla.",
+    returnToStart: "Baslangica don",
     speechNameUnsupported: "Bu tarayıcıda ses girişi desteklenmiyor. Lütfen adını yaz.",
     speechNameStartError: "Ses girişi başlatılamadı. Lütfen tekrar dene veya adını yaz.",
     speechPinUnsupported: "Bu tarayıcıda ses girişi desteklenmiyor. Lütfen tuş takımını kullan.",
@@ -420,6 +445,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Obrigado. Digite novamente a senha de pratica ${pin}.`,
     lockoutAssistant: "Ha um problema temporario. Aguarde com calma antes de tentar novamente.",
     successAssistant: "Muito bem. Voce completou este passo da pratica de ATM.",
+    securityMessage: "Para sua seguranca, precisamos verificar sua identidade antes de continuar.",
+    securityTerminatedTitle: "Sessao terminada",
+    securityTerminatedBody: "Para sua seguranca, a sessao terminou apos tres tentativas de verificacao incorretos.",
+    securityTerminatedAssistant: "Para sua seguranca, esta sessao terminou. Comece novamente.",
+    returnToStart: "Voltar ao inicio",
     speechNameUnsupported: "Entrada de voz nao suportada neste navegador. Digite seu nome.",
     speechNameStartError: "A entrada de voz nao conseguiu iniciar. Tente novamente ou digite seu nome.",
     speechPinUnsupported: "Entrada de voz nao suportada neste navegador. Use o teclado.",
@@ -491,6 +521,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     retryPinAfterLettersAssistant: (pin) => `Merci. Entre encore une fois le mot de passe d'entrainement ${pin}.`,
     lockoutAssistant: "Il y a un probleme temporaire. Attends calmement avant de reessayer.",
     successAssistant: "Bravo. Tu as termine cette etape d'entrainement DAB.",
+    securityMessage: "Pour ta securite, nous devons verifier ton identite avant de continuer.",
+    securityTerminatedTitle: "Session terminee",
+    securityTerminatedBody: "Pour ta securite, la session a pris fin apres trois tentatives de verification incorrectes.",
+    securityTerminatedAssistant: "Pour ta securite, cette session est terminee. Recommence depuis le debut.",
+    returnToStart: "Retour au debut",
     speechNameUnsupported: "L'entree vocale n'est pas prise en charge dans ce navigateur. Ecris ton nom.",
     speechNameStartError: "L'entree vocale n'a pas pu demarrer. Reessaie ou ecris ton nom.",
     speechPinUnsupported: "L'entree vocale n'est pas prise en charge dans ce navigateur. Utilise le clavier.",

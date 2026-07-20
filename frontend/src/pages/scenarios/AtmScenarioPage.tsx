@@ -24,6 +24,7 @@ import {
   completeAtmAnalyticsSession,
   recordAtmAnalyticsEvent,
   startAtmAnalyticsSession,
+  terminateAtmAnalyticsSession,
   type AtmInputMode,
   type AtmPinOutcome,
 } from "../../services/atmAnalyticsService";
@@ -32,6 +33,10 @@ import {
   isSpeechRecognitionSupported,
 } from "../../services/speechRecognitionService";
 import { getSttUsage, type SttUsage } from "../../services/sttUsageService";
+import {
+  SPEECH_PROVIDER_USED_EVENT,
+  type GlobalSpeechProvider,
+} from "../../services/speechProviderService";
 import {
   playSuccessSound,
   speakAssistantMessage,
@@ -70,6 +75,7 @@ export function AtmScenarioPage() {
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
   const recordedInputModesRef = useRef<Set<AtmInputMode>>(new Set());
+  const activeSttProviderRef = useRef<GlobalSpeechProvider | null>(null);
   const analyticsCredentialsRef = useRef<{
     token: string | null;
     guestToken: string | null;
@@ -120,12 +126,28 @@ export function AtmScenarioPage() {
           client_event_id: crypto.randomUUID(),
           event_type: "input_mode",
           input_mode: inputMode,
-          stt_provider: inputMode === "voice" ? "azure" : undefined,
+          stt_provider: inputMode === "voice" ? activeSttProviderRef.current ?? undefined : undefined,
         }),
       );
     },
     [enqueueAnalytics],
   );
+
+  useEffect(() => {
+    const rememberProvider = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          serviceType: "tts" | "stt";
+          provider: GlobalSpeechProvider;
+        }>
+      ).detail;
+      if (detail.serviceType === "stt") {
+        activeSttProviderRef.current = detail.provider;
+      }
+    };
+    window.addEventListener(SPEECH_PROVIDER_USED_EVENT, rememberProvider);
+    return () => window.removeEventListener(SPEECH_PROVIDER_USED_EVENT, rememberProvider);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -158,6 +180,8 @@ export function AtmScenarioPage() {
     if (state.status === "success") {
       return text.successAssistant;
     }
+    if (state.status === "security_message") return text.securityMessage;
+    if (state.status === "security_terminated") return text.securityTerminatedAssistant;
     if (state.status === "pin_attempt") {
       if (state.errorMessage) {
         return text.systemProblemAssistant(state.demoPin);
@@ -168,7 +192,7 @@ export function AtmScenarioPage() {
       return text.pinAssistant(state.demoPin);
     }
     if (state.status === "letter_check") {
-      return state.errorMessage ? text.letterIncompleteAssistant : text.letterCheckAssistant;
+      return state.errorMessage ? state.errorMessage : text.letterCheckAssistant;
     }
     if (state.status === "lockout") {
       return text.lockoutAssistant;
@@ -197,7 +221,7 @@ export function AtmScenarioPage() {
       return text.systemProblemError;
     }
     if (state.status === "letter_check") {
-      return text.letterIncompleteError;
+      return state.errorMessage.toLowerCase().includes("match") ? state.errorMessage : text.letterIncompleteError;
     }
     return state.errorMessage;
   }, [state.currentPinInput.length, state.errorMessage, state.status, text]);
@@ -265,6 +289,9 @@ export function AtmScenarioPage() {
       });
       return;
     }
+    if(state.status==="security_terminated"){
+      enqueueAnalytics(async(sessionId)=>{await terminateAtmAnalyticsSession(sessionId);if(analyticsSessionIdRef.current===sessionId){analyticsSessionIdRef.current=null;analyticsStartRef.current=null;}});return;
+    }
     enqueueAnalytics((sessionId) =>
       recordAtmAnalyticsEvent(sessionId, {
         client_event_id: crypto.randomUUID(),
@@ -273,6 +300,8 @@ export function AtmScenarioPage() {
       }),
     );
   }, [enqueueAnalytics, state.status]);
+
+  useEffect(()=>{if(state.status!=="security_message")return;const timer=window.setTimeout(()=>dispatch({type:"SHOW_VERIFICATION"}),1400);return()=>window.clearTimeout(timer)},[state.status]);
 
   useEffect(() => {
     if (state.status !== "lockout" || state.lockoutSecondsRemaining === 0) {
@@ -639,18 +668,18 @@ export function AtmScenarioPage() {
           <AtmLetterCheckScreen
             letterInput={state.letterInput}
             errorMessage={displayedErrorMessage}
-            firstName={state.firstName}
-            lastName={state.lastName}
             labels={{
               title: text.letterTitle,
               hint: text.letterHint,
-              firstName: text.firstName,
-              lastName: text.lastName,
               lettersEntered: text.lettersEntered,
               lettersAria: text.lettersAria,
             }}
           />
         );
+      case "security_message":
+        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-teal-700">Security check</p><h1 className="mt-2 text-2xl font-bold text-slate-950">Please wait</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityMessage}</p></div>;
+      case "security_terminated":
+        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-rose-700">Security verification</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityTerminatedTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityTerminatedBody}</p><button type="button" onClick={()=>{stopSpeech();dispatch({type:"RESET"})}} className="mt-5 min-h-11 w-fit rounded-lg bg-slate-900 px-5 font-bold text-white">{text.returnToStart}</button></div>;
 
       case "lockout":
         return (
@@ -780,9 +809,7 @@ export function AtmScenarioPage() {
         if (state.status === "pin_attempt") {
           if (state.currentPinInput.length === 4) {
             let pinOutcome: AtmPinOutcome = "incorrect";
-            if (state.pinAttemptCount === 0) {
-              pinOutcome = "simulated_system_error";
-            } else if (state.currentPinInput === state.demoPin) {
+            if (state.currentPinInput === state.demoPin) {
               pinOutcome = "success";
             }
             enqueueAnalytics((sessionId) =>
@@ -790,13 +817,14 @@ export function AtmScenarioPage() {
                 client_event_id: crypto.randomUUID(),
                 event_type: "pin_submission",
                 pin_outcome: pinOutcome,
-                final_step_reached: pinOutcome === "success" ? "success" : state.status,
+                final_step_reached: state.pinAttemptCount===0 ? "security_message" : pinOutcome === "success" ? "success" : state.status,
               }),
             );
           }
           dispatch({ type: "PIN_SUBMIT" });
         }
         if (state.status === "letter_check") {
+          if(state.letterInput.length===2){const expected=`${state.expectedSecondLetter}${state.expectedLastLetter}`.normalize("NFC").toLocaleLowerCase();const correct=state.letterInput.trim().normalize("NFC").toLocaleLowerCase()===expected;enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"identity_verification",verification_outcome:correct?"success":"failed",final_step_reached:correct?(state.pinWasCorrectBeforeVerification?"success":"pin_attempt"):(state.verificationAttemptCount+1>=3?"security_terminated":"letter_check")}));if(correct&&state.pinWasCorrectBeforeVerification===false)enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"returned_to_pin",final_step_reached:"pin_attempt"}));}
           dispatch({ type: "LETTER_SUBMIT" });
         }
       }}

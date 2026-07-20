@@ -21,6 +21,7 @@ export type AtmAnalyticsSummary = {
   average_retries: number;
   registered_user_sessions: number;
   consenting_guest_sessions: number;
+  unsuccessful_sessions:number;security_terminated_sessions:number;average_pin_attempts:number;average_verification_attempts:number;returned_to_pin_sessions:number;correct_first_pin_sessions:number;incorrect_first_pin_sessions:number;
 };
 
 export type AtmAnalyticsSession = {
@@ -43,6 +44,7 @@ export type AtmAnalyticsSession = {
   used_voice_input: boolean;
   used_keyboard_input: boolean;
   final_step_reached: string;
+  first_pin_was_correct:boolean|null;identity_verification_attempt_count:number;incorrect_identity_verification_count:number;identity_verification_succeeded:boolean;returned_to_pin_after_verification:boolean;security_terminated:boolean;termination_reason:string|null;
 };
 
 function queryString(filters: AtmAnalyticsFilters) {

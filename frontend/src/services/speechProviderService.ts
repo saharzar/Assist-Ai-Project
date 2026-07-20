@@ -79,7 +79,7 @@ export type SpeechCapability = {
   provider_key: GlobalSpeechProvider; display_name: string; service_type: "tts" | "stt";
   enabled: boolean; available: boolean; configured: boolean; priority: number;
   quota_type: "limited" | "unlimited"; quota_limit: number | null; usage_unit: string;
-  warning_threshold_percent: number; switch_threshold_percent: number;
+  warning_threshold_value: number; switch_threshold_value: number;
   billing_period_type: "calendar_month" | "custom_monthly" | "no_reset" | "manual";
   reset_day: number | null; health_status: string; quota_status: string; used: number;
   remaining: number | null; usage_percent: number | null; period_start: string;
@@ -101,7 +101,7 @@ export type GlobalSpeechRoutingUpdate = Pick<GlobalSpeechDashboard,
 > & {
   capabilities: Array<Pick<SpeechCapability,
     "provider_key" | "service_type" | "enabled" | "priority" | "quota_limit" |
-    "warning_threshold_percent" | "switch_threshold_percent" | "billing_period_type" | "reset_day"
+    "warning_threshold_value" | "switch_threshold_value" | "billing_period_type" | "reset_day"
   >>;
 };
 

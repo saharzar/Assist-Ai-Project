@@ -13,6 +13,8 @@ from app.services.email_service import (
     send_account_request_received_email,
     send_admin_new_account_notification,
 )
+from app.services.stt_service import get_or_create_stt_usage
+from app.services.tts_service import get_or_create_tts_usage
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,6 +36,9 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)) -> Registe
         is_active=False,
     )
     db.add(user)
+    db.flush()
+    get_or_create_tts_usage(db, user.id)
+    get_or_create_stt_usage(db, user.id)
     db.commit()
     db.refresh(user)
 

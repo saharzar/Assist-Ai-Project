@@ -3,7 +3,9 @@ export type AtmScenarioStatus =
   | "enter_name"
   | "confirm_name"
   | "pin_attempt"
+  | "security_message"
   | "letter_check"
+  | "security_terminated"
   | "lockout"
   | "success";
 
@@ -19,6 +21,8 @@ export type AtmState = {
   pinAttemptCount: number;
   letterInput: string;
   identityVerified: boolean;
+  pinWasCorrectBeforeVerification: boolean | null;
+  verificationAttemptCount: number;
   lockoutSecondsRemaining: number;
   errorMessage: string;
   assistantMessage: string;
@@ -34,6 +38,7 @@ export type AtmAction =
   | { type: "PIN_BACKSPACE" }
   | { type: "PIN_CLEAR" }
   | { type: "PIN_SUBMIT" }
+  | { type: "SHOW_VERIFICATION" }
   | { type: "LETTER_INPUT"; letter: string }
   | { type: "LETTER_BACKSPACE" }
   | { type: "LETTER_CLEAR" }

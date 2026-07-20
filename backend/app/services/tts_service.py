@@ -14,6 +14,9 @@ from app.core.config import get_settings
 from app.models.tts_audio_cache import TtsAudioCache
 from app.models.tts_usage import UserTtsUsage
 from app.services.soniox_service import synthesize_soniox_tts
+from app.services.quota_period_service import archive_usage
+from app.services.user_quota_notification_service import notify_threshold
+from app.services.quota_defaults_service import get_quota_defaults
 
 AZURE_TTS_VOICES = {
     "en": "en-US-JennyNeural",
@@ -202,15 +205,19 @@ def get_next_weekly_reset_date() -> date:
     return datetime.now(timezone.utc).date() + timedelta(days=7)
 
 
-def reset_tts_usage_if_due(usage: UserTtsUsage) -> None:
+def reset_tts_usage_if_due(db: Session, usage: UserTtsUsage) -> None:
     today = datetime.now(timezone.utc).date()
     if usage.tts_reset_date is None:
-        usage.tts_reset_date = today + timedelta(days=7)
+        usage.period_start = today
+        usage.tts_reset_date = today + (timedelta(days=30) if usage.period_type == "monthly" else timedelta(days=7))
         return
 
     if usage.tts_reset_date <= today:
+        archive_usage(db, usage.user_id, usage.period_start, usage.tts_reset_date, tts_used=usage.tts_used_characters)
         usage.tts_used_characters = 0
-        usage.tts_reset_date = today + timedelta(days=7)
+        usage.extra_characters = 0
+        usage.period_start = today
+        usage.tts_reset_date = today + (timedelta(days=30) if usage.period_type == "monthly" else timedelta(days=7))
         usage.updated_at = datetime.now(timezone.utc)
 
 
@@ -222,14 +229,17 @@ def get_or_create_tts_usage(db: Session, user_id: int) -> UserTtsUsage:
         .with_for_update(),
     )
     if usage is not None:
-        reset_tts_usage_if_due(usage)
+        reset_tts_usage_if_due(db, usage)
         return usage
 
+    defaults = get_quota_defaults(db)
     usage = UserTtsUsage(
         user_id=user_id,
-        tts_limit_characters=settings.tts_default_limit_characters,
+        tts_limit_characters=defaults.tts_limit_characters,
         tts_used_characters=0,
         tts_reset_date=get_next_weekly_reset_date(),
+        period_type=defaults.period_type,
+        period_start=datetime.now(timezone.utc).date(),
     )
     db.add(usage)
     db.flush()
@@ -238,11 +248,12 @@ def get_or_create_tts_usage(db: Session, user_id: int) -> UserTtsUsage:
 
 def get_tts_usage_snapshot(db: Session, user_id: int) -> TtsUsageSnapshot:
     usage = get_or_create_tts_usage(db, user_id)
-    remaining = usage.tts_limit_characters - usage.tts_used_characters
+    limit = usage.tts_limit_characters + usage.extra_characters
+    remaining = max(0, limit - usage.tts_used_characters)
     return TtsUsageSnapshot(
         used_characters=usage.tts_used_characters,
         remaining_characters=remaining,
-        limit_characters=usage.tts_limit_characters,
+        limit_characters=limit,
         reset_date=usage.tts_reset_date or get_next_weekly_reset_date(),
     )
 
@@ -251,23 +262,28 @@ def reserve_tts_characters(db: Session, user_id: int, character_count: int) -> T
     try:
         usage = get_or_create_tts_usage(db, user_id)
 
-        remaining = usage.tts_limit_characters - usage.tts_used_characters
+        if not usage.enabled:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Speech access is disabled for this account.")
+        limit = usage.tts_limit_characters + usage.extra_characters
+        remaining = limit - usage.tts_used_characters
         if remaining < character_count:
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="TTS credit limit reached",
+                detail="You have reached your current speech allowance. Continue with keyboard input or request additional access.",
             )
 
         usage.tts_used_characters += character_count
         usage.updated_at = datetime.now(timezone.utc)
+        notify_threshold(db, user_id, "tts", usage.tts_used_characters, limit, str(usage.period_start))
         db.commit()
         db.refresh(usage)
 
         return TtsReservation(
             characters_used=character_count,
-            remaining_characters=usage.tts_limit_characters - usage.tts_used_characters,
-            limit_characters=usage.tts_limit_characters,
+            remaining_characters=limit - usage.tts_used_characters,
+            limit_characters=limit,
         )
     except IntegrityError as exc:
         db.rollback()

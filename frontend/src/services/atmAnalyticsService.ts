@@ -10,11 +10,12 @@ type SessionStartResponse = {
 
 type SessionEvent = {
   client_event_id: string;
-  event_type: "progress" | "pin_submission" | "input_mode";
+  event_type: "progress" | "pin_submission" | "input_mode" | "identity_verification" | "returned_to_pin";
   pin_outcome?: AtmPinOutcome;
   final_step_reached?: string;
   input_mode?: AtmInputMode;
   stt_provider?: string;
+  verification_outcome?: "failed" | "success";
 };
 
 function guestHeaders() {
@@ -57,6 +58,12 @@ export function completeAtmAnalyticsSession(sessionId: string, finalStep: string
     method: "POST",
     headers: guestHeaders(),
     body: JSON.stringify({ final_step_reached: finalStep }),
+  });
+}
+export function terminateAtmAnalyticsSession(sessionId: string) {
+  return apiRequest(`/api/atm-sessions/${sessionId}/terminate`, {
+    method: "POST",
+    headers: guestHeaders(),
   });
 }
 

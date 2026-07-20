@@ -168,6 +168,8 @@ def _capability_read(db: Session, item: SpeechProviderCapabilityConfig) -> Speec
         usage_unit=item.usage_unit,
         warning_threshold_percent=item.warning_threshold_percent,
         switch_threshold_percent=item.switch_threshold_percent,
+        warning_threshold_value=item.warning_threshold_value,
+        switch_threshold_value=item.switch_threshold_value,
         billing_period_type=item.billing_period_type,
         reset_day=item.reset_day,
         health_status=item.health_status,
