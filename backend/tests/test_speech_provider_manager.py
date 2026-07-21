@@ -134,12 +134,12 @@ def test_admin_dashboard_and_settings_permissions(monkeypatch):
             warning_threshold_percent=75,
             switch_threshold_percent=90,
         ).model_dump()
-        assert client.put("/admin/speech-providers/settings", headers=headers(user), json=payload).status_code == 403
-        updated = client.put("/admin/speech-providers/settings", headers=headers(admin), json=payload)
+        assert client.put("/api/admin/speech-providers/settings", headers=headers(user), json=payload).status_code == 403
+        updated = client.put("/api/admin/speech-providers/settings", headers=headers(admin), json=payload)
         assert updated.status_code == 200
         assert updated.json()["tts_mode"] == "browser"
 
-        dashboard = client.get("/admin/speech-providers", headers=headers(admin))
+        dashboard = client.get("/api/admin/speech-providers", headers=headers(admin))
         assert dashboard.status_code == 200
         body = dashboard.json()
         assert body["estimate_notice"] == "Estimated Azure usage based on ASSIST-AI requests."
@@ -324,8 +324,8 @@ def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):
     with SpeechTestContext() as (client, db):
         user = make_user(db, "global-user@example.com")
         admin = make_user(db, "global-admin@example.com", "admin")
-        assert client.get("/admin/speech-providers/global", headers=headers(user)).status_code == 403
-        response = client.get("/admin/speech-providers/global", headers=headers(admin))
+        assert client.get("/api/admin/speech-providers/global", headers=headers(user)).status_code == 403
+        response = client.get("/api/admin/speech-providers/global", headers=headers(admin))
         assert response.status_code == 200
         serialized = response.text.lower()
         assert "test-key" not in serialized
@@ -344,8 +344,8 @@ def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):
         stt_items = [item for item in payload["capabilities"] if item["service_type"] == "stt"]
         for item in stt_items:
             item["priority"] = {"soniox": 1, "azure": 2, "browser": 3}[item["provider_key"]]
-        denied = client.put("/admin/speech-providers/global", headers=headers(user), json=payload)
-        updated = client.put("/admin/speech-providers/global", headers=headers(admin), json=payload)
+        denied = client.put("/api/admin/speech-providers/global", headers=headers(user), json=payload)
+        updated = client.put("/api/admin/speech-providers/global", headers=headers(admin), json=payload)
         assert denied.status_code == 403
         assert updated.status_code == 200
         assert updated.json()["active_stt_provider"] == "soniox"

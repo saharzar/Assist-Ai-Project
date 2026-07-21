@@ -308,10 +308,10 @@ def test_admin_analytics_requires_admin_and_returns_history():
         admin = make_user(db, email="admin@example.com", role="admin")
         start_session(client, auth_headers(user))
 
-        denied = client.get("/admin/atm-analytics/summary", headers=auth_headers(user))
+        denied = client.get("/api/admin/atm-analytics/summary", headers=auth_headers(user))
         assert denied.status_code == 403
-        summary = client.get("/admin/atm-analytics/summary", headers=auth_headers(admin))
-        sessions = client.get("/admin/atm-analytics/sessions", headers=auth_headers(admin))
+        summary = client.get("/api/admin/atm-analytics/summary", headers=auth_headers(admin))
+        sessions = client.get("/api/admin/atm-analytics/sessions", headers=auth_headers(admin))
         assert summary.status_code == sessions.status_code == 200
         assert summary.json()["total_sessions"] == 1
         assert sessions.json()[0]["display_name"] == "Registered User"

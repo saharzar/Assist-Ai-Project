@@ -17,7 +17,7 @@ from app.services.email_service import (
     send_email,
 )
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 AllowedStatus = Query(default="pending", pattern="^(pending|approved|denied|suspended|all)$")
 

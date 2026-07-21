@@ -10,7 +10,7 @@ type ScenarioCardProps = {
 };
 
 export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isGuest } = useAuth();
   const { t } = useTranslation();
   const formattedId = Number(scenario.id).toString().padStart(2, "0");
 
@@ -45,8 +45,8 @@ export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
       </div>
       {isAvailable ? (
         <Link
-          to={isAuthenticated ? `/scenario/${scenario.slug}` : "/login"}
-          state={isAuthenticated ? undefined : { from: `/scenario/${scenario.slug}` }}
+          to={isAuthenticated || isGuest ? `/scenario/${scenario.slug}` : "/login"}
+          state={isAuthenticated || isGuest ? undefined : { from: `/scenario/${scenario.slug}` }}
           className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-lg bg-slate-900 px-5 py-3 text-base font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
         >
           {t("openScenario")}

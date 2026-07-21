@@ -234,7 +234,7 @@ def _analytics_filters(
     }
 
 
-@router.get("/admin/atm-analytics/summary", response_model=AtmAnalyticsSummary)
+@router.get("/api/admin/atm-analytics/summary", response_model=AtmAnalyticsSummary)
 def get_atm_analytics_summary(
     filters: dict = Depends(_analytics_filters),
     db: Session = Depends(get_db),
@@ -270,7 +270,7 @@ def get_atm_analytics_summary(
     )
 
 
-@router.get("/admin/atm-analytics/sessions", response_model=list[AtmAdminSessionRead])
+@router.get("/api/admin/atm-analytics/sessions", response_model=list[AtmAdminSessionRead])
 def list_atm_analytics_sessions(
     filters: dict = Depends(_analytics_filters),
     db: Session = Depends(get_db),
@@ -280,7 +280,7 @@ def list_atm_analytics_sessions(
 
 
 @router.get(
-    "/admin/atm-analytics/actors/{actor_type}/{actor_reference}",
+    "/api/admin/atm-analytics/actors/{actor_type}/{actor_reference}",
     response_model=list[AtmAdminSessionRead],
 )
 def list_actor_atm_sessions(

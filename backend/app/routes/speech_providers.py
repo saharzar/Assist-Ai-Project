@@ -90,7 +90,7 @@ def get_active_speech_provider(
     )
 
 
-@router.get("/admin/speech-providers", response_model=SpeechProviderDashboard)
+@router.get("/api/admin/speech-providers", response_model=SpeechProviderDashboard)
 def get_speech_provider_dashboard(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -141,7 +141,7 @@ def get_speech_provider_dashboard(
     )
 
 
-@router.put("/admin/speech-providers/settings", response_model=SpeechProviderSettingsRead)
+@router.put("/api/admin/speech-providers/settings", response_model=SpeechProviderSettingsRead)
 def change_speech_provider_settings(
     payload: SpeechProviderSettingsUpdate,
     current_admin: User = Depends(get_current_admin),
@@ -215,7 +215,7 @@ def _global_dashboard(db: Session) -> GlobalSpeechDashboard:
     )
 
 
-@router.get("/admin/speech-providers/global", response_model=GlobalSpeechDashboard)
+@router.get("/api/admin/speech-providers/global", response_model=GlobalSpeechDashboard)
 def get_global_speech_routing(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -225,7 +225,7 @@ def get_global_speech_routing(
     return dashboard
 
 
-@router.put("/admin/speech-providers/global", response_model=GlobalSpeechDashboard)
+@router.put("/api/admin/speech-providers/global", response_model=GlobalSpeechDashboard)
 def change_global_speech_routing(
     payload: GlobalSpeechRoutingUpdate,
     current_admin: User = Depends(get_current_admin),
@@ -237,7 +237,7 @@ def change_global_speech_routing(
     return dashboard
 
 
-@router.post("/admin/speech-providers/test/{service_type}/{provider_key}")
+@router.post("/api/admin/speech-providers/test/{service_type}/{provider_key}")
 def test_speech_provider(
     service_type: str,
     provider_key: str,
