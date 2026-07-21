@@ -58,17 +58,7 @@ AZURE_STT_LOCALES = {
     "fr": "fr-FR",
 }
 
-AZURE_NAME_AUTO_DETECT_LANGUAGE_CANDIDATES = [
-    "en-US",
-    "tr-TR",
-    "fr-FR",
-]
-
-AZURE_NAME_FALLBACK_LANGUAGE_CANDIDATES = [
-    "en-US",
-    "tr-TR",
-    "es-ES",
-]
+AZURE_NAME_LANGUAGE_CANDIDATES = tuple(AZURE_STT_LOCALES.values())
 
 MIN_NAME_CONFIDENCE = 0.35
 
@@ -88,6 +78,28 @@ def normalize_name_for_matching(value: str) -> str:
         for character in without_marks
         if character.isalnum() or character.isspace()
     ).strip()
+
+
+def is_supported_name_text(value: str) -> bool:
+    has_letter = False
+    for character in value.strip():
+        if character.isalpha():
+            has_letter = True
+            if not unicodedata.name(character, "").startswith("LATIN"):
+                return False
+        elif not (character.isspace() or character in "-'\u2019"):
+            return False
+    return has_letter
+
+
+def get_ordered_name_locales(language: str) -> list[str]:
+    preferred = get_azure_stt_locale(language)
+    return [preferred, *(locale for locale in AZURE_NAME_LANGUAGE_CANDIDATES if locale != preferred)]
+
+
+def get_auto_detect_name_locales(language: str) -> list[str]:
+    # Azure recognize-once language identification accepts at most four candidates.
+    return get_ordered_name_locales(language)[:4]
 
 
 def get_azure_json_result(result: speechsdk.SpeechRecognitionResult) -> dict:
@@ -132,7 +144,7 @@ def get_cancellation_message(result: speechsdk.SpeechRecognitionResult) -> str:
 
 
 def is_reliable_name_result(result: SttTranscriptResult) -> bool:
-    if not normalize_name_for_matching(result.transcript):
+    if not normalize_name_for_matching(result.transcript) or not is_supported_name_text(result.transcript):
         return False
     return result.confidence is None or result.confidence >= MIN_NAME_CONFIDENCE
 
@@ -248,8 +260,7 @@ def parse_recognition_result(
     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
         transcript, confidence = get_best_transcript_and_confidence(result)
         if mode == "name":
-            normalized_transcript = normalize_name_for_matching(transcript)
-            if not normalized_transcript:
+            if not normalize_name_for_matching(transcript) or not is_supported_name_text(transcript):
                 return SttTranscriptResult("", detected_language, confidence)
             if confidence is not None and confidence < MIN_NAME_CONFIDENCE:
                 return SttTranscriptResult("", detected_language, confidence)
@@ -288,9 +299,10 @@ def recognize_once_with_language(
 def recognize_name_with_auto_detect(
     speech_config: speechsdk.SpeechConfig,
     audio_config: speechsdk.audio.AudioConfig,
+    language: str,
 ) -> SttTranscriptResult | None:
     auto_detect_config = speechsdk.languageconfig.AutoDetectSourceLanguageConfig(
-        languages=AZURE_NAME_AUTO_DETECT_LANGUAGE_CANDIDATES,
+        languages=get_auto_detect_name_locales(language),
     )
     recognizer = speechsdk.SpeechRecognizer(
         speech_config=speech_config,
@@ -309,10 +321,11 @@ def recognize_name_with_auto_detect(
 def recognize_name_with_candidates(
     speech_config: speechsdk.SpeechConfig,
     audio_config: speechsdk.audio.AudioConfig,
+    language: str,
 ) -> SttTranscriptResult:
     results: list[SttTranscriptResult] = []
     service_errors: list[str] = []
-    for candidate_language in AZURE_NAME_FALLBACK_LANGUAGE_CANDIDATES:
+    for candidate_language in get_ordered_name_locales(language):
         try:
             candidate_result = recognize_once_with_language(
                 speech_config,
@@ -365,15 +378,16 @@ def recognize_azure_stt(audio: bytes, language: str, mode: str) -> SttTranscript
             subscription=settings.azure_speech_key,
             region=settings.azure_speech_region,
         )
+        speech_config.output_format = speechsdk.OutputFormat.Detailed
         audio_config = speechsdk.audio.AudioConfig(filename=str(temp_path))
 
         if mode == "name":
             # UI language is intentionally not used for names. Try Azure automatic
             # language detection first, then fall back to explicit candidate languages.
-            auto_detect_result = recognize_name_with_auto_detect(speech_config, audio_config)
+            auto_detect_result = recognize_name_with_auto_detect(speech_config, audio_config, language)
             if auto_detect_result is not None and is_reliable_name_result(auto_detect_result):
                 return auto_detect_result
-            return recognize_name_with_candidates(speech_config, audio_config)
+            return recognize_name_with_candidates(speech_config, audio_config, language)
 
         return recognize_once_with_language(
             speech_config,

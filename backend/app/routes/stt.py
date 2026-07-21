@@ -111,10 +111,11 @@ async def create_stt_transcript(
         try:
             if decision.provider == "soniox":
                 seconds = get_wav_duration_seconds(audio)
-                transcript = recognize_soniox_stt(audio, request_id)
+                soniox_result = recognize_soniox_stt(audio, request_id, language, mode)
+                transcript = soniox_result.transcript
                 usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else SttUsageSnapshot(0, 0, 0, date.today())
-                detected_language = None
-                confidence = None
+                detected_language = soniox_result.detected_language
+                confidence = soniox_result.confidence
             else:
                 result = recognize_stt_with_usage(db, user_id, audio, language, mode)
                 seconds = result.audio_seconds_charged
