@@ -31,6 +31,7 @@ export function AdminSpeechProvidersPage() {
   const [dashboard, setDashboard] = useState<GlobalSpeechDashboard | null>(null);
   const [draft, setDraft] = useState<GlobalSpeechDashboard | null>(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeView, setActiveView] = useState<"routing" | "activity">("routing");
@@ -38,8 +39,20 @@ export function AdminSpeechProvidersPage() {
   const isAdmin = isAuthenticated && user?.role === "admin";
 
   useEffect(() => {
-    if (!isAdmin) return;
-    fetchGlobalSpeechDashboard().then((value) => { setDashboard(value); setDraft(value); notifySpeechProviderUpdated(value); }).catch(() => setError(text.loadError));
+    if (!isAdmin) { setIsLoading(false); return; }
+    let isMounted = true;
+    setIsLoading(true);
+    setError("");
+    fetchGlobalSpeechDashboard()
+      .then((value) => {
+        if (!isMounted) return;
+        setDashboard(value); setDraft(value); notifySpeechProviderUpdated(value);
+      })
+      .catch((reason) => {
+        if (isMounted) setError(reason instanceof Error ? reason.message : text.loadError);
+      })
+      .finally(() => { if (isMounted) setIsLoading(false); });
+    return () => { isMounted = false; };
   }, [isAdmin, text.loadError]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -78,7 +91,7 @@ export function AdminSpeechProvidersPage() {
     <div><p className="text-sm font-bold uppercase text-teal-700">Admin dashboard</p><h1 className="mt-1 text-3xl font-bold">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
-    {!draft || !dashboard ? <p className="py-12 text-center font-semibold">{text.loading}</p> : <>
+    {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200">
         <div className="flex gap-1" role="tablist" aria-label="Speech provider views">
           {(["routing", "activity"] as const).map((view) => <button key={view} type="button" role="tab" aria-selected={activeView === view} onClick={() => setActiveView(view)} className={`border-b-2 px-4 py-3 text-sm font-bold capitalize ${activeView === view ? "border-teal-600 text-teal-800" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{view}</button>)}
@@ -104,7 +117,7 @@ export function AdminSpeechProvidersPage() {
         <CompactProviderSection service={activeService} draft={draft} labels={labels} text={text} language={language} updateCapability={updateCapability} move={move} />
         <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[44px] self-start rounded-lg bg-teal-700 px-5 text-sm font-bold text-white disabled:opacity-60">{labels.save}</button>
       </> : <CompactHistory dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />}
-    </>}
+    </> : !error ? <p className="py-12 text-center font-semibold">{text.loadError}</p> : null}
   </section>;
 }
 

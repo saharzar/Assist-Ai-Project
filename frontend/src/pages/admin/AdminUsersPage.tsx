@@ -61,16 +61,22 @@ export function AdminUsersPage() {
       setSuccessMessage("");
     }
     try {
-      const everyUserRequest = fetchAdminUsers("all");
-      const [filteredUsers, everyUser] = await Promise.all([
-        status === "all" ? everyUserRequest : fetchAdminUsers(status),
-        everyUserRequest,
-      ]);
-      setUsers(filteredUsers);
-      setAllUsers(everyUser.filter((item) => item.role !== "admin"));
+      const filteredRequest = fetchAdminUsers(status);
+      const allRequest = status === "all" ? filteredRequest : fetchAdminUsers("all");
+      const [filteredResult, allResult] = await Promise.allSettled([filteredRequest, allRequest]);
+      if (filteredResult.status === "fulfilled") {
+        setUsers(filteredResult.value);
+      } else {
+        setErrorMessage(filteredResult.reason instanceof Error ? filteredResult.reason.message : t("authFormError"));
+      }
+      if (allResult.status === "fulfilled") {
+        setAllUsers(allResult.value.filter((item) => item.role !== "admin"));
+      } else if (filteredResult.status === "fulfilled" && status === "all") {
+        setAllUsers(filteredResult.value.filter((item) => item.role !== "admin"));
+      } else {
+        console.error("Optional all-user count request failed", allResult.reason);
+      }
       setCurrentPage(1);
-    } catch {
-      setErrorMessage(t("authFormError"));
     } finally {
       setIsLoading(false);
     }
