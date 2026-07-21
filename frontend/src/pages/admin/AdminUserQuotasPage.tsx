@@ -29,12 +29,13 @@ export function AdminUserQuotasPage() {
   const [editing, setEditing] = useState<UserQuota | null>(null);
   const [message, setMessage] = useState("");
 
-  const load = () => Promise.all([getAdminQuotas(), getQuotaRequests()])
-    .then(([nextRows, nextRequests]) => {
-      setRows(nextRows);
-      setRequests(nextRequests);
-    })
-    .catch(() => setMessage(text.loadError));
+  const load = async () => {
+    const [quotaResult, requestResult] = await Promise.allSettled([getAdminQuotas(), getQuotaRequests()]);
+    if (quotaResult.status === "fulfilled") setRows(quotaResult.value);
+    else setMessage(quotaResult.reason instanceof Error ? quotaResult.reason.message : text.loadError);
+    if (requestResult.status === "fulfilled") setRequests(requestResult.value);
+    else console.error("Optional quota request history could not be loaded", requestResult.reason);
+  };
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") void load();

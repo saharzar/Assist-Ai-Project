@@ -1,4 +1,4 @@
-import { apiRequest } from "./api";
+import { apiRequest, expectObjectResponse } from "./api";
 
 export type SpeechMode = "automatic" | "azure" | "browser";
 export type SpeechProvider = "azure" | "browser";
@@ -102,8 +102,12 @@ export type GlobalSpeechRoutingUpdate = {
   >>;
 };
 
-export function fetchGlobalSpeechDashboard() {
-  return apiRequest<GlobalSpeechDashboard>("/api/admin/speech-providers/global");
+export async function fetchGlobalSpeechDashboard() {
+  const path = "/api/admin/speech-providers/global";
+  const payload = await apiRequest<unknown>(path);
+  return expectObjectResponse<GlobalSpeechDashboard>(payload, path, [
+    "active_tts_provider", "active_stt_provider", "capabilities", "usage_history", "events",
+  ], ["data", "dashboard"]);
 }
 
 export function updateGlobalSpeechRouting(payload: GlobalSpeechRoutingUpdate) {

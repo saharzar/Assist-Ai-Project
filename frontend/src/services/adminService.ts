@@ -1,10 +1,11 @@
-import { apiRequest } from "./api";
+import { apiRequest, expectArrayResponse } from "./api";
 import type { ApprovalStatus, User } from "./authService";
 
 export type AdminUserStatusFilter = ApprovalStatus | "all";
 
-export function fetchAdminUsers(status: AdminUserStatusFilter) {
-  return apiRequest<User[]>(`/api/admin/users?status=${status}`);
+export async function fetchAdminUsers(status: AdminUserStatusFilter) {
+  const path = `/api/admin/users?status=${status}`;
+  return expectArrayResponse<User>(await apiRequest<unknown>(path), path, ["users", "items", "data"]);
 }
 
 export function approveUser(userId: number) {
