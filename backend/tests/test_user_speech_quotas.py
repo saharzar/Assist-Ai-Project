@@ -1,4 +1,5 @@
 from contextlib import AbstractContextManager
+from datetime import date, timedelta
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -6,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
-from app.models import QuotaAdjustmentHistory, QuotaIncreaseRequest, User, UserNotification, UserSttUsage, UserTtsUsage
+from app.models import QuotaAdjustmentHistory, QuotaIncreaseRequest, User, UserNotification, UserSpeechUsagePeriod, UserSttUsage, UserTtsUsage
 from app.services.stt_service import record_stt_seconds
 from app.services.tts_service import reserve_tts_characters
 
@@ -20,6 +21,24 @@ def test_user_sees_only_own_quota_and_admin_sees_all():
         mine=client.get("/api/speech-quotas/me",headers=headers(first));assert mine.status_code==200;assert mine.json()["user_id"]==first.id
         assert client.get("/api/speech-quotas/admin/users",headers=headers(first)).status_code==403
         rows=client.get("/api/speech-quotas/admin/users",headers=headers(admin));assert rows.status_code==200;assert {r["user_id"] for r in rows.json()}=={first.id,second.id}
+
+def test_admin_quota_page_reuses_current_archived_usage_period():
+    with Ctx() as (client,db):
+        user=make_user(db,"archived-period@test.local");admin=make_user(db,"archive-admin@test.local","admin")
+        today=date.today();start=today-timedelta(days=7)
+        db.add_all([
+            UserTtsUsage(user_id=user.id,tts_limit_characters=5000,tts_used_characters=321,period_start=start,tts_reset_date=today),
+            UserSttUsage(user_id=user.id,stt_limit_seconds=300,stt_used_seconds=45,period_start=start,stt_reset_date=today),
+        ]);db.commit()
+
+        first=client.get("/api/speech-quotas/admin/users",headers=headers(admin))
+        second=client.get("/api/speech-quotas/admin/users",headers=headers(admin))
+
+        assert first.status_code==200;assert second.status_code==200
+        periods=list(db.scalars(select(UserSpeechUsagePeriod).where(UserSpeechUsagePeriod.user_id==user.id)).all())
+        assert len(periods)==1
+        assert periods[0].period_start==start;assert periods[0].period_end==today
+        assert periods[0].tts_characters_used==321;assert periods[0].stt_seconds_used==45
 
 def test_request_duplicate_review_and_audit():
     with Ctx() as (client,db):
