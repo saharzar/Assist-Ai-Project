@@ -103,25 +103,25 @@ export type GlobalSpeechRoutingUpdate = {
 };
 
 export function fetchGlobalSpeechDashboard() {
-  return apiRequest<GlobalSpeechDashboard>("/admin/speech-providers/global");
+  return apiRequest<GlobalSpeechDashboard>("/api/admin/speech-providers/global");
 }
 
 export function updateGlobalSpeechRouting(payload: GlobalSpeechRoutingUpdate) {
-  return apiRequest<GlobalSpeechDashboard>("/admin/speech-providers/global", {
+  return apiRequest<GlobalSpeechDashboard>("/api/admin/speech-providers/global", {
     method: "PUT", body: JSON.stringify(payload),
   });
 }
 
 export function testSpeechProvider(serviceType: "tts" | "stt", providerKey: GlobalSpeechProvider) {
-  return apiRequest<{ ok: boolean; status: string }>(`/admin/speech-providers/test/${serviceType}/${providerKey}`, { method: "POST" });
+  return apiRequest<{ ok: boolean; status: string }>(`/api/admin/speech-providers/test/${serviceType}/${providerKey}`, { method: "POST" });
 }
 
 export function fetchSpeechProviderDashboard() {
-  return apiRequest<SpeechProviderDashboard>("/admin/speech-providers");
+  return apiRequest<SpeechProviderDashboard>("/api/admin/speech-providers");
 }
 
 export function updateSpeechProviderSettings(settings: SpeechProviderSettings) {
-  return apiRequest<SpeechProviderSettings>("/admin/speech-providers/settings", {
+  return apiRequest<SpeechProviderSettings>("/api/admin/speech-providers/settings", {
     method: "PUT",
     body: JSON.stringify(settings),
   });

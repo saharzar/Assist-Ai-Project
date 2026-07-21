@@ -63,15 +63,15 @@ function queryString(filters: AtmAnalyticsFilters) {
 }
 
 export function fetchAtmAnalyticsSummary(filters: AtmAnalyticsFilters) {
-  return apiRequest<AtmAnalyticsSummary>(`/admin/atm-analytics/summary${queryString(filters)}`);
+  return apiRequest<AtmAnalyticsSummary>(`/api/admin/atm-analytics/summary${queryString(filters)}`);
 }
 
 export function fetchAtmAnalyticsSessions(filters: AtmAnalyticsFilters) {
-  return apiRequest<AtmAnalyticsSession[]>(`/admin/atm-analytics/sessions${queryString(filters)}`);
+  return apiRequest<AtmAnalyticsSession[]>(`/api/admin/atm-analytics/sessions${queryString(filters)}`);
 }
 
 export function fetchActorAtmSessions(actorType: string, actorReference: string) {
   return apiRequest<AtmAnalyticsSession[]>(
-    `/admin/atm-analytics/actors/${encodeURIComponent(actorType)}/${encodeURIComponent(actorReference)}`,
+    `/api/admin/atm-analytics/actors/${encodeURIComponent(actorType)}/${encodeURIComponent(actorReference)}`,
   );
 }

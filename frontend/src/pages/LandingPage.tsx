@@ -4,11 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 
 export function LandingPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { t } = useTranslation();
 
   if (isAuthenticated) {
-    return <Navigate to="/scenarios" replace />;
+    return <Navigate to={user?.role === "admin" ? "/admin/users" : "/scenarios"} replace />;
   }
 
   return (

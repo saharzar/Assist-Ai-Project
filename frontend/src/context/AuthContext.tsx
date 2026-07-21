@@ -14,6 +14,7 @@ type AuthContextValue = {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   isGuest: boolean;
   guestSession: GuestSession | null;
   guestSessionToken: string | null;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return storedUser ? (JSON.parse(storedUser) as User) : null;
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [isLoading, setIsLoading] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
   const [guestSession, setGuestSession] = useState<GuestSession | null>(() => {
     const storedGuest = localStorage.getItem(GUEST_KEY);
     return storedGuest ? (JSON.parse(storedGuest) as GuestSession) : null;
@@ -43,9 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) {
+      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     fetchCurrentUser()
       .then((currentUser) => {
         setUser(currentUser);
@@ -56,7 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(USER_KEY);
         setToken(null);
         setUser(null);
-      });
+      })
+      .finally(() => setIsLoading(false));
   }, [token]);
 
   const clearGuest = () => {
@@ -69,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       token,
       isAuthenticated: Boolean(token && user),
+      isLoading,
       isGuest: Boolean(guestSession),
       guestSession,
       guestSessionToken: guestSession?.guest_session_token ?? null,
@@ -82,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(response.access_token);
         setUser(response.user);
         setGuestSession(null);
+        setIsLoading(false);
         return response.user;
       },
       register: async (payload) => {
@@ -92,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null);
         setUser(null);
         setGuestSession(null);
+        setIsLoading(false);
         return response.message;
       },
       continueAsGuest: async (saveProgress, preferredLanguage) => {
@@ -105,16 +113,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null);
         setUser(null);
         setGuestSession(response);
+        setIsLoading(false);
       },
       logout: () => {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         setToken(null);
         setUser(null);
+        setIsLoading(false);
         clearGuest();
       },
     }),
-    [guestSession, token, user],
+    [guestSession, isLoading, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

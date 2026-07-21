@@ -4,7 +4,9 @@ This setup runs ASSIST-AI with three containers:
 
 - `postgres`: PostgreSQL database
 - `backend`: FastAPI API, Alembic migrations, Azure TTS/STT
-- `frontend`: Nginx serving the React app and proxying `/api` to the backend
+- `frontend`: Nginx serving the React app and proxying backend endpoint namespaces
+
+The frontend container proxies only `/api/`, `/auth/`, `/users/`, `/guests/`, and `/health` to FastAPI. React page URLs, including `/admin/...`, are served through the SPA fallback. Admin APIs use `/api/admin/...`; do not add a broad Nginx proxy for `/admin/`.
 
 ## Local Docker Run
 
@@ -129,6 +131,26 @@ docker compose up -d --build
 ```
 
 ## Useful Commands
+
+Validate the frontend Nginx configuration:
+
+```bash
+docker compose exec frontend nginx -t
+```
+
+Verify SPA refreshes and backend routing:
+
+```bash
+curl -I http://127.0.0.1:8080/scenarios
+curl -I http://127.0.0.1:8080/profile
+curl -I http://127.0.0.1:8080/admin/users
+curl -I http://127.0.0.1:8080/admin/speech-providers
+curl -i http://127.0.0.1:8080/api/scenarios
+curl -i http://127.0.0.1:8080/api/admin/users?status=all
+curl -i http://127.0.0.1:8080/auth/me
+```
+
+SPA routes should return `200` with `text/html`. `/api/scenarios` should return JSON. The final two unauthenticated requests should return `401` and must not redirect.
 
 View logs:
 

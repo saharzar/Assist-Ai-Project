@@ -28,16 +28,20 @@ export function App() {
             <Route path="register" element={<RegisterPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="guest" element={<GuestConsentPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="admin/users" element={<AdminUsersPage />} />
-            <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
-            <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
-            <Route path="admin/speech-providers" element={<AdminSpeechProvidersPage />} />
-            <Route path="admin/user-quotas" element={<AdminUserQuotasPage />} />
-            <Route path="speech-usage" element={<MySpeechUsagePage />} />
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
-            <Route element={<ProtectedRoute />}>
+            <Route element={<ProtectedRoute allowGuest />}>
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />
+            </Route>
+            <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
+              <Route path="speech-usage" element={<MySpeechUsagePage />} />
+            </Route>
+            <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+              <Route path="admin/users" element={<AdminUsersPage />} />
+              <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
+              <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
+              <Route path="admin/speech-providers" element={<AdminSpeechProvidersPage />} />
+              <Route path="admin/user-quotas" element={<AdminUserQuotasPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

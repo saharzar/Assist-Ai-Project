@@ -4,30 +4,30 @@ import type { ApprovalStatus, User } from "./authService";
 export type AdminUserStatusFilter = ApprovalStatus | "all";
 
 export function fetchAdminUsers(status: AdminUserStatusFilter) {
-  return apiRequest<User[]>(`/admin/users?status=${status}`);
+  return apiRequest<User[]>(`/api/admin/users?status=${status}`);
 }
 
 export function approveUser(userId: number) {
-  return apiRequest<User>(`/admin/users/${userId}/approve`, {
+  return apiRequest<User>(`/api/admin/users/${userId}/approve`, {
     method: "POST",
   });
 }
 
 export function activateUser(userId: number) {
-  return apiRequest<User>(`/admin/users/${userId}/activate`, {
+  return apiRequest<User>(`/api/admin/users/${userId}/activate`, {
     method: "POST",
   });
 }
 
 export function denyUser(userId: number, rejectionReason?: string) {
-  return apiRequest<User>(`/admin/users/${userId}/deny`, {
+  return apiRequest<User>(`/api/admin/users/${userId}/deny`, {
     method: "POST",
     body: JSON.stringify({ rejection_reason: rejectionReason || null }),
   });
 }
 
 export function suspendUser(userId: number) {
-  return apiRequest<User>(`/admin/users/${userId}/suspend`, {
+  return apiRequest<User>(`/api/admin/users/${userId}/suspend`, {
     method: "POST",
   });
 }
