@@ -40,12 +40,6 @@ export function LandingPage() {
           >
             {t("continueAsGuest")}
           </Link>
-          <Link
-            to="/scenarios"
-            className="flex min-h-[54px] items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-6 py-3 text-base font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
-          >
-            {t("viewScenarios")}
-          </Link>
         </div>
       </div>
     </section>

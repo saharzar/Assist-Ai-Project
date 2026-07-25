@@ -30,10 +30,16 @@ export function PageShell() {
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
   const [sttUsage, setSttUsage] = useState<SttUsage | null>(null);
   const [speechProviders, setSpeechProviders] = useState<GlobalSpeechDashboard | null>(null);
+  const [isAtmNavigationVisible, setIsAtmNavigationVisible] = useState(false);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
   const homeTarget = isAuthenticated ? "/scenarios" : "/login";
+  const showHeader = !isAtmScenario || isAtmNavigationVisible;
+
+  useEffect(() => {
+    setIsAtmNavigationVisible(false);
+  }, [isAtmScenario]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -134,7 +140,21 @@ export function PageShell() {
           : undefined
       }
     >
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      {isAtmScenario && (
+        <button
+          type="button"
+          aria-controls="primary-navigation"
+          aria-expanded={isAtmNavigationVisible}
+          onClick={() => setIsAtmNavigationVisible((current) => !current)}
+          className="fixed bottom-4 right-4 z-30 min-h-[44px] rounded-lg border border-slate-500 bg-slate-950/95 px-4 py-2 text-sm font-bold text-white shadow-xl transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+        >
+          {isAtmNavigationVisible
+            ? navigationToggleText(language).hide
+            : navigationToggleText(language).show}
+        </button>
+      )}
+      {showHeader && (
+      <header id="primary-navigation" className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link
             to={homeTarget}
@@ -168,12 +188,14 @@ export function PageShell() {
                 {formatSeconds(sttUsage.limit)}
               </div>
             )}
-            <Link
-              to="/scenarios"
-              className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              {t("scenarios")}
-            </Link>
+            {isAuthenticated && (
+              <Link
+                to="/scenarios"
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                {t("scenarios")}
+              </Link>
+            )}
             {isAuthenticated && !isAdmin && (
               <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">{speechUsageTranslations[language].title}</Link>
             )}
@@ -237,11 +259,12 @@ export function PageShell() {
           </nav>
         )}
       </header>
+      )}
       <main
-        className={`mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 ${
+        className={`mx-auto flex w-full flex-1 flex-col ${
           isAtmScenario
-            ? "py-5 sm:py-7"
-            : "py-8 sm:py-10"
+            ? "max-w-[1600px] px-2 py-2 sm:px-4 sm:py-4"
+            : "max-w-7xl px-5 py-8 sm:py-10"
         }`}
       >
         <Outlet />
@@ -286,6 +309,18 @@ function adminMenuText(language: string) {
     tr: { users: "Kullanicilar", analytics: "Senaryo analizleri", speech: "Konusma saglayicilari", quotas: "Kullanici kotalari" },
     pt: { users: "Utilizadores", analytics: "Analise de cenarios", speech: "Provedores de voz", quotas: "Cotas" },
     fr: { users: "Utilisateurs", analytics: "Analyse des scenarios", speech: "Fournisseurs vocaux", quotas: "Quotas" },
+  };
+  return copy[language] ?? copy.en;
+}
+
+function navigationToggleText(language: string) {
+  const copy: Record<string, { show: string; hide: string }> = {
+    en: { show: "Show navigation", hide: "Hide navigation" },
+    es: { show: "Mostrar navegacion", hide: "Ocultar navegacion" },
+    de: { show: "Navigation zeigen", hide: "Navigation ausblenden" },
+    tr: { show: "Navigasyonu goster", hide: "Navigasyonu gizle" },
+    pt: { show: "Mostrar navegacao", hide: "Ocultar navegacao" },
+    fr: { show: "Afficher la navigation", hide: "Masquer la navigation" },
   };
   return copy[language] ?? copy.en;
 }

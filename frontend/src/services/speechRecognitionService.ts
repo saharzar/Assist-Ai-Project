@@ -501,9 +501,28 @@ class ManagedSpeechRecognizer {
         ? new BrowserSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages)
         : new BackendSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages);
       this.delegate.start();
-    } catch {
-      this.callbacks.onError(this.errorMessages.problem);
-      this.endOnce();
+    } catch (error) {
+      const BrowserRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (this.stopRequested || !BrowserRecognition) {
+        console.error("ASSIST-AI could not resolve an STT provider", error);
+        this.callbacks.onError(error instanceof Error ? error.message : this.errorMessages.problem);
+        this.endOnce();
+        return;
+      }
+
+      // Provider routing should not disable the browser's built-in recognizer.
+      const delegatedCallbacks: SpeechRecognitionCallbacks = {
+        ...this.callbacks,
+        onEnd: () => this.endOnce(),
+      };
+      notifySpeechProviderUsed("stt", "browser");
+      this.delegate = new BrowserSpeechRecognizer(
+        delegatedCallbacks,
+        this.mode,
+        this.language,
+        this.errorMessages,
+      );
+      this.delegate.start();
     }
   }
 
