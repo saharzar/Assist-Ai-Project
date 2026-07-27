@@ -16,7 +16,7 @@ type AtmTranslation = {
   start: string;
   startAria: string;
   enterNameTitle: string;
-  enterNameHint: string;
+  nameVoiceButton: string;
   voiceInput: string;
   voiceUnsupportedName: string;
   voiceUnsupportedPin: string;
@@ -46,6 +46,9 @@ type AtmTranslation = {
   lastName: string;
   lettersEntered: string;
   lettersAria: string;
+  letterVoiceButton: string;
+  letterVoiceHint: string;
+  voiceUnsupportedLetters: string;
   lockoutTitle: string;
   lockoutHint: string;
   waitTime: string;
@@ -111,7 +114,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Start",
     startAria: "Start ATM practice",
     enterNameTitle: "Enter your full name",
-    enterNameHint: "Hold Space to speak, type, or use the ATM keyboard.",
+    nameVoiceButton: "Hold to say your name",
     voiceInput: "Voice input",
     voiceUnsupportedName: "Voice is not supported. Please type your name.",
     voiceUnsupportedPin: "Voice is not supported. Please use the keypad.",
@@ -141,6 +144,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Last name",
     lettersEntered: "Letters entered",
     lettersAria: "Letter verification input",
+    letterVoiceButton: "Hold to say two letters",
+    letterVoiceHint: "Wait for Listening, say each letter separately, then release.",
+    voiceUnsupportedLetters: "Voice is not supported. Please use the ATM keyboard.",
     lockoutTitle: "Temporary problem",
     lockoutHint: "Please wait before trying again.",
     waitTime: "Wait time",
@@ -204,7 +210,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Iniciar",
     startAria: "Iniciar practica de cajero",
     enterNameTitle: "Ingresa tu nombre completo",
-    enterNameHint: "Mantén Espacio para hablar, escribe o usa el teclado del cajero.",
+    nameVoiceButton: "Mantén pulsado para decir tu nombre",
     voiceInput: "Entrada de voz",
     voiceUnsupportedName: "La voz no es compatible. Escribe tu nombre.",
     voiceUnsupportedPin: "La voz no es compatible. Usa el teclado.",
@@ -234,6 +240,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Apellido",
     lettersEntered: "Letras ingresadas",
     lettersAria: "Entrada de verificacion de letras",
+    letterVoiceButton: "Mantén pulsado para decir dos letras",
+    letterVoiceHint: "Espera a Escuchando, di cada letra por separado y suelta.",
+    voiceUnsupportedLetters: "La voz no es compatible. Usa el teclado del cajero.",
     lockoutTitle: "Problema temporal",
     lockoutHint: "Espera antes de intentarlo otra vez.",
     waitTime: "Tiempo de espera",
@@ -297,7 +306,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Start",
     startAria: "Geldautomat-Uebung starten",
     enterNameTitle: "Gib deinen vollstaendigen Namen ein",
-    enterNameHint: "Halte Leertaste zum Sprechen, tippe oder nutze die Tastatur am Automaten.",
+    nameVoiceButton: "Gedrückt halten und Namen sprechen",
     voiceInput: "Spracheingabe",
     voiceUnsupportedName: "Sprache wird nicht unterstuetzt. Bitte tippe deinen Namen.",
     voiceUnsupportedPin: "Sprache wird nicht unterstuetzt. Bitte nutze das Tastenfeld.",
@@ -327,6 +336,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Nachname",
     lettersEntered: "Eingegebene Buchstaben",
     lettersAria: "Buchstaben-Pruefeingabe",
+    letterVoiceButton: "Gedrückt halten und zwei Buchstaben sagen",
+    letterVoiceHint: "Warte auf Zuhören, sage jeden Buchstaben einzeln und lasse los.",
+    voiceUnsupportedLetters: "Spracheingabe wird nicht unterstützt. Nutze die ATM-Tastatur.",
     lockoutTitle: "Voruebergehendes Problem",
     lockoutHint: "Bitte warte, bevor du es erneut versuchst.",
     waitTime: "Wartezeit",
@@ -390,7 +402,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Başlat",
     startAria: "ATM pratiğini başlat",
     enterNameTitle: "Adını ve soyadını gir",
-    enterNameHint: "Konuşmak için Boşluk tuşunu basılı tut, yaz veya ATM klavyesini kullan.",
+    nameVoiceButton: "Adını söylemek için basılı tut",
     voiceInput: "Ses girişi",
     voiceUnsupportedName: "Ses desteklenmiyor. Lütfen adını yaz.",
     voiceUnsupportedPin: "Ses desteklenmiyor. Lütfen tuş takımını kullan.",
@@ -420,6 +432,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Soyad",
     lettersEntered: "Girilen harfler",
     lettersAria: "Harf doğrulama girişi",
+    letterVoiceButton: "İki harfi söylemek için basılı tut",
+    letterVoiceHint: "Dinleniyor yazısını bekle, harfleri ayrı ayrı söyle ve bırak.",
+    voiceUnsupportedLetters: "Ses girişi desteklenmiyor. ATM klavyesini kullan.",
     lockoutTitle: "Geçici problem",
     lockoutHint: "Tekrar denemeden önce lütfen bekle.",
     waitTime: "Bekleme süresi",
@@ -483,7 +498,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Iniciar",
     startAria: "Iniciar pratica de ATM",
     enterNameTitle: "Digite seu nome completo",
-    enterNameHint: "Segure Espaco para falar, digite ou use o teclado do ATM.",
+    nameVoiceButton: "Mantenha premido para dizer o seu nome",
     voiceInput: "Entrada de voz",
     voiceUnsupportedName: "Voz nao suportada. Digite seu nome.",
     voiceUnsupportedPin: "Voz nao suportada. Use o teclado.",
@@ -513,6 +528,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Sobrenome",
     lettersEntered: "Letras digitadas",
     lettersAria: "Entrada de verificacao de letras",
+    letterVoiceButton: "Mantenha premido para dizer duas letras",
+    letterVoiceHint: "Espere por A ouvir, diga cada letra separadamente e solte.",
+    voiceUnsupportedLetters: "A voz não é suportada. Use o teclado do ATM.",
     lockoutTitle: "Problema temporario",
     lockoutHint: "Aguarde antes de tentar novamente.",
     waitTime: "Tempo de espera",
@@ -576,7 +594,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     start: "Demarrer",
     startAria: "Demarrer l'entrainement DAB",
     enterNameTitle: "Entre ton nom complet",
-    enterNameHint: "Maintiens Espace pour parler, ecris ou utilise le clavier du DAB.",
+    nameVoiceButton: "Maintenir pour dire ton nom",
     voiceInput: "Entree vocale",
     voiceUnsupportedName: "La voix n'est pas prise en charge. Ecris ton nom.",
     voiceUnsupportedPin: "La voix n'est pas prise en charge. Utilise le clavier.",
@@ -606,6 +624,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     lastName: "Nom",
     lettersEntered: "Lettres entrees",
     lettersAria: "Entree de verification des lettres",
+    letterVoiceButton: "Maintenir pour dire deux lettres",
+    letterVoiceHint: "Attends Écoute, dis chaque lettre séparément, puis relâche.",
+    voiceUnsupportedLetters: "La saisie vocale n'est pas disponible. Utilise le clavier du DAB.",
     lockoutTitle: "Probleme temporaire",
     lockoutHint: "Attends avant de reessayer.",
     waitTime: "Temps d'attente",

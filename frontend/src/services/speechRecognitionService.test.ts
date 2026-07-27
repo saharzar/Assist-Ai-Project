@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { parseSpokenConfirmation } from "./speechRecognitionService";
+import {
+  cleanSpokenLetterTranscript,
+  parseSpokenConfirmation,
+} from "./speechRecognitionService";
+
+describe("cleanSpokenLetterTranscript", () => {
+  it.each([
+    ["A R", "AR"],
+    ["a and r", "ar"],
+    ["ay are", "ar"],
+    ["Ö R", "ÖR"],
+  ])("extracts exactly two letters from %s", (transcript, expected) => {
+    expect(cleanSpokenLetterTranscript(transcript)).toBe(expected);
+  });
+
+  it("does not guess when more than two letters are spoken", () => {
+    expect(cleanSpokenLetterTranscript("A B C")).toBe("");
+  });
+});
 
 describe("parseSpokenConfirmation", () => {
   it.each([

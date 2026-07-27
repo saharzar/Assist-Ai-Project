@@ -118,6 +118,8 @@ def recognize_soniox_stt(audio: bytes, request_id: str, language: str, mode: str
                         if mode == "name"
                         else "The speaker confirms or rejects a name using a short yes or no phrase."
                         if mode == "confirmation"
+                        else "The speaker says exactly two individual alphabet letters."
+                        if mode == "letters"
                         else "The speaker says digits only."
                     ),
                     "client_reference_id": request_id,

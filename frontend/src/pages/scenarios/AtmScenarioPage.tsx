@@ -30,6 +30,7 @@ import {
 } from "../../services/atmAnalyticsService";
 import {
   createSpeechRecognizer,
+  cleanSpokenLetterTranscript,
   isSpeechRecognitionSupported,
   parseSpokenConfirmation,
 } from "../../services/speechRecognitionService";
@@ -264,8 +265,11 @@ export function AtmScenarioPage() {
       const clearlySpokenName = state.fullName.trim().split(/\s+/).join("  ");
       return `Adını ${clearlySpokenName} olarak duydum. Lütfen doğru olup olmadığını onayla.`;
     }
+    if (state.demoPin && assistantMessage.includes(state.demoPin)) {
+      return assistantMessage.split(state.demoPin).join(state.demoPin.split("").join(" "));
+    }
     return assistantMessage;
-  }, [assistantMessage, language, state.fullName, state.status, text]);
+  }, [assistantMessage, language, state.demoPin, state.fullName, state.status, text]);
 
   const speakCurrentMessage = useCallback(() => {
     if (!soundEnabled) {
@@ -759,6 +763,70 @@ export function AtmScenarioPage() {
     text,
   ]);
 
+  const startLetterListening = useCallback(async () => {
+    stopSpeech();
+    setSpeechError("");
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage) return;
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    if (!spaceIsHeldRef.current) return;
+
+    const recognizer = createSpeechRecognizer(
+      {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+          sttAutoStopTimerRef.current = window.setTimeout(() => {
+            setSpeechError(text.speechLimitReached);
+            recognizerRef.current?.stop();
+            finishListeningSession();
+          }, usage.remaining * 1000);
+        },
+        onResult: (nextTranscript) => {
+          const letters = cleanSpokenLetterTranscript(nextTranscript);
+          if (letters.length !== 2) {
+            setSpeechError(text.letterIncompleteError);
+            return;
+          }
+          dispatch({ type: "LETTER_CLEAR" });
+          Array.from(letters).forEach((letter) => dispatch({ type: "LETTER_INPUT", letter }));
+        },
+        onError: (message) => setSpeechError(message),
+        onEnd: finishListeningSession,
+      },
+      "letters",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
+      },
+    );
+    if (!recognizer) {
+      setSpeechError(text.voiceUnsupportedLetters);
+      return;
+    }
+    recognizerRef.current = recognizer;
+    try {
+      setIsPreparingVoice(true);
+      recognizer.start();
+      recordInputMode("voice");
+    } catch {
+      setIsPreparingVoice(false);
+      setSpeechError(text.speechProblem);
+      finishListeningSession();
+    }
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
       window.clearTimeout(stopListeningTimerRef.current);
@@ -772,7 +840,7 @@ export function AtmScenarioPage() {
   }, [finishListeningSession]);
 
   useEffect(() => {
-    if (!["enter_name", "confirm_name", "pin_attempt"].includes(state.status) || !speechRecognitionSupported) {
+    if (!["enter_name", "confirm_name", "pin_attempt", "letter_check"].includes(state.status) || !speechRecognitionSupported) {
       return;
     }
 
@@ -804,6 +872,9 @@ export function AtmScenarioPage() {
         if (state.status === "confirm_name" && confirmationSecondsRemaining === 0) {
           void startConfirmationListening();
         }
+        if (state.status === "letter_check") {
+          void startLetterListening();
+        }
       }
     };
 
@@ -827,6 +898,7 @@ export function AtmScenarioPage() {
     confirmationSecondsRemaining,
     speechRecognitionSupported,
     startConfirmationListening,
+    startLetterListening,
     startNameListening,
     startPinListening,
     state.status,
@@ -877,14 +949,15 @@ export function AtmScenarioPage() {
             transcript={transcript}
             speechError={speechError}
             isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
             isVoiceSupported={speechRecognitionSupported}
             inputEvent={nameInputEvent}
             labels={{
               title: text.enterNameTitle,
-              hint: text.enterNameHint,
-              voiceInput: text.voiceInput,
               voiceUnsupported: text.voiceUnsupportedName,
               listening: text.listening,
+              preparing: text.preparingVoice,
+              voiceButton: text.nameVoiceButton,
               heard: text.heardLabel,
               fullName: text.fullNameLabel,
               placeholder: text.fullNamePlaceholder,
@@ -892,6 +965,11 @@ export function AtmScenarioPage() {
             }}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
             onKeyboardInput={() => recordInputMode("keyboard")}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startNameListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
 
@@ -957,12 +1035,26 @@ export function AtmScenarioPage() {
           <AtmLetterCheckScreen
             letterInput={state.letterInput}
             errorMessage={displayedErrorMessage}
+            speechError={speechError}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
             labels={{
               title: text.letterTitle,
               hint: text.letterHint,
               lettersEntered: text.lettersEntered,
               lettersAria: text.lettersAria,
+              voiceUnsupported: text.voiceUnsupportedLetters,
+              voiceButton: text.letterVoiceButton,
+              voiceHint: text.letterVoiceHint,
+              listening: text.listening,
+              preparing: text.preparingVoice,
             }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startLetterListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
       case "security_message":

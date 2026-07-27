@@ -4,7 +4,7 @@ import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
-type SpeechRecognitionMode = "name" | "pin" | "confirmation";
+type SpeechRecognitionMode = "name" | "pin" | "confirmation" | "letters";
 type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 
 type SpeechRecognitionCallbacks = {
@@ -177,6 +177,29 @@ export function cleanSpokenPinTranscript(transcript: string) {
   });
 
   return digits.join("").slice(0, 4);
+}
+
+const spokenLetterNames: Record<string, string> = {
+  ay: "a", be: "b", bee: "b", ce: "c", cee: "c", de: "d", dee: "d",
+  ef: "f", ge: "g", gee: "g", ache: "h", aitch: "h", eye: "i", jota: "j",
+  jay: "j", ka: "k", kay: "k", ele: "l", el: "l", eme: "m", em: "m",
+  ene: "n", en: "n", oh: "o", pe: "p", pee: "p", cu: "q", cue: "q",
+  erre: "r", are: "r", re: "r", ese: "s", ess: "s", te: "t", tee: "t",
+  you: "u", ve: "v", vee: "v", equis: "x", ex: "x", why: "y", zeta: "z",
+  zed: "z", zee: "z",
+};
+
+export function cleanSpokenLetterTranscript(transcript: string) {
+  const originalWords = transcript.normalize("NFC").match(/\p{L}+/gu) ?? [];
+  const directLetters = originalWords.flatMap((word) => Array.from(word));
+  if (directLetters.length === 2) return directLetters.join("");
+
+  const letters = originalWords.flatMap((word) => {
+    if (Array.from(word).length === 1) return [word];
+    const normalized = normalizeConfirmationText(word);
+    return spokenLetterNames[normalized] ? [spokenLetterNames[normalized]] : [];
+  });
+  return letters.length === 2 ? letters.join("") : "";
 }
 
 export type SpokenConfirmation = "confirm" | "reject";
@@ -433,6 +456,8 @@ class BackendSpeechRecognizer {
       const cleanedTranscript =
         this.mode === "pin"
           ? cleanSpokenPinTranscript(transcript)
+          : this.mode === "letters"
+            ? cleanSpokenLetterTranscript(transcript)
           : this.mode === "name"
             ? cleanSpokenNameTranscript(transcript)
             : transcript.trim();
@@ -515,6 +540,8 @@ class BrowserSpeechRecognizer {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
       const cleaned = this.mode === "pin"
         ? cleanSpokenPinTranscript(transcript)
+        : this.mode === "letters"
+          ? cleanSpokenLetterTranscript(transcript)
         : this.mode === "name"
           ? cleanSpokenNameTranscript(transcript)
           : transcript.trim();
