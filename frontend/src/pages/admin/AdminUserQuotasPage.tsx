@@ -63,17 +63,12 @@ export function AdminUserQuotasPage() {
   if (user?.role !== "admin") return <Navigate to="/scenarios" replace />;
 
   const review = async (request: QuotaRequest, approve: boolean) => {
-    const response = window.prompt(
-      text.responsePrompt,
-      approve ? text.approvedPeriod : text.declined,
-    );
-    if (!response) return;
     await reviewQuotaRequest(request.id, {
       action: approve ? "approve" : "reject",
       approved_tts_characters: approve ? request.requested_tts_characters ?? 0 : 0,
       approved_stt_seconds: approve ? request.requested_stt_seconds ?? 0 : 0,
       permanent: false,
-      admin_response: response,
+      admin_response: approve ? text.approvedPeriod : text.declined,
     });
     setMessage(text.reviewedMessage);
     setHistoryPage(1);

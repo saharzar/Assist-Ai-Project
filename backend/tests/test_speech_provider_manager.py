@@ -365,12 +365,19 @@ def test_global_browser_routing_applies_to_guest_speech(monkeypatch):
             "X-Guest-Session-Token": guest_token,
             "X-Browser-Speech-Supported": "true",
         }
+        resolution = client.get(
+            "/api/speech/providers/stt?browser_supported=true",
+            headers=guest_headers,
+        )
         tts = client.post("/api/tts", headers=guest_headers, json={"text": "Welcome", "language": "en"})
         stt = client.post(
             "/api/stt?language=en&mode=name",
             headers={**guest_headers, "Content-Type": "audio/wav"},
             content=b"RIFF-not-read-for-browser-routing",
         )
+        assert resolution.status_code == 200
+        assert resolution.json()["provider"] == "browser"
+        assert resolution.json()["status"] == "normal"
         assert tts.status_code == 204
         assert stt.status_code == 204
         assert tts.headers["X-Speech-Provider"] == stt.headers["X-Speech-Provider"] == "browser"

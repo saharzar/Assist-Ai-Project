@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation } from "../i18n";
@@ -25,6 +25,7 @@ import {
 
 export function PageShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { language, setLanguage, t } = useTranslation();
   const { user, isAuthenticated, isGuest, logout } = useAuth();
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
@@ -34,8 +35,13 @@ export function PageShell() {
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
-  const homeTarget = isAuthenticated ? "/scenarios" : "/login";
+  const homeTarget = isAuthenticated ? "/scenarios" : "/";
   const showHeader = !isAtmScenario || isAtmNavigationVisible;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
 
   useEffect(() => {
     setIsAtmNavigationVisible(false);
@@ -224,7 +230,7 @@ export function PageShell() {
                 </Link>
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="hidden min-h-[44px] rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:inline-flex sm:items-center"
                 >
                   {t("logout")}

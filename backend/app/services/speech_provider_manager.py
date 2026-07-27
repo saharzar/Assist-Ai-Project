@@ -727,7 +727,13 @@ def get_provider_chain(
             service_type=service_type,
             provider=capability.provider_key,
             mode="automatic",
-            status="quota_reached" if quota_status == "reached" else quota_status,
+            status=(
+                "quota_reached"
+                if quota_status == "reached"
+                else "normal"
+                if quota_status == "unlimited"
+                else quota_status
+            ),
             usage=usage,
             limit=capability.quota_limit or 0,
             reset_date=usage.period_end or date.max,
