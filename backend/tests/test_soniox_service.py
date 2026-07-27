@@ -26,6 +26,12 @@ def test_pin_language_hints_only_use_selected_supported_language():
     assert soniox_service.get_soniox_language_hints("de", "pin") == ["de"]
 
 
+def test_confirmation_language_hints_remain_multilingual():
+    assert soniox_service.get_soniox_language_hints("fr", "confirmation") == [
+        "fr", "en", "es", "de", "tr", "pt",
+    ]
+
+
 @pytest.mark.parametrize("name", ["Sahar Zar", "Ceyda \u00d6zt\u00fcrk", "Fran\u00e7ois D'Arc", "Jo\u00e3o-Silva"])
 def test_supported_latin_names_are_accepted(name):
     result = soniox_service.parse_soniox_transcript(
@@ -34,6 +40,15 @@ def test_supported_latin_names_are_accepted(name):
     )
     assert result.transcript == name
     assert result.detected_language == "tr"
+
+
+@pytest.mark.parametrize("punctuated", ["Sahar Zar.", "Sahar Zar!", "Sahar Zar,", "Sahar Zar\u2026"])
+def test_terminal_punctuation_is_removed_before_name_validation(punctuated):
+    result = soniox_service.parse_soniox_transcript(
+        {"text": punctuated, "tokens": [{"text": punctuated, "confidence": 0.9, "language": "en"}]},
+        "name",
+    )
+    assert result.transcript == "Sahar Zar"
 
 
 def test_unrelated_script_is_rejected_in_name_mode():

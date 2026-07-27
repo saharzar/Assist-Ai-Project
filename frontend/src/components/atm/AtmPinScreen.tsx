@@ -3,13 +3,17 @@ export function AtmPinScreen({
   errorMessage,
   speechError,
   isListening,
+  isPreparingVoice,
   isVoiceSupported,
   labels,
+  onVoiceStart,
+  onVoiceStop,
 }: {
   pinInput: string;
   errorMessage: string;
   speechError: string;
   isListening: boolean;
+  isPreparingVoice: boolean;
   isVoiceSupported: boolean;
   labels: {
     title: string;
@@ -20,7 +24,12 @@ export function AtmPinScreen({
     voiceInput: string;
     voiceUnsupported: string;
     listening: string;
+    preparing: string;
+    voiceButton: string;
+    voiceHint: string;
   };
+  onVoiceStart: () => void;
+  onVoiceStop: () => void;
 }) {
   return (
     <div className="space-y-3">
@@ -53,8 +62,30 @@ export function AtmPinScreen({
             {labels.voiceUnsupported}
           </div>
         )}
-        {isListening && (
-          <p className="mt-1 text-sm font-semibold text-sky-800">{labels.listening}</p>
+        {isVoiceSupported && (
+          <>
+            <button
+              type="button"
+              aria-label={labels.voiceButton}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                onVoiceStart();
+              }}
+              onPointerUp={onVoiceStop}
+              onPointerCancel={onVoiceStop}
+              onKeyDown={(event) => {
+                if ((event.key === "Enter" || event.key === " ") && !event.repeat) onVoiceStart();
+              }}
+              onKeyUp={(event) => {
+                if (event.key === "Enter" || event.key === " ") onVoiceStop();
+              }}
+              className="mt-2 min-h-11 w-full rounded-lg bg-sky-700 px-3 text-sm font-bold text-white outline-none hover:bg-sky-800 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-900"
+            >
+              {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+            </button>
+            <p className="mt-1 text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
+          </>
         )}
         {speechError && (
           <div className="mt-1 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">

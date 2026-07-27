@@ -21,14 +21,23 @@ type AtmTranslation = {
   voiceUnsupportedName: string;
   voiceUnsupportedPin: string;
   listening: string;
+  preparingVoice: string;
   heardLabel: string;
   fullNameLabel: string;
   fullNamePlaceholder: string;
   pressEnterName: string;
   confirmNameHint: string;
+  confirmVoice: string;
+  confirmWait: (seconds: number) => string;
+  confirmVoiceHint: string;
+  confirmUnclear: string;
+  nameConfirmedFeedback: string;
+  nameRejectedFeedback: string;
   pinTitle: string;
   pinHint: string;
   pinPracticeHint: string;
+  pinVoiceButton: string;
+  pinVoiceHint: string;
   passwordInput: string;
   pinAria: string;
   letterTitle: string;
@@ -80,6 +89,9 @@ type AtmTranslation = {
   speechMicBlocked: string;
   speechLimitReached: string;
   speechProblem: string;
+  speechBrowserFallback: string;
+  speechNoMatch: string;
+  assistantVoiceProblem: string;
 };
 
 export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
@@ -104,14 +116,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "Voice is not supported. Please type your name.",
     voiceUnsupportedPin: "Voice is not supported. Please use the keypad.",
     listening: "Listening...",
+    preparingVoice: "Preparing microphone...",
     heardLabel: "I heard:",
     fullNameLabel: "Full name",
     fullNamePlaceholder: "Write your full name",
     pressEnterName: "Press ENTER on the ATM keypad to continue.",
     confirmNameHint: "Press ENTER to continue. Press Cancel, Clear, or Back to write again.",
+    confirmVoice: "Hold to answer",
+    confirmWait: (seconds) => `Please wait ${seconds} second${seconds === 1 ? "" : "s"} before confirming.`,
+    confirmVoiceHint: "You can also hold Space and say yes or no.",
+    confirmUnclear: "Please say yes to confirm or no to write your name again.",
+    nameConfirmedFeedback: "Your name is confirmed.",
+    nameRejectedFeedback: "Your name was not confirmed. Please enter it again.",
     pinTitle: "Enter ATM password",
     pinHint: "Use the keypad or hold Space and say the numbers.",
     pinPracticeHint: "Practice only. First try may show a system problem.",
+    pinVoiceButton: "Hold to say PIN",
+    pinVoiceHint: "Wait for Listening, say all four numbers, then release.",
     passwordInput: "Password input",
     pinAria: "PIN input",
     letterTitle: "Name check",
@@ -163,6 +184,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Microphone access was blocked. Please type or use the keypad.",
     speechLimitReached: "Speech time limit reached. Please type or use the keypad.",
     speechProblem: "Voice input had a problem. Please try again or type.",
+    speechBrowserFallback: "Browser voice input is ready. Hold Space and speak again.",
+    speechNoMatch: "No clear speech was recognized. Hold Space and try again.",
+    assistantVoiceProblem: "The assistant voice could not play. Please try again.",
   },
   es: {
     panelTitle: "Cajero ASSIST-AI",
@@ -185,14 +209,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "La voz no es compatible. Escribe tu nombre.",
     voiceUnsupportedPin: "La voz no es compatible. Usa el teclado.",
     listening: "Escuchando...",
+    preparingVoice: "Preparando el micrófono...",
     heardLabel: "Escuche:",
     fullNameLabel: "Nombre completo",
     fullNamePlaceholder: "Escribe tu nombre completo",
     pressEnterName: "Pulsa ENTER en el cajero para continuar.",
     confirmNameHint: "Pulsa ENTER para continuar. Pulsa Cancel, Clear o Back para escribir de nuevo.",
+    confirmVoice: "Mantén pulsado para responder",
+    confirmWait: (seconds) => `Espera ${seconds} segundo${seconds === 1 ? "" : "s"} antes de confirmar.`,
+    confirmVoiceHint: "También puedes mantener pulsado Espacio y decir sí o no.",
+    confirmUnclear: "Di sí para confirmar o no para volver a escribir tu nombre.",
+    nameConfirmedFeedback: "Tu nombre ha sido confirmado.",
+    nameRejectedFeedback: "Tu nombre no ha sido confirmado. Introdúcelo de nuevo.",
     pinTitle: "Ingresa la contrasena del cajero",
     pinHint: "Usa el teclado o mantén Espacio y di los numeros.",
     pinPracticeHint: "Solo practica. El primer intento puede mostrar un problema del sistema.",
+    pinVoiceButton: "Mantén pulsado para decir el PIN",
+    pinVoiceHint: "Espera a que aparezca Escuchando, di los cuatro números y suelta.",
     passwordInput: "Entrada de contrasena",
     pinAria: "Entrada de PIN",
     letterTitle: "Verificacion del nombre",
@@ -244,6 +277,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "El acceso al microfono fue bloqueado. Escribe o usa el teclado.",
     speechLimitReached: "Se alcanzo el limite de voz. Escribe o usa el teclado.",
     speechProblem: "La entrada de voz tuvo un problema. Intenta de nuevo o escribe.",
+    speechBrowserFallback: "La entrada de voz del navegador está lista. Mantén pulsado Espacio y vuelve a hablar.",
+    speechNoMatch: "No se reconoció una voz clara. Mantén pulsado Espacio e inténtalo de nuevo.",
+    assistantVoiceProblem: "No se pudo reproducir la voz del asistente. Inténtalo de nuevo.",
   },
   de: {
     panelTitle: "ASSIST-AI Geldautomat",
@@ -266,14 +302,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "Sprache wird nicht unterstuetzt. Bitte tippe deinen Namen.",
     voiceUnsupportedPin: "Sprache wird nicht unterstuetzt. Bitte nutze das Tastenfeld.",
     listening: "Hoere zu...",
+    preparingVoice: "Mikrofon wird vorbereitet...",
     heardLabel: "Ich habe gehoert:",
     fullNameLabel: "Vollstaendiger Name",
     fullNamePlaceholder: "Schreibe deinen vollstaendigen Namen",
     pressEnterName: "Druecke ENTER am Automaten, um fortzufahren.",
     confirmNameHint: "Druecke ENTER zum Fortfahren. Druecke Cancel, Clear oder Back, um neu zu schreiben.",
+    confirmVoice: "Zum Antworten gedrückt halten",
+    confirmWait: (seconds) => `Bitte warte ${seconds} Sekunde${seconds === 1 ? "" : "n"}, bevor du bestätigst.`,
+    confirmVoiceHint: "Du kannst auch die Leertaste gedrückt halten und Ja oder Nein sagen.",
+    confirmUnclear: "Sage Ja zum Bestätigen oder Nein, um deinen Namen erneut einzugeben.",
+    nameConfirmedFeedback: "Dein Name wurde bestätigt.",
+    nameRejectedFeedback: "Dein Name wurde nicht bestätigt. Bitte gib ihn erneut ein.",
     pinTitle: "Gib das Geldautomaten-Passwort ein",
     pinHint: "Nutze das Tastenfeld oder halte Leertaste und sage die Zahlen.",
     pinPracticeHint: "Nur Uebung. Der erste Versuch kann ein Systemproblem zeigen.",
+    pinVoiceButton: "Gedrückt halten und PIN sprechen",
+    pinVoiceHint: "Warte auf Zuhören, sage alle vier Zahlen und lasse dann los.",
     passwordInput: "Passworteingabe",
     pinAria: "PIN-Eingabe",
     letterTitle: "Namenspruefung",
@@ -325,6 +370,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Mikrofonzugriff wurde blockiert. Bitte tippe oder nutze das Tastenfeld.",
     speechLimitReached: "Das Sprachlimit ist erreicht. Bitte tippe oder nutze das Tastenfeld.",
     speechProblem: "Bei der Spracheingabe gab es ein Problem. Versuche es erneut oder tippe.",
+    speechBrowserFallback: "Die Spracheingabe des Browsers ist bereit. Halte die Leertaste gedrückt und sprich erneut.",
+    speechNoMatch: "Es wurde keine klare Sprache erkannt. Halte die Leertaste gedrückt und versuche es erneut.",
+    assistantVoiceProblem: "Die Assistentenstimme konnte nicht abgespielt werden. Versuche es erneut.",
   },
   tr: {
     panelTitle: "ASSIST-AI ATM",
@@ -347,14 +395,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "Ses desteklenmiyor. Lütfen adını yaz.",
     voiceUnsupportedPin: "Ses desteklenmiyor. Lütfen tuş takımını kullan.",
     listening: "Dinleniyor...",
+    preparingVoice: "Mikrofon hazırlanıyor...",
     heardLabel: "Duyduğum:",
     fullNameLabel: "Ad soyad",
     fullNamePlaceholder: "Adını ve soyadını yaz",
     pressEnterName: "Devam etmek için ATM üzerindeki ENTER tuşuna bas.",
     confirmNameHint: "Devam etmek için ENTER'a bas. Yeniden yazmak için Cancel, Clear veya Back'e bas.",
+    confirmVoice: "Yanıtlamak için basılı tut",
+    confirmWait: (seconds) => `Onaylamadan önce ${seconds} saniye bekle.`,
+    confirmVoiceHint: "Boşluk tuşunu basılı tutup evet veya hayır da diyebilirsin.",
+    confirmUnclear: "Onaylamak için evet, adını yeniden yazmak için hayır de.",
+    nameConfirmedFeedback: "Adın onaylandı.",
+    nameRejectedFeedback: "Adın onaylanmadı. Lütfen yeniden gir.",
     pinTitle: "ATM şifresini gir",
     pinHint: "Tuş takımını kullan veya Boşluk tuşunu basılı tutup sayıları söyle.",
     pinPracticeHint: "Sadece pratik. İlk denemede sistem problemi görünebilir.",
+    pinVoiceButton: "PIN'i söylemek için basılı tut",
+    pinVoiceHint: "Dinleniyor yazısını bekle, dört rakamın tamamını söyle ve bırak.",
     passwordInput: "Şifre girişi",
     pinAria: "PIN girişi",
     letterTitle: "İsim kontrolü",
@@ -406,6 +463,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Mikrofon erişimi engellendi. Lütfen yaz veya tuş takımını kullan.",
     speechLimitReached: "Konuşma süresi limitine ulaşıldı. Lütfen yaz veya tuş takımını kullan.",
     speechProblem: "Ses girişinde bir problem oldu. Lütfen tekrar dene veya yaz.",
+    speechBrowserFallback: "Tarayıcı ses girişi hazır. Boşluk tuşunu basılı tut ve tekrar konuş.",
+    speechNoMatch: "Net bir konuşma algılanamadı. Boşluk tuşunu basılı tutup tekrar dene.",
+    assistantVoiceProblem: "Asistanın sesi oynatılamadı. Lütfen tekrar dene.",
   },
   pt: {
     panelTitle: "ATM ASSIST-AI",
@@ -428,14 +488,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "Voz nao suportada. Digite seu nome.",
     voiceUnsupportedPin: "Voz nao suportada. Use o teclado.",
     listening: "Ouvindo...",
+    preparingVoice: "A preparar o microfone...",
     heardLabel: "Eu ouvi:",
     fullNameLabel: "Nome completo",
     fullNamePlaceholder: "Digite seu nome completo",
     pressEnterName: "Pressione ENTER no ATM para continuar.",
     confirmNameHint: "Pressione ENTER para continuar. Pressione Cancel, Clear ou Back para escrever de novo.",
+    confirmVoice: "Mantenha premido para responder",
+    confirmWait: (seconds) => `Aguarde ${seconds} segundo${seconds === 1 ? "" : "s"} antes de confirmar.`,
+    confirmVoiceHint: "Também pode manter Espaço premido e dizer sim ou não.",
+    confirmUnclear: "Diga sim para confirmar ou não para voltar a escrever o seu nome.",
+    nameConfirmedFeedback: "O seu nome foi confirmado.",
+    nameRejectedFeedback: "O seu nome não foi confirmado. Introduza-o novamente.",
     pinTitle: "Digite a senha do ATM",
     pinHint: "Use o teclado ou segure Espaco e diga os numeros.",
     pinPracticeHint: "Apenas pratica. A primeira tentativa pode mostrar um problema do sistema.",
+    pinVoiceButton: "Mantenha premido para dizer o PIN",
+    pinVoiceHint: "Espere por A ouvir, diga os quatro números e solte.",
     passwordInput: "Entrada de senha",
     pinAria: "Entrada de PIN",
     letterTitle: "Verificacao do nome",
@@ -487,6 +556,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "O acesso ao microfone foi bloqueado. Digite ou use o teclado.",
     speechLimitReached: "O limite de fala foi atingido. Digite ou use o teclado.",
     speechProblem: "A entrada de voz teve um problema. Tente novamente ou digite.",
+    speechBrowserFallback: "A entrada de voz do navegador está pronta. Mantenha Espaço premido e fale novamente.",
+    speechNoMatch: "Não foi reconhecida uma fala clara. Mantenha Espaço premido e tente novamente.",
+    assistantVoiceProblem: "Não foi possível reproduzir a voz do assistente. Tente novamente.",
   },
   fr: {
     panelTitle: "DAB ASSIST-AI",
@@ -509,14 +581,23 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     voiceUnsupportedName: "La voix n'est pas prise en charge. Ecris ton nom.",
     voiceUnsupportedPin: "La voix n'est pas prise en charge. Utilise le clavier.",
     listening: "Ecoute...",
+    preparingVoice: "Préparation du microphone...",
     heardLabel: "J'ai entendu :",
     fullNameLabel: "Nom complet",
     fullNamePlaceholder: "Ecris ton nom complet",
     pressEnterName: "Appuie sur ENTER sur le DAB pour continuer.",
     confirmNameHint: "Appuie sur ENTER pour continuer. Appuie sur Cancel, Clear ou Back pour recommencer.",
+    confirmVoice: "Maintenir pour répondre",
+    confirmWait: (seconds) => `Attends ${seconds} seconde${seconds === 1 ? "" : "s"} avant de confirmer.`,
+    confirmVoiceHint: "Tu peux aussi maintenir la barre d'espace et dire oui ou non.",
+    confirmUnclear: "Dis oui pour confirmer ou non pour saisir à nouveau ton nom.",
+    nameConfirmedFeedback: "Ton nom est confirmé.",
+    nameRejectedFeedback: "Ton nom n'est pas confirmé. Saisis-le à nouveau.",
     pinTitle: "Entre le mot de passe du DAB",
     pinHint: "Utilise le clavier ou maintiens Espace et dis les chiffres.",
     pinPracticeHint: "Entrainement seulement. Le premier essai peut afficher un probleme systeme.",
+    pinVoiceButton: "Maintenir pour dire le code PIN",
+    pinVoiceHint: "Attends le message Écoute, dis les quatre chiffres, puis relâche.",
     passwordInput: "Entree du mot de passe",
     pinAria: "Entree du PIN",
     letterTitle: "Verification du nom",
@@ -568,5 +649,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "L'acces au micro a ete bloque. Ecris ou utilise le clavier.",
     speechLimitReached: "La limite de parole est atteinte. Ecris ou utilise le clavier.",
     speechProblem: "L'entree vocale a eu un probleme. Reessaie ou ecris.",
+    speechBrowserFallback: "La saisie vocale du navigateur est prête. Maintiens la barre d'espace et parle à nouveau.",
+    speechNoMatch: "Aucune parole claire n'a été reconnue. Maintiens la barre d'espace et réessaie.",
+    assistantVoiceProblem: "La voix de l'assistant n'a pas pu être lue. Réessaie.",
   },
 };

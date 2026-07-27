@@ -67,7 +67,7 @@ async def create_stt_transcript(
     request: Request,
     response: Response,
     language: str = Query(default="en", pattern="^(en|es|de|tr|pt|fr)$"),
-    mode: str = Query(default="name", pattern="^(name|pin)$"),
+    mode: str = Query(default="name", pattern="^(name|pin|confirmation)$"),
     speech_request_id: UUID | None = Header(default=None, alias="X-Speech-Request-ID"),
     browser_speech_supported: bool | None = Header(default=None, alias="X-Browser-Speech-Supported"),
     current_user: User | GuestSession = Depends(get_speech_actor),
@@ -123,14 +123,34 @@ async def create_stt_transcript(
                 detected_language = result.detected_language
                 confidence = result.confidence
                 usage = result
+
+            if not transcript.strip():
+                last_error = HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="No clear speech was recognized. Please hold Space, speak clearly, and try again.",
+                )
+                if index + 1 < len(decisions):
+                    log_provider_event(
+                        db,
+                        "stt",
+                        "automatic_provider_switch",
+                        "The provider returned no usable transcript.",
+                        previous_provider=decision.provider,
+                        new_provider=decisions[index + 1].provider,
+                        provider_key=decision.provider,
+                    )
+                    db.commit()
+                    continue
+                raise last_error
         except HTTPException as exc:
-            if exc.status_code not in {502, 503, 504}:
+            if exc.status_code not in {422, 502, 503, 504}:
                 raise
             last_error = exc
-            mark_provider_failure(
-                db, decision.provider, "stt", str(exc.detail),
-                quota_error=(isinstance(exc, SonioxProviderError) and exc.quota_error) or is_quota_failure(exc.detail),
-            )
+            if exc.status_code != 422:
+                mark_provider_failure(
+                    db, decision.provider, "stt", str(exc.detail),
+                    quota_error=(isinstance(exc, SonioxProviderError) and exc.quota_error) or is_quota_failure(exc.detail),
+                )
             if index + 1 < len(decisions):
                 log_provider_event(db, "stt", "automatic_provider_switch", "Provider request failed.", previous_provider=decision.provider, new_provider=decisions[index + 1].provider, provider_key=decision.provider)
             db.commit()

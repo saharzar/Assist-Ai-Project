@@ -12,6 +12,7 @@ SONIOX_TTS_URL = "https://tts-rt.soniox.com/tts"
 QUOTA_STATUS_CODES = {402, 429}
 SUPPORTED_STT_LANGUAGES = ("en", "es", "de", "tr", "pt", "fr")
 MIN_NAME_CONFIDENCE = 0.35
+NAME_EDGE_PUNCTUATION = " \t\r\n.,!?;:\u2026"
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,8 @@ def is_supported_name_text(value: str) -> bool:
 
 def parse_soniox_transcript(payload: dict, mode: str) -> SonioxSttResult:
     transcript = str(payload.get("text", "")).strip()
+    if mode == "name":
+        transcript = transcript.strip(NAME_EDGE_PUNCTUATION)
     tokens = payload.get("tokens") if isinstance(payload.get("tokens"), list) else []
     confidences = [
         float(token["confidence"])
@@ -110,7 +113,13 @@ def recognize_soniox_stt(audio: bytes, request_id: str, language: str, mode: str
                     "language_hints": get_soniox_language_hints(language, mode),
                     "language_hints_strict": True,
                     "enable_language_identification": True,
-                    "context": "The speaker says a person's full name only." if mode == "name" else "The speaker says digits only.",
+                    "context": (
+                        "The speaker says a person's full name only."
+                        if mode == "name"
+                        else "The speaker confirms or rejects a name using a short yes or no phrase."
+                        if mode == "confirmation"
+                        else "The speaker says digits only."
+                    ),
                     "client_reference_id": request_id,
                 },
             )

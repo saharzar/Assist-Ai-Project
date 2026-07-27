@@ -61,6 +61,7 @@ AZURE_STT_LOCALES = {
 AZURE_NAME_LANGUAGE_CANDIDATES = tuple(AZURE_STT_LOCALES.values())
 
 MIN_NAME_CONFIDENCE = 0.35
+NAME_EDGE_PUNCTUATION = " \t\r\n.,!?;:\u2026"
 
 
 def get_azure_stt_locale(language: str) -> str:
@@ -260,6 +261,7 @@ def parse_recognition_result(
     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
         transcript, confidence = get_best_transcript_and_confidence(result)
         if mode == "name":
+            transcript = transcript.strip(NAME_EDGE_PUNCTUATION)
             if not normalize_name_for_matching(transcript) or not is_supported_name_text(transcript):
                 return SttTranscriptResult("", detected_language, confidence)
             if confidence is not None and confidence < MIN_NAME_CONFIDENCE:
@@ -393,7 +395,7 @@ def recognize_azure_stt(audio: bytes, language: str, mode: str) -> SttTranscript
             speech_config,
             audio_config,
             get_azure_stt_locale(language),
-            "pin",
+            mode,
         ) or SttTranscriptResult("")
     finally:
         audio_config = None

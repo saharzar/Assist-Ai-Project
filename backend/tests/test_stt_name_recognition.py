@@ -1,5 +1,7 @@
 import pytest
+import azure.cognitiveservices.speech as speechsdk
 
+from app.services import stt_service
 from app.services.stt_service import (
     SttTranscriptResult,
     choose_best_name_result,
@@ -33,3 +35,14 @@ def test_azure_chooses_highest_confidence_supported_name():
         SttTranscriptResult("\u0938\u0939\u0930", "hi-IN", 0.99),
     ])
     assert best.transcript == "Sahar Zar"
+
+
+@pytest.mark.parametrize("punctuated", ["Sahar Zar.", "Sahar Zar!", "Sahar Zar,", "Sahar Zar\u2026"])
+def test_azure_removes_terminal_punctuation_before_name_validation(monkeypatch, punctuated):
+    result = type("RecognitionResult", (), {"reason": speechsdk.ResultReason.RecognizedSpeech})()
+    monkeypatch.setattr(stt_service, "get_best_transcript_and_confidence", lambda value: (punctuated, 0.9))
+
+    parsed = stt_service.parse_recognition_result(result, "name", "en-US")
+
+    assert parsed is not None
+    assert parsed.transcript == "Sahar Zar"

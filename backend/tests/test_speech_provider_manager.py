@@ -11,8 +11,10 @@ from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
 from app.models import SpeechProviderEvent, SpeechUsage, User
+from app.routes import stt as stt_routes
 from app.schemas.speech_provider import GlobalSpeechRoutingUpdate, SpeechProviderSettingsUpdate
 from app.services import speech_provider_manager as manager
+from app.services.soniox_service import SonioxSttResult
 
 
 def fake_config():
@@ -381,6 +383,44 @@ def test_global_browser_routing_applies_to_guest_speech(monkeypatch):
         assert tts.status_code == 204
         assert stt.status_code == 204
         assert tts.headers["X-Speech-Provider"] == stt.headers["X-Speech-Provider"] == "browser"
+
+
+def test_empty_provider_transcript_falls_back_to_next_stt_provider(monkeypatch):
+    monkeypatch.setattr(
+        stt_routes,
+        "get_provider_chain",
+        lambda *args, **kwargs: [
+            SimpleNamespace(provider="soniox", status="normal"),
+            SimpleNamespace(provider="browser", status="normal"),
+        ],
+    )
+    monkeypatch.setattr(
+        stt_routes,
+        "recognize_soniox_stt",
+        lambda *args, **kwargs: SonioxSttResult("", "en", 0.2),
+    )
+    monkeypatch.setattr(stt_routes, "get_wav_duration_seconds", lambda audio: 1)
+    monkeypatch.setattr(stt_routes, "log_provider_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        stt_routes,
+        "get_settings",
+        lambda: SimpleNamespace(count_browser_usage_against_user_quota=False),
+    )
+
+    with SpeechTestContext() as (client, db):
+        user = make_user(db, "empty-stt-result@example.com")
+        response = client.post(
+            "/api/stt?language=en&mode=name",
+            headers={
+                **headers(user),
+                "Content-Type": "audio/wav",
+                "X-Browser-Speech-Supported": "true",
+            },
+            content=b"empty-transcript-audio",
+        )
+
+        assert response.status_code == 204
+        assert response.headers["X-Speech-Provider"] == "browser"
 
 
 class SpeechTestContext(AbstractContextManager):
