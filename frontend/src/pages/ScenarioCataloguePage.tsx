@@ -42,30 +42,30 @@ export function ScenarioCataloguePage() {
   const translatedScenarios = scenarios.map(translateScenario);
 
   return (
-    <section className="flex flex-1 flex-col">
-      <div className="max-w-3xl">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-950">
+    <section className="flex flex-1 flex-col pb-6">
+      <div className="max-w-3xl pt-1">
+        <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">
           {t("scenarioCatalogueTitle")}
         </h1>
-        <p className="mt-4 text-lg leading-8 text-slate-600">
+        <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">
           {t("scenarioCatalogueSubtitle")}
         </p>
       </div>
 
       {isLoading && (
-        <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6 text-lg font-semibold text-slate-600 shadow-soft">
+        <div className="mt-6 rounded-lg border border-indigo-950/10 bg-white p-6 text-base font-semibold text-[#5b5a78] shadow-soft">
           {t("loadingScenarios")}
         </div>
       )}
 
       {errorMessage && (
-        <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-5 font-semibold text-amber-900">
+        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5 font-semibold text-amber-900">
           {errorMessage}
         </div>
       )}
 
       {!isLoading && !errorMessage && (
-        <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
           {translatedScenarios.map((scenario) => (
             <ScenarioCard
               key={scenario.id}

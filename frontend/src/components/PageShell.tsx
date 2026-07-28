@@ -179,11 +179,11 @@ export function PageShell() {
         className={`sticky top-0 z-20 ${
           isBrandedPublicPage
             ? "border-b border-transparent bg-transparent"
-            : "border-b border-indigo-100 bg-white/95 shadow-sm backdrop-blur"
+            : "border-b border-indigo-950/10 bg-white/95 backdrop-blur"
         }`}
       >
         <nav className={`mx-auto flex items-center justify-between ${
-          isBrandedPublicPage ? "h-20 max-w-none px-6 lg:px-12" : "h-16 max-w-6xl px-5"
+          isBrandedPublicPage ? "h-20 max-w-none px-6 lg:px-12" : "h-[70px] max-w-7xl px-5 lg:px-10"
         }`}>
           <Link
             to={homeTarget}
@@ -196,22 +196,22 @@ export function PageShell() {
           <div className="flex items-center gap-3">
             {ttsUsage && !isAdmin && (
               <div
-                className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm lg:inline-flex"
+                className="hidden min-h-[42px] items-center rounded-full border border-indigo-950/10 bg-white px-3 py-2 text-xs font-semibold text-[#5b5a78] lg:inline-flex"
                 aria-label={`${t("voiceCredits")}: ${ttsUsage.remaining} left from ${ttsUsage.limit}`}
                 title={`${t("voiceCredits")}: ${ttsUsage.used} used, ${ttsUsage.remaining} left, ${ttsUsage.limit} weekly limit. Resets ${formatResetDate(ttsUsage.resetDate)}`}
               >
-                <span className="mr-2 h-2 w-2 rounded-full bg-teal-400" aria-hidden="true" />
+                <span className="mr-2 h-2 w-2 rounded-full bg-cyan-400" aria-hidden="true" />
                 {t("voiceCredits")}: {ttsUsage.remaining.toLocaleString()} /{" "}
                 {ttsUsage.limit.toLocaleString()}
               </div>
             )}
             {sttUsage && !isAdmin && (
               <div
-                className="hidden min-h-[44px] items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm xl:inline-flex"
+                className="hidden min-h-[42px] items-center rounded-full border border-indigo-950/10 bg-white px-3 py-2 text-xs font-semibold text-[#5b5a78] xl:inline-flex"
                 aria-label={`${t("speechCredits")}: ${formatSeconds(sttUsage.remaining)} left from ${formatSeconds(sttUsage.limit)}`}
                 title={`${t("speechCredits")}: ${formatSeconds(sttUsage.used)} used, ${formatSeconds(sttUsage.remaining)} left, ${formatSeconds(sttUsage.limit)} weekly limit. Resets ${formatResetDate(sttUsage.resetDate)}`}
               >
-                <span className="mr-2 h-2 w-2 rounded-full bg-sky-400" aria-hidden="true" />
+                <span className="mr-2 h-2 w-2 rounded-full bg-indigo-400" aria-hidden="true" />
                 {t("speechCredits")}: {formatSeconds(sttUsage.remaining)} /{" "}
                 {formatSeconds(sttUsage.limit)}
               </div>
@@ -219,13 +219,17 @@ export function PageShell() {
             {isAuthenticated && (
               <Link
                 to="/scenarios"
-                className="inline-flex min-h-[44px] items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className={`inline-flex min-h-[42px] items-center rounded-full border px-5 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+                  location.pathname.startsWith("/scenario") || location.pathname === "/scenarios"
+                    ? "border-cyan-300 bg-cyan-50 text-indigo-700"
+                    : "border-indigo-950/10 bg-white text-[#5b5a78] hover:border-cyan-300 hover:text-indigo-800"
+                }`}
               >
                 {t("scenarios")}
               </Link>
             )}
             {isAuthenticated && !isAdmin && (
-              <Link to="/speech-usage" className="hidden min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 xl:inline-flex">{speechUsageTranslations[language].title}</Link>
+              <Link to="/speech-usage" className="hidden min-h-[42px] items-center rounded-full border border-indigo-950/10 bg-white px-4 py-2 text-sm font-semibold text-[#5b5a78] transition hover:border-cyan-300 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-cyan-400 xl:inline-flex">{speechUsageTranslations[language].title}</Link>
             )}
             <label className="sr-only" htmlFor="language-select">
               {t("language")}
@@ -234,7 +238,7 @@ export function PageShell() {
               id="language-select"
               value={language}
               onChange={(event) => setLanguage(event.target.value as typeof language)}
-              className="min-h-[44px] rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition hover:border-teal-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+              className="min-h-[42px] rounded-full border border-indigo-950/10 bg-white px-4 py-2 text-sm font-medium text-[#5b5a78] outline-none transition hover:border-cyan-300 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
             >
               {languages.map((item) => (
                 <option key={item.code} value={item.code}>
@@ -246,14 +250,14 @@ export function PageShell() {
               <>
                 <Link
                   to="/profile"
-                  className="inline-flex min-h-[44px] items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                  className="inline-flex min-h-[42px] items-center rounded-full bg-[#2a2586] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
                 >
                   {t("profile")}
                 </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="hidden min-h-[44px] rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:inline-flex sm:items-center"
+                  className="hidden min-h-[42px] rounded-full border border-indigo-950/10 bg-white px-5 py-2 text-sm font-semibold text-[#5b5a78] transition hover:border-indigo-300 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-cyan-400 sm:inline-flex sm:items-center"
                 >
                   {t("logout")}
                 </button>
@@ -269,7 +273,7 @@ export function PageShell() {
           </div>
         </nav>
         {isAdmin && (
-          <nav aria-label="Admin navigation" className="border-t border-slate-100 bg-slate-50/95">
+          <nav aria-label="Admin navigation" className="border-t border-indigo-950/10 bg-[#f3f3fb]/95">
             <div className="mx-auto flex min-h-[46px] max-w-6xl items-center justify-between gap-4 overflow-x-auto px-5">
               <div className="flex h-full items-center gap-1">
                 <AdminNavLink to="/admin/users" label={adminMenuText(language).users} active={location.pathname === "/admin/users"} />
@@ -278,8 +282,8 @@ export function PageShell() {
                 <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />
               </div>
               {speechProviders && (
-                <Link to="/admin/speech-providers" className="hidden shrink-0 items-center gap-2 text-xs font-bold text-slate-600 lg:flex">
-                  <span className="h-2 w-2 rounded-full bg-teal-400" />
+                <Link to="/admin/speech-providers" className="hidden shrink-0 items-center gap-2 text-xs font-semibold text-[#5b5a78] lg:flex">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400" />
                   TTS {providerLabel(speechProviders.active_tts_provider)} / STT {providerLabel(speechProviders.active_stt_provider)}
                 </Link>
               )}
@@ -322,7 +326,7 @@ function AdminNavLink({ to, label, active }: { to: string; label: string; active
   return (
     <Link
       to={to}
-      className={`inline-flex min-h-[45px] shrink-0 items-center border-b-2 px-3 text-sm font-bold transition-colors ${active ? "border-teal-600 text-teal-800" : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"}`}
+      className={`inline-flex min-h-[45px] shrink-0 items-center border-b-2 px-3 font-display text-sm font-semibold transition-colors ${active ? "border-cyan-400 text-indigo-800" : "border-transparent text-[#5b5a78] hover:border-indigo-200 hover:text-indigo-900"}`}
     >
       {label}
     </Link>

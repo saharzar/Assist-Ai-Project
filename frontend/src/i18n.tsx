@@ -85,6 +85,8 @@ type TranslationKey =
   | "loadingScenarios"
   | "backendError"
   | "openScenario"
+  | "available"
+  | "comingSoon"
   | "scenarioNotFound"
   | "scenarioNotFoundBody"
   | "scenarioNextStep"
@@ -179,6 +181,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Loading scenarios...",
     backendError: "We could not reach the ASSIST-AI backend. Please start the backend and refresh this page.",
     openScenario: "Open scenario",
+    available: "Available",
+    comingSoon: "Coming soon",
     scenarioNotFound: "Scenario not found",
     scenarioNotFoundBody: "The scenario you requested is not available.",
     scenarioNextStep: "This scenario will be implemented in the next steps.",
@@ -261,6 +265,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Cargando escenarios...",
     backendError: "No pudimos conectar con el backend de ASSIST-AI. Inicia el backend y actualiza esta pagina.",
     openScenario: "Abrir escenario",
+    available: "Disponible",
+    comingSoon: "Próximamente",
     scenarioNotFound: "Escenario no encontrado",
     scenarioNotFoundBody: "El escenario solicitado no esta disponible.",
     scenarioNextStep: "Este escenario se implementara en los proximos pasos.",
@@ -343,6 +349,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Szenarien werden geladen...",
     backendError: "Das ASSIST-AI-Backend konnte nicht erreicht werden. Bitte starte das Backend und lade diese Seite neu.",
     openScenario: "Szenario offnen",
+    available: "Verfügbar",
+    comingSoon: "Demnächst verfügbar",
     scenarioNotFound: "Szenario nicht gefunden",
     scenarioNotFoundBody: "Das angeforderte Szenario ist nicht verfugbar.",
     scenarioNextStep: "Dieses Szenario wird in den nachsten Schritten umgesetzt.",
@@ -425,6 +433,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Senaryolar yukleniyor...",
     backendError: "ASSIST-AI backendine ulasilamadi. Lutfen backend'i baslatip sayfayi yenile.",
     openScenario: "Senaryoyu ac",
+    available: "Kullanılabilir",
+    comingSoon: "Yakında",
     scenarioNotFound: "Senaryo bulunamadi",
     scenarioNotFoundBody: "Istedigin senaryo kullanilamiyor.",
     scenarioNextStep: "Bu senaryo sonraki adimlarda uygulanacak.",
@@ -507,6 +517,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Carregando cenarios...",
     backendError: "Nao foi possivel acessar o backend do ASSIST-AI. Inicie o backend e atualize esta pagina.",
     openScenario: "Abrir cenario",
+    available: "Disponível",
+    comingSoon: "Em breve",
     scenarioNotFound: "Cenario nao encontrado",
     scenarioNotFoundBody: "O cenario solicitado nao esta disponivel.",
     scenarioNextStep: "Este cenario sera implementado nas proximas etapas.",
@@ -589,6 +601,8 @@ const uiTranslations: Record<LanguageCode, Record<TranslationKey, string>> = {
     loadingScenarios: "Chargement des scenarios...",
     backendError: "Impossible de joindre le backend ASSIST-AI. Lance le backend puis actualise cette page.",
     openScenario: "Ouvrir le scenario",
+    available: "Disponible",
+    comingSoon: "Bientôt disponible",
     scenarioNotFound: "Scenario introuvable",
     scenarioNotFoundBody: "Le scenario demande n'est pas disponible.",
     scenarioNextStep: "Ce scenario sera implemente dans les prochaines etapes.",
