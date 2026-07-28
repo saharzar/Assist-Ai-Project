@@ -37,6 +37,8 @@ export function PageShell() {
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
   const isLandingPage = location.pathname === "/";
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+  const isBrandedPublicPage = isLandingPage || isAuthPage;
   const homeTarget = isAuthenticated ? "/scenarios" : "/";
   const showHeader = !isAtmScenario || isAtmNavigationVisible;
 
@@ -137,7 +139,7 @@ export function PageShell() {
       className={`flex min-h-screen flex-col selection:bg-teal-100 selection:text-slate-900 ${
         isAtmScenario
           ? "bg-slate-950 text-slate-100"
-          : isLandingPage
+          : isBrandedPublicPage
             ? "bg-[#fafbff] text-indigo-950"
             : "bg-slate-50 text-slate-800"
       }`}
@@ -165,7 +167,7 @@ export function PageShell() {
             : navigationToggleText(language).show}
         </button>
       )}
-      {isLandingPage && (
+      {isBrandedPublicPage && (
         <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
           <div className="absolute right-0 top-0 h-[58vh] max-h-[500px] min-h-[340px] w-[34vw] min-w-[390px] rounded-bl-[100%] bg-cyan-200/75 sm:min-w-[480px]" />
           <div className="absolute bottom-0 left-0 h-[38vh] max-h-[330px] min-h-[210px] w-[21vw] min-w-[250px] rounded-tr-[100%] bg-indigo-200/45 sm:min-w-[330px]" />
@@ -175,13 +177,13 @@ export function PageShell() {
       <header
         id="primary-navigation"
         className={`sticky top-0 z-20 ${
-          isLandingPage
+          isBrandedPublicPage
             ? "border-b border-transparent bg-transparent"
             : "border-b border-indigo-100 bg-white/95 shadow-sm backdrop-blur"
         }`}
       >
         <nav className={`mx-auto flex items-center justify-between ${
-          isLandingPage ? "h-20 max-w-none px-6 lg:px-12" : "h-16 max-w-6xl px-5"
+          isBrandedPublicPage ? "h-20 max-w-none px-6 lg:px-12" : "h-16 max-w-6xl px-5"
         }`}>
           <Link
             to={homeTarget}
@@ -290,7 +292,7 @@ export function PageShell() {
         className={`mx-auto flex w-full flex-1 flex-col ${
           isAtmScenario
             ? "max-w-[1600px] px-2 py-2 sm:px-4 sm:py-4"
-            : `max-w-7xl px-5 ${isLandingPage ? "py-0" : "py-8 sm:py-10"}`
+            : `max-w-7xl px-5 ${isBrandedPublicPage ? "py-0" : "py-8 sm:py-10"}`
         }`}
       >
         <Outlet />

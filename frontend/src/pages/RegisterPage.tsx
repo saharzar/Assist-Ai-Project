@@ -62,29 +62,31 @@ export function RegisterPage() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-950">{t("registerTitle")}</h1>
-      <p className="mt-3 text-base leading-7 text-slate-600">{t("registerSubtitle")}</p>
+    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center py-8 sm:py-12">
+      <div className="w-full max-w-[620px] rounded-lg border border-indigo-950/10 bg-white p-6 shadow-[0_24px_60px_rgba(42,37,134,0.12)] sm:p-10">
+      <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("registerTitle")}</h1>
+      <p className="mt-3 text-base leading-7 text-[#5b5a78]">{t("registerSubtitle")}</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("fullName")}</span>
+          <span className="text-sm font-semibold text-[#1d1a5e]">{t("fullName")}</span>
           <input
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             required
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("email")}</span>
+          <span className="text-sm font-semibold text-[#1d1a5e]">{t("email")}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+            placeholder="name@example.com"
+            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 text-base outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -112,11 +114,11 @@ export function RegisterPage() {
         />
 
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("userCategory")}</span>
+          <span className="text-sm font-semibold text-[#1d1a5e]">{t("userCategory")}</span>
           <select
             value={userCategory}
             onChange={(event) => setUserCategory(event.target.value as UserCategory)}
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 bg-white px-5 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
           >
             {categoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -141,11 +143,12 @@ export function RegisterPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="min-h-[56px] w-full rounded-lg bg-slate-900 px-6 py-3 text-lg font-bold text-white shadow-soft hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-[62px] w-full rounded-lg bg-[#2a2586] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {t("createAccount")}
         </button>
       </form>
+      </div>
     </section>
   );
 }
@@ -173,7 +176,7 @@ function PasswordField({
 
   return (
     <label className="block">
-      <span className="text-sm font-bold text-slate-700">{label}</span>
+      <span className="text-sm font-semibold text-[#1d1a5e]">{label}</span>
       <span className="relative mt-2 block">
         <input
           type={isVisible ? "text" : "password"}
@@ -181,14 +184,14 @@ function PasswordField({
           onChange={(event) => onChange(event.target.value)}
           minLength={minLength}
           required
-          className="min-h-[52px] w-full rounded-lg border border-slate-300 px-4 pr-14 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+          className="min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 pr-14 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
         <button
           type="button"
           onClick={onToggle}
           aria-label={toggleLabel}
           title={toggleLabel}
-          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-indigo-500 hover:bg-cyan-50 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           <EyeIcon isOff={isVisible} />
         </button>
