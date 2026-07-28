@@ -3,6 +3,14 @@ import type { AtmAction, AtmState, ParsedAtmName } from "../types/atm";
 const PIN_LENGTH = 4;
 const LOCKOUT_SECONDS = 10;
 
+export const ATM_ERROR = {
+  invalidName: "invalid_name",
+  incompletePin: "incomplete_pin",
+  wrongPin: "wrong_pin",
+  incompleteLetters: "incomplete_letters",
+  letterMismatch: "letter_mismatch",
+} as const;
+
 function createDemoPin() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
@@ -70,7 +78,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (!parsedName) {
         return {
           ...state,
-          errorMessage: "Please write your first and last name.",
+          errorMessage: ATM_ERROR.invalidName,
           assistantMessage: "Please enter your first and last name so we can continue.",
         };
       }
@@ -90,7 +98,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         status: "pin_attempt",
         currentPinInput: "",
         errorMessage: "",
-        assistantMessage: `Please enter the practice password ${state.demoPin}.`,
+        assistantMessage: `Please enter the practice password ${state.demoPin}`,
       };
 
     case "NAME_RETRY":
@@ -144,7 +152,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.currentPinInput.length !== PIN_LENGTH) {
         return {
           ...state,
-          errorMessage: "Please enter all four numbers before continuing.",
+          errorMessage: ATM_ERROR.incompletePin,
           assistantMessage: "Please enter all four numbers of the password.",
         };
       }
@@ -203,8 +211,8 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           status: "pin_attempt",
           currentPinInput: "",
           postVerificationPinFailureCount: failures,
-          errorMessage: "The PIN did not match. Please try one more time.",
-          assistantMessage: `Please check the practice password and enter it again: ${state.demoPin}.`,
+          errorMessage: ATM_ERROR.wrongPin,
+          assistantMessage: `Please check the practice password and enter it again: ${state.demoPin}`,
         };
       }
 
@@ -222,7 +230,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
 
     case "SHOW_VERIFICATION":
       if (state.status !== "security_message") return state;
-      return {...state,status:"pin_attempt",currentPinInput:"",errorMessage:"",assistantMessage:`Please enter the practice password again: ${state.demoPin}.`};
+      return {...state,status:"pin_attempt",currentPinInput:"",errorMessage:"",assistantMessage:`Please enter the practice password again: ${state.demoPin}`};
 
     case "LETTER_INPUT":
       if (state.status !== "letter_check" || state.letterInput.length >= 2) {
@@ -252,7 +260,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.letterInput.length !== 2) {
         return {
           ...state,
-          errorMessage: "Please enter two letters.",
+          errorMessage: ATM_ERROR.incompleteLetters,
           assistantMessage: "Please enter both requested letters to continue.",
         };
       }
@@ -269,12 +277,12 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
           letterInput: "",
           identityVerified: true,
           errorMessage: "",
-          assistantMessage: `Thank you. Please enter the practice password again: ${state.demoPin}.`,
+          assistantMessage: `Thank you. Please enter the practice password again: ${state.demoPin}`,
         };
       }
       const attempts=state.verificationAttemptCount+1;
       if(attempts>=3)return{...state,status:"security_terminated",letterInput:"",verificationAttemptCount:attempts,securityTerminationReason:"verification_failed",lockoutSecondsRemaining:LOCKOUT_SECONDS,errorMessage:"",assistantMessage:"For your security, this ATM session has ended. Please wait before starting again."};
-      return{...state,letterInput:"",verificationAttemptCount:attempts,errorMessage:`The letters do not match. Please try again. ${3-attempts} attempt${3-attempts===1?"":"s"} remaining.`,assistantMessage:"That does not match our information. Please check the letters and try again."};
+      return{...state,letterInput:"",verificationAttemptCount:attempts,errorMessage:`${ATM_ERROR.letterMismatch}:${3-attempts}`,assistantMessage:"That does not match our information. Please check the letters and try again."};
     }
 
     case "LOCKOUT_TICK":
@@ -301,7 +309,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         identityVerified: false,
         lockoutSecondsRemaining: LOCKOUT_SECONDS,
         errorMessage: "",
-        assistantMessage: `Please enter the practice password ${state.demoPin}.`,
+        assistantMessage: `Please enter the practice password ${state.demoPin}`,
       };
 
     case "RESET":

@@ -40,9 +40,21 @@ const spaceKey = { label: "Space", x: 51.5, y: 90.3, width: 32, height: 4.2 };
 const letterBackKey = { label: "Back", x: 81.5, y: 84.5, width: 6, height: 4.3 };
 
 const letterRows = [
-  { letters: "QWERTYUIOP".split(""), startX: 47.2, y: 74.1, gap: 4.05 },
-  { letters: "ASDFGHJKL".split(""), startX: 48.5, y: 79, gap: 4.05 },
-  { letters: "ZXCVBNM".split(""), startX: 49.2, y: 84, gap: 4.15 },
+  { letters: "QWERTYUIOP".split(""), startX: 47.2, y: 74.1, gap: 4.05, offsets: [] },
+  {
+    letters: "ASDFGHJKL".split(""),
+    startX: 48.5,
+    y: 79,
+    gap: 4.05,
+    offsets: [0, 0.4, 0.6, 0.8, 1.2, 1.5, 1.8, 2.1, 2.4],
+  },
+  {
+    letters: "ZXCVBNM".split(""),
+    startX: 51,
+    y: 84,
+    gap: 4.15,
+    offsets: [-1.5, -1.2, -0.8, 0, 0, 0.5, 1.1],
+  },
 ];
 
 export function ATMRealisticShell({
@@ -129,7 +141,7 @@ export function ATMRealisticShell({
                     <OverlayButton
                       key={letter}
                       label={`Letter ${letter}`}
-                      x={row.startX + index * row.gap}
+                      x={row.startX + index * row.gap + (row.offsets?.[index] ?? 0)}
                       y={row.y}
                       width={3.25}
                       height={4}

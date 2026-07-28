@@ -4,10 +4,11 @@ import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
-type SpeechRecognitionMode = "name" | "pin";
+type SpeechRecognitionMode = "name" | "pin" | "confirmation" | "letters";
 type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 
 type SpeechRecognitionCallbacks = {
+  onReady?: () => void;
   onResult: SpeechRecognitionResultCallback;
   onError: (message: string) => void;
   onEnd: () => void;
@@ -16,7 +17,12 @@ type SpeechRecognitionCallbacks = {
 type SpeechRecognitionErrorMessages = {
   microphoneBlocked: string;
   problem: string;
+  browserFallback: string;
+  noSpeech: string;
+  limitReached: string;
 };
+
+const BROWSER_FALLBACK_CODE = "browser-stt-fallback";
 
 type AzureSttResponse = {
   transcript: string;
@@ -50,6 +56,7 @@ type BrowserSpeechRecognition = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  onstart: (() => void) | null;
   onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
   onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
@@ -172,6 +179,89 @@ export function cleanSpokenPinTranscript(transcript: string) {
   return digits.join("").slice(0, 4);
 }
 
+const spokenLetterNames: Record<string, string> = {
+  ay: "a", be: "b", bee: "b", ce: "c", cee: "c", de: "d", dee: "d",
+  ef: "f", ge: "g", gee: "g", ache: "h", aitch: "h", eye: "i", jota: "j",
+  jay: "j", ka: "k", kay: "k", ele: "l", el: "l", eme: "m", em: "m",
+  ene: "n", en: "n", oh: "o", pe: "p", pee: "p", cu: "q", cue: "q",
+  erre: "r", are: "r", re: "r", ese: "s", ess: "s", te: "t", tee: "t",
+  you: "u", ve: "v", vee: "v", equis: "x", ex: "x", why: "y", zeta: "z",
+  zed: "z", zee: "z",
+};
+
+export function cleanSpokenLetterTranscript(transcript: string) {
+  const originalWords = transcript.normalize("NFC").match(/\p{L}+/gu) ?? [];
+  const directLetters = originalWords.flatMap((word) => Array.from(word));
+  if (directLetters.length === 2) return directLetters.join("");
+
+  const letters = originalWords.flatMap((word) => {
+    if (Array.from(word).length === 1) return [word];
+    const normalized = normalizeConfirmationText(word);
+    return spokenLetterNames[normalized] ? [spokenLetterNames[normalized]] : [];
+  });
+  return letters.length === 2 ? letters.join("") : "";
+}
+
+export type SpokenConfirmation = "confirm" | "reject";
+
+const confirmationPhrases: Record<
+  SpeechRecognitionLanguage,
+  { confirm: string[]; reject: string[] }
+> = {
+  en: {
+    confirm: ["yes", "confirm", "i confirm", "yes i confirm", "correct", "that is correct", "thats correct"],
+    reject: ["no", "i do not confirm", "i dont confirm", "no i do not confirm", "incorrect", "not correct", "that is wrong"],
+  },
+  es: {
+    confirm: ["si", "confirmo", "si confirmo", "correcto", "es correcto"],
+    reject: ["no", "no confirmo", "incorrecto", "no es correcto", "esta mal"],
+  },
+  de: {
+    confirm: ["ja", "ich bestatige", "ja ich bestatige", "korrekt", "das stimmt", "richtig"],
+    reject: ["nein", "ich bestatige nicht", "nicht korrekt", "das stimmt nicht", "falsch"],
+  },
+  tr: {
+    confirm: ["evet", "onayliyorum", "evet onayliyorum", "dogru", "evet dogru"],
+    reject: ["hayir", "onaylamiyorum", "hayir onaylamiyorum", "yanlis", "dogru degil"],
+  },
+  pt: {
+    confirm: ["sim", "confirmo", "sim confirmo", "correto", "esta correto"],
+    reject: ["nao", "nao confirmo", "incorreto", "nao esta correto", "esta errado"],
+  },
+  fr: {
+    confirm: ["oui", "je confirme", "oui je confirme", "correct", "c est correct"],
+    reject: ["non", "je ne confirme pas", "non je ne confirme pas", "incorrect", "ce n est pas correct", "c est faux"],
+  },
+};
+
+function normalizeConfirmationText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/ı/g, "i")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function parseSpokenConfirmation(
+  transcript: string,
+  language: SpeechRecognitionLanguage,
+): SpokenConfirmation | null {
+  const normalized = normalizeConfirmationText(transcript);
+  const padded = ` ${normalized} `;
+  const phrases = confirmationPhrases[language];
+  if (phrases.reject.some((phrase) => padded.includes(` ${phrase} `))) {
+    return "reject";
+  }
+  if (phrases.confirm.some((phrase) => padded.includes(` ${phrase} `))) {
+    return "confirm";
+  }
+  return null;
+}
+
 function mapSttUsage(response: AzureSttResponse): SttUsage {
   return {
     limit: response.stt_limit_seconds,
@@ -215,7 +305,7 @@ async function transcribeAzureSpeech(
 
   if (response.status === 204 && response.headers.get("X-Speech-Provider") === "browser") {
     notifySpeechProviderUsed("stt", "browser");
-    throw new ApiError("Browser speech recognition is now active. Hold Space and try again.", 503);
+    throw new ApiError(BROWSER_FALLBACK_CODE, 503);
   }
 
   const data = (await response.json()) as AzureSttResponse;
@@ -312,6 +402,9 @@ class BackendSpeechRecognizer {
       }
 
       this.audioContext = new AudioContextConstructor();
+      if (this.audioContext.state === "suspended") {
+        await this.audioContext.resume();
+      }
       this.source = this.audioContext.createMediaStreamSource(this.stream);
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1) as RecorderNode;
       this.processor.onaudioprocess = (event) => {
@@ -323,6 +416,7 @@ class BackendSpeechRecognizer {
       this.source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
       this.isStarted = true;
+      this.callbacks.onReady?.();
     } catch (error) {
       this.callbacks.onError(
         error instanceof DOMException && error.name === "NotAllowedError"
@@ -347,6 +441,12 @@ class BackendSpeechRecognizer {
     }
 
     const sampleRate = this.audioContext.sampleRate;
+    if (this.buffers.length === 0) {
+      this.callbacks.onError(this.errorMessages.problem);
+      await this.cleanup();
+      this.endOnce();
+      return;
+    }
     const audio = encodeWav(mergeAudioBuffers(this.buffers), sampleRate);
 
     await this.cleanup();
@@ -356,19 +456,25 @@ class BackendSpeechRecognizer {
       const cleanedTranscript =
         this.mode === "pin"
           ? cleanSpokenPinTranscript(transcript)
-          : cleanSpokenNameTranscript(transcript);
+          : this.mode === "letters"
+            ? cleanSpokenLetterTranscript(transcript)
+          : this.mode === "name"
+            ? cleanSpokenNameTranscript(transcript)
+            : transcript.trim();
       if (cleanedTranscript) {
         this.callbacks.onResult(cleanedTranscript);
       } else {
         this.callbacks.onError(this.errorMessages.problem);
       }
     } catch (error) {
-      if (error instanceof TypeError && error.message.toLowerCase().includes("fetch")) {
-        this.callbacks.onError(
-          `Cannot reach the speech backend at ${API_BASE_URL}. Please restart the frontend and make sure the backend is running.`,
-        );
+      if (error instanceof ApiError && error.message === BROWSER_FALLBACK_CODE) {
+        this.callbacks.onError(this.errorMessages.browserFallback);
+      } else if (error instanceof ApiError && error.status === 422) {
+        this.callbacks.onError(this.errorMessages.noSpeech);
+      } else if (error instanceof ApiError && error.status === 403) {
+        this.callbacks.onError(this.errorMessages.limitReached);
       } else {
-        this.callbacks.onError(error instanceof Error ? error.message : this.errorMessages.problem);
+        this.callbacks.onError(this.errorMessages.problem);
       }
     } finally {
       this.endOnce();
@@ -429,11 +535,16 @@ class BrowserSpeechRecognizer {
     recognition.lang = localeByLanguage[this.language];
     recognition.continuous = false;
     recognition.interimResults = false;
+    recognition.onstart = () => this.callbacks.onReady?.();
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
       const cleaned = this.mode === "pin"
         ? cleanSpokenPinTranscript(transcript)
-        : cleanSpokenNameTranscript(transcript);
+        : this.mode === "letters"
+          ? cleanSpokenLetterTranscript(transcript)
+        : this.mode === "name"
+          ? cleanSpokenNameTranscript(transcript)
+          : transcript.trim();
       if (cleaned) this.callbacks.onResult(cleaned);
       else this.callbacks.onError(this.errorMessages.problem);
     };
@@ -501,9 +612,28 @@ class ManagedSpeechRecognizer {
         ? new BrowserSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages)
         : new BackendSpeechRecognizer(delegatedCallbacks, this.mode, this.language, this.errorMessages);
       this.delegate.start();
-    } catch {
-      this.callbacks.onError(this.errorMessages.problem);
-      this.endOnce();
+    } catch (error) {
+      const BrowserRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (this.stopRequested || !BrowserRecognition) {
+        console.error("ASSIST-AI could not resolve an STT provider", error);
+        this.callbacks.onError(this.errorMessages.problem);
+        this.endOnce();
+        return;
+      }
+
+      // Provider routing should not disable the browser's built-in recognizer.
+      const delegatedCallbacks: SpeechRecognitionCallbacks = {
+        ...this.callbacks,
+        onEnd: () => this.endOnce(),
+      };
+      notifySpeechProviderUsed("stt", "browser");
+      this.delegate = new BrowserSpeechRecognizer(
+        delegatedCallbacks,
+        this.mode,
+        this.language,
+        this.errorMessages,
+      );
+      this.delegate.start();
     }
   }
 
@@ -521,6 +651,9 @@ export function createSpeechRecognizer(
   errorMessages: SpeechRecognitionErrorMessages = {
     microphoneBlocked: "Microphone access was blocked. Please type or use the keypad.",
     problem: "Voice input had a problem. Please try again or type.",
+    browserFallback: "Browser voice input is ready. Hold Space and speak again.",
+    noSpeech: "No clear speech was recognized. Hold Space and try again.",
+    limitReached: "Speech time limit reached. Please type or use the keypad.",
   },
 ) {
   if (!isSpeechRecognitionSupported()) {

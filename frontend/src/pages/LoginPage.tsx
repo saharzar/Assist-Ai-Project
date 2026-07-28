@@ -55,30 +55,33 @@ export function LoginPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-950">{t("loginTitle")}</h1>
-      <p className="mt-3 text-base leading-7 text-slate-600">{t("loginSubtitle")}</p>
+    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center py-8 sm:py-12">
+      <div className="w-full max-w-[550px] rounded-lg border border-indigo-950/10 bg-white p-6 shadow-[0_24px_60px_rgba(42,37,134,0.12)] sm:p-11">
+      <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("loginTitle")}</h1>
+      <p className="mt-3 text-base leading-7 text-[#5b5a78]">{t("loginSubtitle")}</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("email")}</span>
+          <span className="text-sm font-semibold text-[#1d1a5e]">{t("email")}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+            placeholder="name@example.com"
+            className="mt-2 min-h-[58px] w-full rounded-lg border border-indigo-950/15 px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">{t("password")}</span>
+          <span className="text-sm font-semibold text-[#1d1a5e]">{t("password")}</span>
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            className="mt-2 min-h-[52px] w-full rounded-lg border border-slate-300 px-4 text-base outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+            placeholder={t("password")}
+            className="mt-2 min-h-[58px] w-full rounded-lg border border-indigo-950/15 px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -91,18 +94,19 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="min-h-[56px] w-full rounded-lg bg-slate-900 px-6 py-3 text-lg font-bold text-white shadow-soft hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-[62px] w-full rounded-lg bg-[#2a2586] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {t("login")}
         </button>
 
         <Link
           to="/register"
-          className="flex min-h-[48px] items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 font-bold text-teal-800 hover:bg-teal-100"
+          className="flex min-h-[62px] items-center justify-center rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 font-semibold text-[#2a2586] transition hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {t("createAccount")}
         </Link>
       </form>
+      </div>
     </section>
   );
 }

@@ -17,24 +17,28 @@ export function AtmNameScreen({
   transcript,
   speechError,
   isListening,
+  isPreparingVoice,
   isVoiceSupported,
   inputEvent,
   labels,
   onSubmit,
   onKeyboardInput,
+  onVoiceStart,
+  onVoiceStop,
 }: {
   errorMessage: string;
   transcript: string;
   speechError: string;
   isListening: boolean;
+  isPreparingVoice: boolean;
   isVoiceSupported: boolean;
   inputEvent: AtmNameInputEvent | null;
   labels: {
     title: string;
-    hint: string;
-    voiceInput: string;
     voiceUnsupported: string;
     listening: string;
+    preparing: string;
+    voiceButton: string;
     heard: string;
     fullName: string;
     placeholder: string;
@@ -42,6 +46,8 @@ export function AtmNameScreen({
   };
   onSubmit: (fullName: string) => void;
   onKeyboardInput: () => void;
+  onVoiceStart: () => void;
+  onVoiceStop: () => void;
 }) {
   const [fullName, setFullName] = useState("");
   const fullNameRef = useRef("");
@@ -96,20 +102,50 @@ export function AtmNameScreen({
         <h1 className="text-xl font-bold tracking-tight text-slate-950">
           {labels.title}
         </h1>
-        <p className="mt-1 text-sm font-semibold leading-5 text-slate-700">
-          {labels.hint}
-        </p>
       </div>
 
+      <label className="block">
+        <span className="sr-only">{labels.fullName}</span>
+        <input
+          value={fullName}
+          onChange={(event) => {
+            onKeyboardInput();
+            setFullName(event.target.value);
+          }}
+          placeholder={labels.placeholder}
+          className="mt-1 min-h-[40px] w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+        />
+      </label>
+
       <div className="space-y-1 rounded-lg border border-slate-200 bg-white p-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">{labels.voiceInput}</p>
         {!isVoiceSupported && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
             {labels.voiceUnsupported}
           </div>
         )}
-        {isListening && (
-          <p className="text-sm font-semibold text-sky-800">{labels.listening}</p>
+        {isVoiceSupported && (
+          <>
+            <button
+              type="button"
+              aria-label={labels.voiceButton}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                onVoiceStart();
+              }}
+              onPointerUp={onVoiceStop}
+              onPointerCancel={onVoiceStop}
+              onKeyDown={(event) => {
+                if ((event.key === "Enter" || event.key === " ") && !event.repeat) onVoiceStart();
+              }}
+              onKeyUp={(event) => {
+                if (event.key === "Enter" || event.key === " ") onVoiceStop();
+              }}
+              className="mt-2 min-h-11 w-full rounded-lg bg-sky-700 px-3 text-sm font-bold text-white outline-none hover:bg-sky-800 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-900"
+            >
+              {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+            </button>
+          </>
         )}
         {transcript && (
           <div className="rounded-lg bg-slate-50 p-2">
@@ -123,19 +159,6 @@ export function AtmNameScreen({
           </div>
         )}
       </div>
-
-      <label className="block">
-        <span className="text-xs font-bold text-slate-700">{labels.fullName}</span>
-        <input
-          value={fullName}
-          onChange={(event) => {
-            onKeyboardInput();
-            setFullName(event.target.value);
-          }}
-          placeholder={labels.placeholder}
-          className="mt-1 min-h-[40px] w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
-        />
-      </label>
 
       {errorMessage && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">

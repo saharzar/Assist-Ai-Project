@@ -17,7 +17,7 @@ import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
 import { SoundToggle } from "../../components/atm/SoundToggle";
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
-import { atmReducer, initialAtmState } from "../../lib/atmStateMachine";
+import { ATM_ERROR, atmReducer, initialAtmState } from "../../lib/atmStateMachine";
 import { atmTranslations } from "../../lib/atmTranslations";
 import {
   abandonAtmAnalyticsSession,
@@ -30,7 +30,9 @@ import {
 } from "../../services/atmAnalyticsService";
 import {
   createSpeechRecognizer,
+  cleanSpokenLetterTranscript,
   isSpeechRecognitionSupported,
+  parseSpokenConfirmation,
 } from "../../services/speechRecognitionService";
 import { getSttUsage, type SttUsage } from "../../services/sttUsageService";
 import {
@@ -46,6 +48,11 @@ import {
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
+function getRemainingAttempts(errorMessage: string) {
+  const attempts = Number(errorMessage.split(":")[1]);
+  return Number.isFinite(attempts) ? Math.max(0, attempts) : 0;
+}
+
 export function AtmScenarioPage() {
   const navigate = useNavigate();
   const { token, guestSessionToken } = useAuth();
@@ -58,10 +65,13 @@ export function AtmScenarioPage() {
   });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isPreparingVoice, setIsPreparingVoice] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [speechError, setSpeechError] = useState("");
   const [ttsError, setTtsError] = useState("");
   const [nameInputEvent, setNameInputEvent] = useState<AtmNameInputEvent | null>(null);
+  const [confirmationSecondsRemaining, setConfirmationSecondsRemaining] = useState(0);
+  const [confirmationDecisionPending, setConfirmationDecisionPending] = useState(false);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -74,6 +84,12 @@ export function AtmScenarioPage() {
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
+  const lastAutoSpeechRef = useRef({
+    status: "",
+    language: "",
+    errorMessage: "",
+    assistantMessage: "",
+  });
   const recordedInputModesRef = useRef<Set<AtmInputMode>>(new Set());
   const activeSttProviderRef = useRef<GlobalSpeechProvider | null>(null);
   const analyticsCredentialsRef = useRef<{
@@ -187,9 +203,9 @@ export function AtmScenarioPage() {
         if (state.identityVerified && state.postVerificationPinFailureCount > 0) {
           return text.wrongPinAssistant(Math.max(0, 2 - state.postVerificationPinFailureCount));
         }
-        return state.errorMessage.toLowerCase().includes("four")
+        return state.errorMessage === ATM_ERROR.incompletePin
           ? text.incompletePinAssistant
-          : state.errorMessage;
+          : text.wrongPinAssistant(Math.max(0, 2 - state.postVerificationPinFailureCount));
       }
       if (state.identityVerified) {
         return text.retryPinAfterLettersAssistant(state.demoPin);
@@ -197,7 +213,13 @@ export function AtmScenarioPage() {
       return text.pinAssistant(state.demoPin);
     }
     if (state.status === "letter_check") {
-      return state.errorMessage ? state.errorMessage : text.letterCheckAssistant;
+      if (state.errorMessage === ATM_ERROR.incompleteLetters) {
+        return text.letterIncompleteAssistant;
+      }
+      if (state.errorMessage.startsWith(`${ATM_ERROR.letterMismatch}:`)) {
+        return text.letterMismatchError(getRemainingAttempts(state.errorMessage));
+      }
+      return text.letterCheckAssistant;
     }
     if (state.status === "lockout") {
       return text.lockoutAssistant;
@@ -221,34 +243,53 @@ export function AtmScenarioPage() {
       return text.invalidNameError;
     }
     if (state.status === "pin_attempt") {
-      if (state.errorMessage.toLowerCase().includes("four")) {
+      if (state.errorMessage === ATM_ERROR.incompletePin) {
         return text.incompletePinError;
       }
       if (state.identityVerified && state.postVerificationPinFailureCount > 0) {
         return text.wrongPinAssistant(Math.max(0, 2 - state.postVerificationPinFailureCount));
       }
-      return state.errorMessage;
+      return text.wrongPinAssistant(Math.max(0, 2 - state.postVerificationPinFailureCount));
     }
     if (state.status === "letter_check") {
-      return state.errorMessage.toLowerCase().includes("match") ? state.errorMessage : text.letterIncompleteError;
+      if (state.errorMessage.startsWith(`${ATM_ERROR.letterMismatch}:`)) {
+        return text.letterMismatchError(getRemainingAttempts(state.errorMessage));
+      }
+      return text.letterIncompleteError;
     }
     return state.errorMessage;
   }, [state.currentPinInput.length, state.errorMessage, state.identityVerified, state.postVerificationPinFailureCount, state.status, text]);
+
+  const spokenAssistantMessage = useMemo(() => {
+    if (language === "tr" && state.status === "confirm_name" && state.fullName) {
+      const clearlySpokenName = state.fullName.trim().split(/\s+/).join("  ");
+      return `Adını ${clearlySpokenName} olarak duydum. Lütfen doğru olup olmadığını onayla.`;
+    }
+    if (state.demoPin && assistantMessage.includes(state.demoPin)) {
+      return assistantMessage.split(state.demoPin).join(state.demoPin.split("").join(" "));
+    }
+    return assistantMessage;
+  }, [assistantMessage, language, state.demoPin, state.fullName, state.status, text]);
 
   const speakCurrentMessage = useCallback(() => {
     if (!soundEnabled) {
       return;
     }
     setTtsError("");
-    speakAssistantMessage(assistantMessage, {
+    speakAssistantMessage(spokenAssistantMessage, {
       onStart: () => setIsSpeaking(true),
-      onEnd: () => setIsSpeaking(false),
-      onError: (message) => {
+      onEnd: () => {
         setIsSpeaking(false);
-        setTtsError(message);
+        if (latestStatusRef.current === "security_message") {
+          dispatch({ type: "SHOW_VERIFICATION" });
+        }
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setTtsError(text.assistantVoiceProblem);
       },
     }, language);
-  }, [assistantMessage, language, soundEnabled]);
+  }, [language, soundEnabled, spokenAssistantMessage, text.assistantVoiceProblem]);
 
   const stopSpeech = useCallback(() => {
     stopAssistantSpeech();
@@ -280,8 +321,70 @@ export function AtmScenarioPage() {
     }
 
     listeningStartedAtRef.current = null;
+    recognizerRef.current = null;
+    setIsPreparingVoice(false);
     setIsListening(false);
   }, []);
+
+  const showLocalizedSpeechError = useCallback((message: string) => {
+    const translatedMessages = new Set([
+      text.speechMicBlocked,
+      text.speechProblem,
+      text.speechBrowserFallback,
+      text.speechNoMatch,
+      text.speechLimitReached,
+      text.speechNameUnsupported,
+      text.speechNameStartError,
+      text.speechPinUnsupported,
+      text.speechPinStartError,
+      text.voiceUnsupportedLetters,
+    ]);
+    setSpeechError(translatedMessages.has(message) ? message : text.speechProblem);
+  }, [text]);
+
+  const completeNameConfirmation = useCallback((confirmed: boolean) => {
+    if (confirmationSecondsRemaining > 0 || confirmationDecisionPending) {
+      return;
+    }
+
+    setConfirmationDecisionPending(true);
+    setSpeechError("");
+    stopSpeech();
+    const completeTransition = () => {
+      setConfirmationDecisionPending(false);
+      setTranscript("");
+      dispatch({ type: confirmed ? "NAME_CONFIRMED" : "NAME_RETRY" });
+    };
+
+    if (!soundEnabled) {
+      completeTransition();
+      return;
+    }
+
+    speakAssistantMessage(
+      confirmed ? text.nameConfirmedFeedback : text.nameRejectedFeedback,
+      {
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => {
+          setIsSpeaking(false);
+          completeTransition();
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          completeTransition();
+        },
+      },
+      language,
+    );
+  }, [
+    confirmationDecisionPending,
+    confirmationSecondsRemaining,
+    language,
+    soundEnabled,
+    stopSpeech,
+    text.nameConfirmedFeedback,
+    text.nameRejectedFeedback,
+  ]);
 
   useEffect(() => {
     latestStatusRef.current = state.status;
@@ -310,7 +413,36 @@ export function AtmScenarioPage() {
     );
   }, [enqueueAnalytics, state.securityTerminationReason, state.status]);
 
-  useEffect(()=>{if(state.status!=="security_message")return;const timer=window.setTimeout(()=>dispatch({type:"SHOW_VERIFICATION"}),1400);return()=>window.clearTimeout(timer)},[state.status]);
+  useEffect(() => {
+    if (state.status !== "security_message") return;
+    const fallbackDelay = soundEnabled ? 12000 : 2500;
+    const timer = window.setTimeout(
+      () => dispatch({ type: "SHOW_VERIFICATION" }),
+      fallbackDelay,
+    );
+    return () => window.clearTimeout(timer);
+  }, [soundEnabled, state.status]);
+
+  useEffect(() => {
+    if (state.status !== "confirm_name") {
+      setConfirmationSecondsRemaining(0);
+      setConfirmationDecisionPending(false);
+      return;
+    }
+
+    setConfirmationSecondsRemaining(3);
+    setConfirmationDecisionPending(false);
+    const timer = window.setInterval(() => {
+      setConfirmationSecondsRemaining((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [state.status]);
 
   useEffect(() => {
     if (state.status !== "security_terminated") return;
@@ -333,11 +465,37 @@ export function AtmScenarioPage() {
 
   useEffect(() => {
     if (!soundEnabled) {
+      lastAutoSpeechRef.current.status = "";
       stopSpeech();
       return;
     }
-    speakCurrentMessage();
-  }, [assistantMessage, soundEnabled, speakCurrentMessage, stopSpeech]);
+    const previous = lastAutoSpeechRef.current;
+    const screenChanged = previous.status !== state.status;
+    const languageChanged = previous.language !== language;
+    const newErrorAppeared = Boolean(state.errorMessage) && (
+      previous.errorMessage !== state.errorMessage ||
+      previous.assistantMessage !== assistantMessage
+    );
+
+    lastAutoSpeechRef.current = {
+      status: state.status,
+      language,
+      errorMessage: state.errorMessage,
+      assistantMessage,
+    };
+
+    if (screenChanged || languageChanged || newErrorAppeared) {
+      speakCurrentMessage();
+    }
+  }, [
+    assistantMessage,
+    language,
+    soundEnabled,
+    speakCurrentMessage,
+    state.errorMessage,
+    state.status,
+    stopSpeech,
+  ]);
 
   useEffect(() => {
     if (state.status !== "success") {
@@ -353,6 +511,12 @@ export function AtmScenarioPage() {
 
   useEffect(() => {
     return () => {
+      lastAutoSpeechRef.current = {
+        status: "",
+        language: "",
+        errorMessage: "",
+        assistantMessage: "",
+      };
       stopSpeech();
       stopSuccessSound();
       if (stopListeningTimerRef.current) {
@@ -422,12 +586,20 @@ export function AtmScenarioPage() {
 
     const recognizer = createSpeechRecognizer(
       {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+          sttAutoStopTimerRef.current = window.setTimeout(() => {
+            setSpeechError(text.speechLimitReached);
+            recognizerRef.current?.stop();
+            finishListeningSession();
+          }, usage.remaining * 1000);
+        },
         onResult: (nextTranscript) => {
           setTranscript(nextTranscript);
         },
-        onError: (message) => {
-          setSpeechError(message);
-        },
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "name",
@@ -435,6 +607,9 @@ export function AtmScenarioPage() {
       {
         microphoneBlocked: text.speechMicBlocked,
         problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
       },
     );
 
@@ -445,21 +620,16 @@ export function AtmScenarioPage() {
 
     recognizerRef.current = recognizer;
     try {
+      setIsPreparingVoice(true);
       recognizer.start();
       recordInputMode("voice");
-      listeningStartedAtRef.current = Date.now();
-      setIsListening(true);
-      sttAutoStopTimerRef.current = window.setTimeout(() => {
-        setSpeechError(text.speechLimitReached);
-        recognizerRef.current?.stop();
-        finishListeningSession();
-      }, usage.remaining * 1000);
     } catch {
       listeningStartedAtRef.current = null;
+      setIsPreparingVoice(false);
       setIsListening(false);
       setSpeechError(text.speechNameStartError);
     }
-  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
   const startPinListening = useCallback(async () => {
     stopSpeech();
@@ -482,12 +652,20 @@ export function AtmScenarioPage() {
 
     const recognizer = createSpeechRecognizer(
       {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+          sttAutoStopTimerRef.current = window.setTimeout(() => {
+            setSpeechError(text.speechLimitReached);
+            recognizerRef.current?.stop();
+            finishListeningSession();
+          }, usage.remaining * 1000);
+        },
         onResult: (nextTranscript) => {
           dispatch({ type: "PIN_REPLACE", value: nextTranscript });
         },
-        onError: (message) => {
-          setSpeechError(message);
-        },
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "pin",
@@ -495,6 +673,9 @@ export function AtmScenarioPage() {
       {
         microphoneBlocked: text.speechMicBlocked,
         problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
       },
     );
 
@@ -505,21 +686,159 @@ export function AtmScenarioPage() {
 
     recognizerRef.current = recognizer;
     try {
+      setIsPreparingVoice(true);
       recognizer.start();
       recordInputMode("voice");
-      listeningStartedAtRef.current = Date.now();
-      setIsListening(true);
-      sttAutoStopTimerRef.current = window.setTimeout(() => {
-        setSpeechError(text.speechLimitReached);
-        recognizerRef.current?.stop();
-        finishListeningSession();
-      }, usage.remaining * 1000);
     } catch {
       listeningStartedAtRef.current = null;
+      setIsPreparingVoice(false);
       setIsListening(false);
       setSpeechError(text.speechPinStartError);
     }
-  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
+
+  const startConfirmationListening = useCallback(async () => {
+    if (confirmationSecondsRemaining > 0 || confirmationDecisionPending) {
+      return;
+    }
+    stopSpeech();
+    setSpeechError("");
+
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage) return;
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    if (!spaceIsHeldRef.current) return;
+
+    const recognizer = createSpeechRecognizer(
+      {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+          sttAutoStopTimerRef.current = window.setTimeout(() => {
+            setSpeechError(text.speechLimitReached);
+            recognizerRef.current?.stop();
+            finishListeningSession();
+          }, usage.remaining * 1000);
+        },
+        onResult: (nextTranscript) => {
+          const decision = parseSpokenConfirmation(nextTranscript, language);
+          if (!decision) {
+            setSpeechError(text.confirmUnclear);
+            return;
+          }
+          completeNameConfirmation(decision === "confirm");
+        },
+        onError: showLocalizedSpeechError,
+        onEnd: finishListeningSession,
+      },
+      "confirmation",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
+      },
+    );
+    if (!recognizer) {
+      setSpeechError(text.speechNameUnsupported);
+      return;
+    }
+
+    recognizerRef.current = recognizer;
+    try {
+      setIsPreparingVoice(true);
+      recognizer.start();
+      recordInputMode("voice");
+    } catch {
+      setIsPreparingVoice(false);
+      setSpeechError(text.speechNameStartError);
+      finishListeningSession();
+    }
+  }, [
+    completeNameConfirmation,
+    confirmationDecisionPending,
+    confirmationSecondsRemaining,
+    finishListeningSession,
+    language,
+    recordInputMode,
+    refreshSttUsage,
+    showLocalizedSpeechError,
+    stopSpeech,
+    text,
+  ]);
+
+  const startLetterListening = useCallback(async () => {
+    stopSpeech();
+    setSpeechError("");
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage) return;
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    if (!spaceIsHeldRef.current) return;
+
+    const recognizer = createSpeechRecognizer(
+      {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+          sttAutoStopTimerRef.current = window.setTimeout(() => {
+            setSpeechError(text.speechLimitReached);
+            recognizerRef.current?.stop();
+            finishListeningSession();
+          }, usage.remaining * 1000);
+        },
+        onResult: (nextTranscript) => {
+          const letters = cleanSpokenLetterTranscript(nextTranscript);
+          if (letters.length !== 2) {
+            setSpeechError(text.letterIncompleteError);
+            return;
+          }
+          dispatch({ type: "LETTER_CLEAR" });
+          Array.from(letters).forEach((letter) => dispatch({ type: "LETTER_INPUT", letter }));
+        },
+        onError: showLocalizedSpeechError,
+        onEnd: finishListeningSession,
+      },
+      "letters",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
+      },
+    );
+    if (!recognizer) {
+      setSpeechError(text.voiceUnsupportedLetters);
+      return;
+    }
+    recognizerRef.current = recognizer;
+    try {
+      setIsPreparingVoice(true);
+      recognizer.start();
+      recordInputMode("voice");
+    } catch {
+      setIsPreparingVoice(false);
+      setSpeechError(text.speechProblem);
+      finishListeningSession();
+    }
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
@@ -534,7 +853,7 @@ export function AtmScenarioPage() {
   }, [finishListeningSession]);
 
   useEffect(() => {
-    if (!["enter_name", "pin_attempt"].includes(state.status) || !speechRecognitionSupported) {
+    if (!["enter_name", "confirm_name", "pin_attempt", "letter_check"].includes(state.status) || !speechRecognitionSupported) {
       return;
     }
 
@@ -550,18 +869,24 @@ export function AtmScenarioPage() {
       if (event.code !== "Space" || event.repeat) {
         return;
       }
-      stopSpeech();
       if (isTextInputTarget(event.target)) {
         return;
       }
       event.preventDefault();
+      stopSpeech();
       spaceIsHeldRef.current = true;
-      if (!isListeningRef.current) {
+      if (!isListeningRef.current && !recognizerRef.current) {
         if (state.status === "enter_name") {
           void startNameListening();
         }
         if (state.status === "pin_attempt") {
           void startPinListening();
+        }
+        if (state.status === "confirm_name" && confirmationSecondsRemaining === 0) {
+          void startConfirmationListening();
+        }
+        if (state.status === "letter_check") {
+          void startLetterListening();
         }
       }
     };
@@ -582,7 +907,16 @@ export function AtmScenarioPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [speechRecognitionSupported, startNameListening, startPinListening, state.status, stopListening]);
+  }, [
+    confirmationSecondsRemaining,
+    speechRecognitionSupported,
+    startConfirmationListening,
+    startLetterListening,
+    startNameListening,
+    startPinListening,
+    state.status,
+    stopListening,
+  ]);
 
   const emitNameInputEvent = (event: AtmNameInputEventPayload) => {
     setNameInputEvent({
@@ -628,14 +962,15 @@ export function AtmScenarioPage() {
             transcript={transcript}
             speechError={speechError}
             isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
             isVoiceSupported={speechRecognitionSupported}
             inputEvent={nameInputEvent}
             labels={{
               title: text.enterNameTitle,
-              hint: text.enterNameHint,
-              voiceInput: text.voiceInput,
               voiceUnsupported: text.voiceUnsupportedName,
               listening: text.listening,
+              preparing: text.preparingVoice,
+              voiceButton: text.nameVoiceButton,
               heard: text.heardLabel,
               fullName: text.fullNameLabel,
               placeholder: text.fullNamePlaceholder,
@@ -643,6 +978,11 @@ export function AtmScenarioPage() {
             }}
             onSubmit={(fullName) => dispatch({ type: "NAME_SUBMITTED", fullName })}
             onKeyboardInput={() => recordInputMode("keyboard")}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startNameListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
 
@@ -650,10 +990,26 @@ export function AtmScenarioPage() {
         return (
           <AtmConfirmNameScreen
             fullName={state.fullName}
+            secondsRemaining={confirmationSecondsRemaining}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
+            isDecisionPending={confirmationDecisionPending}
+            speechError={speechError}
             labels={{
               heard: text.heardLabel,
               hint: text.confirmNameHint,
+              voice: text.confirmVoice,
+              wait: text.confirmWait(confirmationSecondsRemaining),
+              voiceHint: text.confirmVoiceHint,
+              listening: text.listening,
+              preparing: text.preparingVoice,
             }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startConfirmationListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
 
@@ -664,6 +1020,7 @@ export function AtmScenarioPage() {
             errorMessage={displayedErrorMessage}
             speechError={speechError}
             isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
             isVoiceSupported={speechRecognitionSupported}
             labels={{
               title: text.pinTitle,
@@ -674,7 +1031,15 @@ export function AtmScenarioPage() {
               voiceInput: text.voiceInput,
               voiceUnsupported: text.voiceUnsupportedPin,
               listening: text.listening,
+              preparing: text.preparingVoice,
+              voiceButton: text.pinVoiceButton,
+              voiceHint: text.pinVoiceHint,
             }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startPinListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
 
@@ -683,18 +1048,32 @@ export function AtmScenarioPage() {
           <AtmLetterCheckScreen
             letterInput={state.letterInput}
             errorMessage={displayedErrorMessage}
+            speechError={speechError}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
             labels={{
               title: text.letterTitle,
               hint: text.letterHint,
               lettersEntered: text.lettersEntered,
               lettersAria: text.lettersAria,
+              voiceUnsupported: text.voiceUnsupportedLetters,
+              voiceButton: text.letterVoiceButton,
+              voiceHint: text.letterVoiceHint,
+              listening: text.listening,
+              preparing: text.preparingVoice,
             }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startLetterListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
       case "security_message":
-        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-teal-700">Security check</p><h1 className="mt-2 text-2xl font-bold text-slate-950">Please wait</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityMessage}</p></div>;
+        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-teal-700">{text.securityCheckEyebrow}</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityWaitTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityMessage}</p></div>;
       case "security_terminated":
-        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-rose-700">Security notice</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityTerminatedTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityTerminatedBody}</p><p role="status" className="mt-5 w-fit rounded-lg bg-slate-900 px-5 py-3 font-bold text-white">{text.waitTime}: {state.lockoutSecondsRemaining} {text.seconds}</p></div>;
+        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-rose-700">{text.securityNoticeEyebrow}</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityTerminatedTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityTerminatedBody}</p><p role="status" className="mt-5 w-fit rounded-lg bg-slate-900 px-5 py-3 font-bold text-white">{text.waitTime}: {state.lockoutSecondsRemaining} {text.seconds}</p></div>;
 
       case "lockout":
         return (
@@ -780,14 +1159,11 @@ export function AtmScenarioPage() {
         }
       }}
       onClear={() => {
-        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "clear" });
         }
         if (state.status === "confirm_name") {
-          setTranscript("");
-          setSpeechError("");
-          dispatch({ type: "NAME_RETRY" });
+          completeNameConfirmation(false);
         }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_CLEAR" });
@@ -797,14 +1173,11 @@ export function AtmScenarioPage() {
         }
       }}
       onBackspace={() => {
-        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "backspace" });
         }
         if (state.status === "confirm_name") {
-          setTranscript("");
-          setSpeechError("");
-          dispatch({ type: "NAME_RETRY" });
+          completeNameConfirmation(false);
         }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_BACKSPACE" });
@@ -814,12 +1187,13 @@ export function AtmScenarioPage() {
         }
       }}
       onEnter={() => {
+        if (state.status === "confirm_name") {
+          completeNameConfirmation(true);
+          return;
+        }
         stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "submit" });
-        }
-        if (state.status === "confirm_name") {
-          dispatch({ type: "NAME_CONFIRMED" });
         }
         if (state.status === "pin_attempt") {
           if (state.currentPinInput.length === 4) {
@@ -844,14 +1218,11 @@ export function AtmScenarioPage() {
         }
       }}
       onCancel={() => {
-        stopSpeech();
         if (state.status === "enter_name") {
           emitNameInputEvent({ type: "clear" });
         }
         if (state.status === "confirm_name") {
-          setTranscript("");
-          setSpeechError("");
-          dispatch({ type: "NAME_RETRY" });
+          completeNameConfirmation(false);
         }
         if (state.status === "pin_attempt") {
           dispatch({ type: "PIN_CLEAR" });

@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 import time
+import unicodedata
 
 import httpx
 from fastapi import HTTPException, status
@@ -8,6 +10,16 @@ from app.core.config import get_settings
 SONIOX_BASE_URL = "https://api.soniox.com/v1"
 SONIOX_TTS_URL = "https://tts-rt.soniox.com/tts"
 QUOTA_STATUS_CODES = {402, 429}
+SUPPORTED_STT_LANGUAGES = ("en", "es", "de", "tr", "pt", "fr")
+MIN_NAME_CONFIDENCE = 0.35
+NAME_EDGE_PUNCTUATION = " \t\r\n.,!?;:\u2026"
+
+
+@dataclass(frozen=True)
+class SonioxSttResult:
+    transcript: str
+    detected_language: str | None = None
+    confidence: float | None = None
 
 
 class SonioxProviderError(HTTPException):
@@ -31,7 +43,52 @@ def _raise_for_soniox(response: httpx.Response) -> None:
     )
 
 
-def recognize_soniox_stt(audio: bytes, request_id: str) -> str:
+def get_soniox_language_hints(language: str, mode: str) -> list[str]:
+    preferred = language if language in SUPPORTED_STT_LANGUAGES else "en"
+    if mode == "pin":
+        return [preferred]
+    return [preferred, *(candidate for candidate in SUPPORTED_STT_LANGUAGES if candidate != preferred)]
+
+
+def is_supported_name_text(value: str) -> bool:
+    has_letter = False
+    for character in value.strip():
+        if character.isalpha():
+            has_letter = True
+            if not unicodedata.name(character, "").startswith("LATIN"):
+                return False
+        elif not (character.isspace() or character in "-'\u2019"):
+            return False
+    return has_letter
+
+
+def parse_soniox_transcript(payload: dict, mode: str) -> SonioxSttResult:
+    transcript = str(payload.get("text", "")).strip()
+    if mode == "name":
+        transcript = transcript.strip(NAME_EDGE_PUNCTUATION)
+    tokens = payload.get("tokens") if isinstance(payload.get("tokens"), list) else []
+    confidences = [
+        float(token["confidence"])
+        for token in tokens
+        if isinstance(token, dict) and isinstance(token.get("confidence"), (int, float))
+    ]
+    confidence = sum(confidences) / len(confidences) if confidences else None
+    detected_languages = [
+        str(token["language"])
+        for token in tokens
+        if isinstance(token, dict) and token.get("language") in SUPPORTED_STT_LANGUAGES
+    ]
+    detected_language = max(set(detected_languages), key=detected_languages.count) if detected_languages else None
+
+    if mode == "name" and (
+        not is_supported_name_text(transcript)
+        or (confidence is not None and confidence < MIN_NAME_CONFIDENCE)
+    ):
+        return SonioxSttResult("", detected_language, confidence)
+    return SonioxSttResult(transcript, detected_language, confidence)
+
+
+def recognize_soniox_stt(audio: bytes, request_id: str, language: str, mode: str) -> SonioxSttResult:
     settings = get_settings()
     if not settings.soniox_api_key:
         raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox STT is not configured.")
@@ -53,6 +110,18 @@ def recognize_soniox_stt(audio: bytes, request_id: str) -> str:
                 json={
                     "model": settings.soniox_stt_model,
                     "file_id": file_id,
+                    "language_hints": get_soniox_language_hints(language, mode),
+                    "language_hints_strict": True,
+                    "enable_language_identification": True,
+                    "context": (
+                        "The speaker says a person's full name only."
+                        if mode == "name"
+                        else "The speaker confirms or rejects a name using a short yes or no phrase."
+                        if mode == "confirmation"
+                        else "The speaker says exactly two individual alphabet letters."
+                        if mode == "letters"
+                        else "The speaker says digits only."
+                    ),
                     "client_reference_id": request_id,
                 },
             )
@@ -66,7 +135,7 @@ def recognize_soniox_stt(audio: bytes, request_id: str) -> str:
                 if state.get("status") == "completed":
                     transcript = client.get(f"{SONIOX_BASE_URL}/transcriptions/{transcription_id}/transcript")
                     _raise_for_soniox(transcript)
-                    return str(transcript.json().get("text", "")).strip()
+                    return parse_soniox_transcript(transcript.json(), mode)
                 if state.get("status") in {"error", "failed"}:
                     raise SonioxProviderError(
                         status.HTTP_503_SERVICE_UNAVAILABLE,
