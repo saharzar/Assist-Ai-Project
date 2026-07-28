@@ -220,7 +220,7 @@ export function PageShell() {
               <Link
                 to="/scenarios"
                 className={`inline-flex min-h-[42px] items-center rounded-full border px-5 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
-                  location.pathname.startsWith("/scenario") || location.pathname === "/scenarios"
+                  isAdmin || location.pathname.startsWith("/scenario") || location.pathname === "/scenarios"
                     ? "border-cyan-300 bg-cyan-50 text-indigo-700"
                     : "border-indigo-950/10 bg-white text-[#5b5a78] hover:border-cyan-300 hover:text-indigo-800"
                 }`}
@@ -336,11 +336,11 @@ function AdminNavLink({ to, label, active }: { to: string; label: string; active
 function adminMenuText(language: string) {
   const copy: Record<string, { users: string; analytics: string; speech: string; quotas: string }> = {
     en: { users: "Users", analytics: "Scenario analytics", speech: "Speech providers", quotas: "User quotas" },
-    es: { users: "Usuarios", analytics: "Analitica de escenarios", speech: "Proveedores de voz", quotas: "Cuotas" },
+    es: { users: "Usuarios", analytics: "Analítica de escenarios", speech: "Proveedores de voz", quotas: "Cuotas" },
     de: { users: "Benutzer", analytics: "Szenarioanalysen", speech: "Sprachanbieter", quotas: "Kontingente" },
-    tr: { users: "Kullanicilar", analytics: "Senaryo analizleri", speech: "Konusma saglayicilari", quotas: "Kullanici kotalari" },
-    pt: { users: "Utilizadores", analytics: "Analise de cenarios", speech: "Provedores de voz", quotas: "Cotas" },
-    fr: { users: "Utilisateurs", analytics: "Analyse des scenarios", speech: "Fournisseurs vocaux", quotas: "Quotas" },
+    tr: { users: "Kullanıcılar", analytics: "Senaryo analizleri", speech: "Konuşma sağlayıcıları", quotas: "Kullanıcı kotaları" },
+    pt: { users: "Utilizadores", analytics: "Análise de cenários", speech: "Provedores de voz", quotas: "Cotas" },
+    fr: { users: "Utilisateurs", analytics: "Analyse des scénarios", speech: "Fournisseurs vocaux", quotas: "Quotas" },
   };
   return copy[language] ?? copy.en;
 }
@@ -348,10 +348,10 @@ function adminMenuText(language: string) {
 function navigationToggleText(language: string) {
   const copy: Record<string, { show: string; hide: string }> = {
     en: { show: "Show navigation", hide: "Hide navigation" },
-    es: { show: "Mostrar navegacion", hide: "Ocultar navegacion" },
+    es: { show: "Mostrar navegación", hide: "Ocultar navegación" },
     de: { show: "Navigation zeigen", hide: "Navigation ausblenden" },
-    tr: { show: "Navigasyonu goster", hide: "Navigasyonu gizle" },
-    pt: { show: "Mostrar navegacao", hide: "Ocultar navegacao" },
+    tr: { show: "Navigasyonu göster", hide: "Navigasyonu gizle" },
+    pt: { show: "Mostrar navegação", hide: "Ocultar navegação" },
     fr: { show: "Afficher la navigation", hide: "Masquer la navigation" },
   };
   return copy[language] ?? copy.en;
