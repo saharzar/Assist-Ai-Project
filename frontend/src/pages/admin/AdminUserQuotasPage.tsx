@@ -171,9 +171,11 @@ function HistoryItem({ request, name, email, text }: { request: QuotaRequest; na
       <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${approved ? "bg-emerald-50 text-teal-700" : "bg-rose-50 text-rose-700"}`}>{approved ? text.approved : text.rejected}</span>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2"><p><span className="mr-2 text-xs font-bold text-slate-400">TTS</span><strong className="text-lg text-[#1d1a5e]">{(approved ? approvedTts : requestedTts).toLocaleString(text.locale)}</strong><span className="ml-1 text-xs text-slate-400">{text.chars}</span></p><p><span className="mr-2 text-xs font-bold text-slate-400">STT</span><strong className="text-lg text-[#1d1a5e]">{formatSttMinutes(approved ? request.approved_stt_seconds : request.requested_stt_seconds, text)}</strong></p></div>
     </div>
-    <div className="grid gap-4 border-t border-indigo-950/10 bg-[#fafbff] px-6 py-4 md:grid-cols-2">
-      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.reason}</p><p className="mt-1 text-sm italic text-slate-600">{request.reason ? `“${request.reason}”` : "-"}</p></div>
-      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.adminResponse}</p><p className="mt-1 text-sm text-slate-600">{request.admin_response ?? "-"}</p></div>
+    <div className="border-t border-indigo-950/10 bg-[#fafbff] px-6 py-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.reason}</p>
+      <blockquote className="mt-2 border-l-4 border-cyan-400 pl-4 text-sm font-medium italic leading-6 text-slate-700">
+        {request.reason ? `“${request.reason}”` : "-"}
+      </blockquote>
     </div>
   </article>;
 }
