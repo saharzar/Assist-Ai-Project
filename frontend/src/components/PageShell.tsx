@@ -42,7 +42,10 @@ export function PageShell() {
     location.pathname === "/register" ||
     location.pathname === "/guest";
   const isBrandedPublicPage = isLandingPage || isAuthPage;
-  const isFullBleedContent = location.pathname === "/scenarios" || location.pathname === "/speech-usage";
+  const isFullBleedContent =
+    location.pathname === "/scenarios" ||
+    location.pathname === "/speech-usage" ||
+    location.pathname === "/profile";
   const homeTarget = isAuthenticated ? "/scenarios" : "/";
   const showHeader = !isAtmScenario || isAtmNavigationVisible;
 

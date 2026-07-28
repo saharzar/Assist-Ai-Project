@@ -104,6 +104,38 @@ body {
   background-size: 72px 100%;
 }
 
+.profile-page {
+  background-color: #fafbff;
+  border-top: 1px solid rgba(29, 26, 94, 0.07);
+  border-bottom: 1px solid rgba(29, 26, 94, 0.07);
+}
+
+.profile-page::before,
+.profile-page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.profile-page::before {
+  top: 0;
+  right: 0;
+  width: min(36%, 540px);
+  height: 330px;
+  background: rgba(45, 216, 216, 0.13);
+  clip-path: polygon(38% 0, 100% 0, 100% 100%, 0 58%);
+}
+
+.profile-page::after {
+  bottom: 0;
+  left: 0;
+  width: min(28%, 420px);
+  height: 260px;
+  background: rgba(55, 48, 163, 0.07);
+  clip-path: polygon(0 18%, 100% 100%, 0 100%);
+}
+
 .admin-dashboard-main {
   position: relative;
   isolation: isolate;
