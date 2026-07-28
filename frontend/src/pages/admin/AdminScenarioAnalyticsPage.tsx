@@ -27,12 +27,11 @@ export function AdminScenarioAnalyticsPage() {
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="relative overflow-hidden border-b border-indigo-950/10 pb-7">
-        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
-        <div className="max-w-3xl pl-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.adminDashboard}</p>
-          <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
-          <p className="mt-2 text-slate-600">
+      <div className="border-b border-indigo-950/10 pb-7">
+        <div className="max-w-3xl">
+          <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+          <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
+          <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">
             {text.selectorDescription}
           </p>
         </div>

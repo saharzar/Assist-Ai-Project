@@ -78,9 +78,9 @@ export function AdminUserQuotasPage() {
   return (
     <section className="text-[#1d1a3d]">
       <div className="border-b border-indigo-950/10 pb-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.dashboard}</p>
-        <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1>
-        <p className="mt-2 text-slate-600">{text.intro}</p>
+        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+        <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1>
+        <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">{text.intro}</p>
       </div>
       {message && <p className="mt-4 rounded-lg border bg-white p-4 font-semibold">{message}</p>}
 
@@ -203,11 +203,11 @@ function HistorySummary({ requests, text }: { requests: QuotaRequest[]; text: Ad
     { label: `STT · ${text.min}`, value: Number(grantedMinutes.toFixed(2)).toLocaleString(text.locale) },
   ];
 
-  return <section className="mt-5 grid gap-4 rounded-xl border border-indigo-950/10 bg-white p-5 lg:grid-cols-[170px_1fr]">
+  return <section className="mt-5 grid gap-4 rounded-xl border border-indigo-950/10 bg-white p-5 lg:grid-cols-[250px_minmax(0,1fr)]">
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-950/10 pb-4 lg:col-span-2"><div><p className="text-sm font-bold text-[#1d1a5e]">{monthlySummaryTitle(text.locale)}</p><p className="mt-1 text-xs text-slate-400">{monthlyResetNote(text.locale)}</p></div><span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-teal-700">{now.toLocaleDateString(text.locale, { month: "long", year: "numeric" })}</span></div>
-    <div className="flex items-center gap-4 lg:border-r lg:border-indigo-950/10 lg:pr-5">
+    <div className="flex items-center justify-center gap-4 lg:border-r lg:border-indigo-950/10 lg:pr-5">
       <div className="relative h-20 w-20 shrink-0 rounded-full" style={{ background: ring }} role="img" aria-label={`${text.approved}: ${approvalPercent.toFixed(0)}%`}><span className="absolute inset-2.5 flex items-center justify-center rounded-full bg-white text-sm font-extrabold text-[#1d1a5e]">{approvalPercent.toFixed(0)}%</span></div>
-      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.decision}</p><p className="mt-1 text-sm font-semibold text-[#1d1a5e]">{text.approved}</p></div>
+      <div className="min-w-0"><p className="whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-400">{text.decision}</p><p className="mt-1 whitespace-nowrap text-sm font-semibold text-[#1d1a5e]">{text.approved}</p></div>
     </div>
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">{stats.map((stat) => <div key={stat.label} className="rounded-lg bg-[#fafbff] p-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</p><p className={`mt-2 text-2xl font-extrabold ${stat.color ?? "text-[#1d1a5e]"}`}>{stat.value}</p></div>)}</div>
   </section>;

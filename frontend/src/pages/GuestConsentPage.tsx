@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Save, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -26,33 +27,43 @@ export function GuestConsentPage() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 text-center shadow-soft">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-950">{t("guestTitle")}</h1>
-      <p className="mt-4 text-lg leading-8 text-slate-600">{t("guestQuestion")}</p>
-
-      {errorMessage && (
-        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900">
-          {errorMessage}
+    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center px-5 py-8 sm:py-12">
+      <div className="w-full max-w-[620px] rounded-lg border border-indigo-950/10 bg-white p-6 text-center shadow-[0_24px_60px_rgba(42,37,134,0.12)] sm:p-11">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f0ff] text-[#302992] ring-4 ring-cyan-50" aria-hidden="true">
+          <UserRound className="h-8 w-8" strokeWidth={2.25} />
         </div>
-      )}
+        <div className="mx-auto mt-6 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true">
+          <span className="w-2/3 bg-[#3730a3]" />
+          <span className="w-1/3 bg-cyan-400" />
+        </div>
+        <h1 className="mt-5 font-display text-3xl font-bold text-[#1d1a5e] sm:text-4xl">{t("guestTitle")}</h1>
+        <p className="mx-auto mt-3 max-w-md text-base leading-7 text-[#5b5a78] sm:text-lg">{t("guestQuestion")}</p>
 
-      <div className="mt-8 flex flex-col gap-4">
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={() => void handleContinue(true)}
-          className="min-h-[56px] rounded-lg bg-slate-900 px-6 py-3 text-lg font-bold text-white shadow-soft hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {t("saveProgress")}
-        </button>
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={() => void handleContinue(false)}
-          className="min-h-[56px] rounded-lg border-2 border-slate-200 bg-white px-6 py-3 text-lg font-bold text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {t("continueWithoutSaving")}
-        </button>
+        {errorMessage && (
+          <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 font-semibold text-amber-900">
+            {errorMessage}
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-col gap-4">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleContinue(true)}
+            className="flex min-h-[60px] items-center justify-center gap-3 rounded-lg bg-[#2a2586] px-6 py-3 text-base font-bold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>{t("saveProgress")}</span>
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleContinue(false)}
+            className="min-h-[60px] rounded-lg border border-cyan-300 bg-cyan-50 px-6 py-3 text-base font-bold text-[#2a2586] transition hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {t("continueWithoutSaving")}
+          </button>
+        </div>
       </div>
     </section>
   );

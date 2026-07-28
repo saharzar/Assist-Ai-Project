@@ -42,6 +42,7 @@ import {
 import {
   playSuccessSound,
   speakAssistantMessage,
+  preloadAssistantMessage,
   stopAssistantSpeech,
   stopSuccessSound,
 } from "../../services/speechSynthesisService";
@@ -72,6 +73,7 @@ export function AtmScenarioPage() {
   const [nameInputEvent, setNameInputEvent] = useState<AtmNameInputEvent | null>(null);
   const [confirmationSecondsRemaining, setConfirmationSecondsRemaining] = useState(0);
   const [confirmationDecisionPending, setConfirmationDecisionPending] = useState(false);
+  const [lastConfirmationDecision, setLastConfirmationDecision] = useState<boolean | null>(null);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -209,7 +211,10 @@ export function AtmScenarioPage() {
       return text.confirmNameAssistant(state.fullName);
     }
     if (state.status === "enter_name") {
-      return state.errorMessage ? text.invalidNameAssistant : text.enterNameAssistant;
+      const message = state.errorMessage ? text.invalidNameAssistant : text.enterNameAssistant;
+      return lastConfirmationDecision === false
+        ? `${text.nameRejectedFeedback} ${message}`
+        : message;
     }
     if (state.status === "success") {
       return text.successAssistant;
@@ -228,7 +233,10 @@ export function AtmScenarioPage() {
       if (state.identityVerified) {
         return text.retryPinAfterLettersAssistant(state.demoPin);
       }
-      return text.pinAssistant(state.demoPin);
+      const message = text.pinAssistant(state.demoPin);
+      return lastConfirmationDecision === true && state.pinAttemptCount === 0
+        ? `${text.nameConfirmedFeedback} ${message}`
+        : message;
     }
     if (state.status === "letter_check") {
       if (state.errorMessage === ATM_ERROR.incompleteLetters) {
@@ -248,10 +256,17 @@ export function AtmScenarioPage() {
     state.errorMessage,
     state.fullName,
     state.identityVerified,
+    state.pinAttemptCount,
     state.postVerificationPinFailureCount,
     state.status,
+    lastConfirmationDecision,
     text,
   ]);
+
+  const confirmedPinAssistantMessage = useMemo(
+    () => `${text.nameConfirmedFeedback} ${text.pinAssistant(state.demoPin)}`,
+    [state.demoPin, text],
+  );
 
   const displayedErrorMessage = useMemo(() => {
     if (!state.errorMessage) {
@@ -368,40 +383,14 @@ export function AtmScenarioPage() {
     setConfirmationDecisionPending(true);
     setSpeechError("");
     stopSpeech();
-    const completeTransition = () => {
-      setConfirmationDecisionPending(false);
-      setTranscript("");
-      dispatch({ type: confirmed ? "NAME_CONFIRMED" : "NAME_RETRY" });
-    };
-
-    if (!soundEnabled) {
-      completeTransition();
-      return;
-    }
-
-    speakAssistantMessage(
-      confirmed ? text.nameConfirmedFeedback : text.nameRejectedFeedback,
-      {
-        onStart: () => setIsSpeaking(true),
-        onEnd: () => {
-          setIsSpeaking(false);
-          completeTransition();
-        },
-        onError: () => {
-          setIsSpeaking(false);
-          completeTransition();
-        },
-      },
-      language,
-    );
+    setLastConfirmationDecision(confirmed);
+    setTranscript("");
+    dispatch({ type: confirmed ? "NAME_CONFIRMED" : "NAME_RETRY" });
+    setConfirmationDecisionPending(false);
   }, [
     confirmationDecisionPending,
     confirmationSecondsRemaining,
-    language,
-    soundEnabled,
     stopSpeech,
-    text.nameConfirmedFeedback,
-    text.nameRejectedFeedback,
   ]);
 
   useEffect(() => {
@@ -448,6 +437,7 @@ export function AtmScenarioPage() {
       return;
     }
 
+    setLastConfirmationDecision(null);
     setConfirmationSecondsRemaining(3);
     setConfirmationDecisionPending(false);
     const timer = window.setInterval(() => {
@@ -461,6 +451,17 @@ export function AtmScenarioPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [state.status]);
+
+  useEffect(() => {
+    if (state.status !== "confirm_name" || !soundEnabled) return;
+
+    const spokenMessage = state.demoPin
+      ? confirmedPinAssistantMessage
+          .split(state.demoPin)
+          .join(state.demoPin.split("").join(" "))
+      : confirmedPinAssistantMessage;
+    void preloadAssistantMessage(spokenMessage, language);
+  }, [confirmedPinAssistantMessage, language, soundEnabled, state.demoPin, state.status]);
 
   useEffect(() => {
     if (state.status !== "security_terminated") return;
@@ -872,7 +873,7 @@ export function AtmScenarioPage() {
       recognizerRef.current?.stop();
       finishListeningSession();
       stopListeningTimerRef.current = null;
-    }, 250);
+    }, 50);
   }, [finishListeningSession]);
 
   useEffect(() => {
@@ -883,7 +884,7 @@ export function AtmScenarioPage() {
     const isTextInputTarget = (target: EventTarget | null) => {
       const element = target as HTMLElement | null;
       return Boolean(
-        element?.closest("input, textarea, select, button") ||
+        element?.closest("input, textarea, select") ||
           element?.isContentEditable,
       );
     };
@@ -896,6 +897,9 @@ export function AtmScenarioPage() {
         return;
       }
       event.preventDefault();
+      if (document.activeElement instanceof HTMLButtonElement) {
+        document.activeElement.blur();
+      }
       stopSpeech();
       spaceIsHeldRef.current = true;
       if (!isListeningRef.current && !recognizerRef.current) {
@@ -940,6 +944,12 @@ export function AtmScenarioPage() {
     state.status,
     stopListening,
   ]);
+
+  useEffect(() => {
+    if (document.activeElement instanceof HTMLButtonElement) {
+      document.activeElement.blur();
+    }
+  }, [state.status]);
 
   const emitNameInputEvent = (event: AtmNameInputEventPayload) => {
     setNameInputEvent({
@@ -1094,7 +1104,7 @@ export function AtmScenarioPage() {
           />
         );
       case "security_message":
-        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-teal-700">{text.securityCheckEyebrow}</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityWaitTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityMessage}</p></div>;
+        return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-[#3730a3]">{text.securityCheckEyebrow}</p><h1 className="mt-2 text-2xl font-bold text-[#171452]">{text.securityWaitTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityMessage}</p></div>;
       case "security_terminated":
         return <div className="flex h-full flex-col justify-center"><p className="text-sm font-bold uppercase text-rose-700">{text.securityNoticeEyebrow}</p><h1 className="mt-2 text-2xl font-bold text-slate-950">{text.securityTerminatedTitle}</h1><p className="mt-3 max-w-lg font-semibold leading-7 text-slate-700">{text.securityTerminatedBody}</p><p role="status" className="mt-5 w-fit rounded-lg bg-slate-900 px-5 py-3 font-bold text-white">{text.waitTime}: {state.lockoutSecondsRemaining} {text.seconds}</p></div>;
 

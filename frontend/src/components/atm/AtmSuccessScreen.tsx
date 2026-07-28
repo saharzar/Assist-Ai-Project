@@ -30,7 +30,7 @@ export function AtmSuccessScreen({
           type="button"
           aria-label={labels.finishAria}
           onClick={onFinish}
-          className="min-h-[42px] rounded-lg bg-teal-600 px-5 py-2 text-sm font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+          className="min-h-[42px] rounded-lg bg-[#302992] px-5 py-2 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
         >
           {labels.finish}
         </button>
@@ -38,7 +38,7 @@ export function AtmSuccessScreen({
           type="button"
           aria-label={labels.tryAgainAria}
           onClick={onTryAgain}
-          className="min-h-[42px] rounded-lg border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="min-h-[42px] rounded-lg border border-indigo-200 bg-[#f4f3ff] px-5 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {labels.tryAgain}
         </button>

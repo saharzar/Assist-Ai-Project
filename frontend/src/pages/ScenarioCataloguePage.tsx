@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { fetchScenarios } from "../api/scenarios";
 import { ScenarioCard } from "../components/ScenarioCard";
 import { useTranslation } from "../i18n";
+import { atmTranslations } from "../lib/atmTranslations";
+import { preloadAssistantMessage } from "../services/speechSynthesisService";
 import type { Scenario } from "../types/scenario";
 
 const ACTIVE_SCENARIO_SLUG = "atm-withdrawal";
 
 export function ScenarioCataloguePage() {
-  const { t, translateScenario } = useTranslation();
+  const { language, t, translateScenario } = useTranslation();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -38,6 +40,10 @@ export function ScenarioCataloguePage() {
       isMounted = false;
     };
   }, [t]);
+
+  useEffect(() => {
+    void preloadAssistantMessage(atmTranslations[language].welcomeAssistant, language);
+  }, [language]);
 
   const translatedScenarios = scenarios.map(translateScenario);
 

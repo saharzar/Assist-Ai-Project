@@ -174,13 +174,10 @@ export function AdminUsersPage() {
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="relative max-w-4xl overflow-hidden border-b border-indigo-950/10 pb-7">
-        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
-        <div className="pl-5">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{copy.overview}</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">{t("adminUsers")}</h1>
-        <p className="mt-2 text-base leading-7 text-slate-600">{t("viewPendingAccounts")}</p>
-        </div>
+      <div className="max-w-4xl border-b border-indigo-950/10 pb-7">
+        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+        <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("adminUsers")}</h1>
+        <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">{t("viewPendingAccounts")}</p>
       </div>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

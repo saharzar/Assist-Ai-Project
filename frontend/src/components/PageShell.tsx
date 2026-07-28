@@ -37,7 +37,10 @@ export function PageShell() {
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
   const isLandingPage = location.pathname === "/";
-  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/guest";
   const isBrandedPublicPage = isLandingPage || isAuthPage;
   const isFullBleedContent = location.pathname === "/scenarios" || location.pathname === "/speech-usage";
   const homeTarget = isAuthenticated ? "/scenarios" : "/";
@@ -221,9 +224,9 @@ export function PageShell() {
               <Link
                 to="/scenarios"
                 className={`inline-flex min-h-[42px] items-center rounded-full border px-5 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
-                  isAdmin || location.pathname.startsWith("/scenario") || location.pathname === "/scenarios"
-                    ? "border-cyan-300 bg-cyan-50 text-indigo-700"
-                    : "border-indigo-950/10 bg-white text-[#5b5a78] hover:border-cyan-300 hover:text-indigo-800"
+                  location.pathname.startsWith("/scenario") || location.pathname === "/scenarios"
+                    ? "border-cyan-400 bg-cyan-100/80 text-indigo-700 shadow-[0_5px_14px_rgba(45,216,216,0.12)]"
+                    : "border-cyan-200 bg-cyan-50/70 text-indigo-700 hover:border-cyan-400 hover:bg-cyan-100/80"
                 }`}
               >
                 {t("scenarios")}
@@ -294,7 +297,7 @@ export function PageShell() {
       </header>
       )}
       <main
-        className={`mx-auto flex w-full flex-1 flex-col ${isAdmin ? "admin-dashboard-main" : ""} ${
+        className={`mx-auto flex w-full flex-1 flex-col ${isAdmin && !isAtmScenario ? "admin-dashboard-main" : ""} ${
           isAtmScenario
             ? "max-w-[1600px] px-2 py-2 sm:px-4 sm:py-4"
             : isFullBleedContent
@@ -329,7 +332,7 @@ function AdminNavLink({ to, label, active }: { to: string; label: string; active
   return (
     <Link
       to={to}
-      className={`inline-flex min-h-[45px] shrink-0 items-center border-b-2 px-3 font-display text-sm font-semibold transition-colors ${active ? "border-cyan-400 text-indigo-800" : "border-transparent text-[#5b5a78] hover:border-indigo-200 hover:text-indigo-900"}`}
+      className={`inline-flex min-h-[45px] shrink-0 items-center border-b-2 px-3 font-display text-sm font-bold tracking-normal transition-colors ${active ? "border-cyan-400 text-indigo-800" : "border-transparent text-[#5b5a78] hover:border-indigo-200 hover:text-indigo-900"}`}
     >
       {label}
     </Link>

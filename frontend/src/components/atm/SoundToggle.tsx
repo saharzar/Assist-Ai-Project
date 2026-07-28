@@ -17,10 +17,10 @@ export function SoundToggle({
       type="button"
       aria-label={isEnabled ? labels.turnSoundOff : labels.turnSoundOn}
       onClick={onToggle}
-      className={`min-h-[44px] rounded-lg px-4 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+      className={`min-h-[44px] rounded-lg border px-4 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
         isEnabled
-          ? "bg-teal-100 text-teal-900 hover:bg-teal-200"
-          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          ? "border-cyan-200 bg-cyan-50 text-[#302992] hover:bg-cyan-100"
+          : "border-indigo-200 bg-[#f4f3ff] text-[#302992] hover:bg-indigo-100"
       }`}
     >
       {isEnabled ? labels.soundOn : labels.soundOff}

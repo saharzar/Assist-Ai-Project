@@ -42,7 +42,7 @@ export function AtmConfirmNameScreen({
         </p>
       </div>
 
-      <p className="rounded-lg bg-teal-50 p-3 text-sm font-bold text-teal-900">
+      <p className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm font-bold text-[#302992]">
         {secondsRemaining > 0 ? labels.wait : labels.hint}
       </p>
 
@@ -64,9 +64,10 @@ export function AtmConfirmNameScreen({
           onKeyUp={(event) => {
             if (event.key === "Enter" || event.key === " ") onVoiceStop();
           }}
-          className="min-h-12 w-full rounded-lg bg-sky-700 px-4 text-sm font-bold text-white outline-none hover:bg-sky-800 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-900 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-4 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 active:bg-[#171452] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
         >
-          {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voice}
+          <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voice}</span>
         </button>
       </div>
 
@@ -79,3 +80,4 @@ export function AtmConfirmNameScreen({
     </div>
   );
 }
+import { Mic } from "lucide-react";

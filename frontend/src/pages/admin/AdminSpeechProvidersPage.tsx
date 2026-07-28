@@ -98,7 +98,7 @@ export function AdminSpeechProvidersPage() {
   };
 
   return <section className="flex flex-1 flex-col text-[#1d1a3d]">
-    <div className="relative overflow-hidden border-b border-indigo-950/10 pb-7"><span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" /><div className="pl-5"><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{ui.adminDashboard}</p><h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1></div></div>
+    <div className="border-b border-indigo-950/10 pb-7"><span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span><h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
     {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>

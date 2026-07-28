@@ -113,7 +113,7 @@ export function AtmNameScreen({
             setFullName(event.target.value);
           }}
           placeholder={labels.placeholder}
-          className="mt-1 min-h-[40px] w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+          className="mt-1 min-h-[40px] w-full rounded-lg border border-indigo-200 px-3 text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
       </label>
 
@@ -141,9 +141,10 @@ export function AtmNameScreen({
               onKeyUp={(event) => {
                 if (event.key === "Enter" || event.key === " ") onVoiceStop();
               }}
-              className="mt-2 min-h-11 w-full rounded-lg bg-sky-700 px-3 text-sm font-bold text-white outline-none hover:bg-sky-800 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-900"
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 active:bg-[#171452]"
             >
-              {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+              <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
             </button>
           </>
         )}
@@ -166,9 +167,10 @@ export function AtmNameScreen({
         </div>
       )}
 
-      <p className="rounded-lg bg-teal-50 p-2 text-xs font-bold text-teal-900">
+      <p className="rounded-lg border border-cyan-200 bg-cyan-50 p-2 text-xs font-bold text-[#302992]">
         {labels.pressEnter}
       </p>
     </div>
   );
 }
+import { Mic } from "lucide-react";

@@ -38,7 +38,7 @@ export function AtmLockoutScreen({
           type="button"
           aria-label={labels.tryAgainAria}
           onClick={onTryAgain}
-          className="min-h-[42px] w-fit rounded-lg bg-teal-600 px-5 py-2 text-sm font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+          className="min-h-[42px] w-fit rounded-lg bg-[#302992] px-5 py-2 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
         >
           {labels.tryAgain}
         </button>

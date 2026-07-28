@@ -24,11 +24,19 @@ const languageNames: Record<LanguageCode, string> = {
   pt: "Português",
   fr: "Français",
 };
+const roleNames: Record<LanguageCode, Record<string, string>> = {
+  en: { user: "User", admin: "Administrator", guest: "Guest" },
+  es: { user: "Usuario", admin: "Administrador", guest: "Invitado" },
+  de: { user: "Benutzer", admin: "Administrator", guest: "Gast" },
+  tr: { user: "Kullanıcı", admin: "Yönetici", guest: "Misafir" },
+  pt: { user: "Utilizador", admin: "Administrador", guest: "Convidado" },
+  fr: { user: "Utilisateur", admin: "Administrateur", guest: "Invité" },
+};
 
 export function ProfilePage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isGuest, guestSession, setPreferredLanguage, logout } = useAuth();
-  const { setLanguage, t } = useTranslation();
+  const { language, setLanguage, t } = useTranslation();
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [languageError, setLanguageError] = useState("");
 
@@ -93,7 +101,7 @@ export function ProfilePage() {
                 error={languageError}
                 onChange={(value) => void handleLanguageChange(value)}
               />
-              <ProfileRow label={t("role")} value={user.role} />
+              <ProfileRow label={t("role")} value={localizedRole(user.role, language)} />
               <ProfileRow label={t("approvalStatus")} value={t(statusLabelKeys[user.approval_status])} />
             </div>
           )}
@@ -152,6 +160,10 @@ function LanguagePreference({ label, value, disabled, error, onChange }: { label
 
 function initials(value: string) {
   return value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+}
+
+function localizedRole(role: string, language: LanguageCode) {
+  return roleNames[language][role.toLowerCase()] ?? role.replace(/_/g, " ");
 }
 
 function statusStyle(status: keyof typeof statusLabelKeys) {

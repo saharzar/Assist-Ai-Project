@@ -64,9 +64,9 @@ export function MySpeechUsagePage() {
       <div className="speech-usage-grid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-5 pb-14 pt-9">
       <header className="border-b border-[#deddeb] pb-8">
-        <p className="text-sm font-bold uppercase text-teal-700">{text.eyebrow}</p>
-        <h1 className="mt-2 text-4xl font-extrabold text-[#1d1a5e]">{text.title}</h1>
-        <p className="mt-2 max-w-2xl text-lg text-slate-600">{text.intro}</p>
+        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+        <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1>
+        <p className="mt-2 max-w-2xl text-[15px] leading-6 text-[#5b5a78]">{text.intro}</p>
       </header>
 
       {message && <p className="mt-5 rounded-lg border border-cyan-200 bg-cyan-50 p-4 font-semibold text-[#1d1a5e]">{message}</p>}
@@ -91,8 +91,8 @@ export function MySpeechUsagePage() {
         <span className="absolute inset-y-0 left-0 w-1.5 bg-cyan-400" aria-hidden="true" />
         <div className="grid gap-7 p-6 pl-8 xl:grid-cols-[0.65fr_1.35fr] xl:p-8 xl:pl-10">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.eyebrow}</p>
-            <h2 className="mt-2 text-2xl font-bold text-[#1d1a5e]">{text.requestTitle}</h2>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#3730a3]">{text.eyebrow}</p>
+            <h2 className="mt-2 font-display text-2xl font-bold text-[#1d1a5e]">{text.requestTitle}</h2>
             <p className="mt-2 max-w-md leading-6 text-slate-600">{text.intro}</p>
             <div className="mt-5 grid grid-cols-3 gap-2 rounded-lg bg-[#f3f2fb] p-1.5" role="group" aria-label={text.service}>
               {(["both", "tts", "stt"] as const).map((option) => (
@@ -117,7 +117,7 @@ export function MySpeechUsagePage() {
 
       <section className="mt-10">
           <div className="flex items-center justify-between border-b border-[#deddeb] pb-3">
-            <h2 className="text-2xl font-bold text-[#1d1a5e]">{text.history}</h2>
+            <h2 className="font-display text-2xl font-bold text-[#1d1a5e]">{text.history}</h2>
             <span className="text-sm font-semibold text-slate-500">{requests.length}</span>
           </div>
           <div className="mt-4 space-y-3">
@@ -137,12 +137,12 @@ function Usage({ title, used, permanent, temporary, remaining, resetDate, text, 
   return (
     <article className="grid gap-6 rounded-lg border border-[#deddeb] bg-white p-6 shadow-[0_14px_35px_rgba(29,26,94,0.05)] sm:grid-cols-[150px_1fr] sm:items-center">
       <div className="relative mx-auto grid h-36 w-36 place-items-center rounded-full" style={{ background: `conic-gradient(${ringColor} ${percentage}%, #eeedf7 ${percentage}% 100%)` }}>
-        <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center"><div><strong className="block text-3xl text-[#1d1a5e]">{percentage}%</strong><span className="text-xs font-bold uppercase text-slate-400">{text.used}</span></div></div>
+        <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center"><div><strong className="block font-display text-3xl font-bold text-[#1d1a5e]">{percentage}%</strong><span className="text-xs font-bold uppercase text-slate-400">{text.used}</span></div></div>
       </div>
       <div>
-        <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-bold uppercase text-teal-700">{title}</p><p className="mt-1 text-3xl font-extrabold text-[#1d1a5e]">{format(remaining)}</p><p className="text-sm text-slate-500">{text.remaining}</p></div><span className="rounded-full bg-[#f0effa] px-3 py-1 text-xs font-bold text-[#302992]">{format(limit)} {text.total.toLowerCase()}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-display text-sm font-bold uppercase text-[#3730a3]">{title}</p><p className="mt-1 font-display text-3xl font-bold text-[#1d1a5e]">{format(remaining)}</p><p className="text-sm text-slate-500">{text.remaining}</p></div><span className="rounded-full border border-cyan-200 bg-cyan-50/70 px-3 py-1 text-xs font-bold text-[#302992]">{format(limit)} {text.total.toLowerCase()}</span></div>
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#ecebf3] pt-4 text-sm"><p><span className="block text-slate-400">{text.used}</span><strong className="text-[#1d1a5e]">{format(used)}</strong></p><p><span className="block text-slate-400">{text.permanent}</span><strong className="text-[#1d1a5e]">{format(permanent)}</strong></p></div>
-        {temporary > 0 && <p className="mt-3 rounded-lg bg-cyan-50 px-3 py-2 text-sm font-semibold text-teal-800">+{format(temporary)} {text.temporary.toLowerCase()} · {text.expires} {resetDate ? formatDate(resetDate, text.locale) : text.atReset}</p>}
+        {temporary > 0 && <p className="mt-3 rounded-lg border border-cyan-200 bg-[#f4f3ff] px-3 py-2 text-sm font-semibold text-[#302992]">+{format(temporary)} {text.temporary.toLowerCase()} · {text.expires} {resetDate ? formatDate(resetDate, text.locale) : text.atReset}</p>}
       </div>
     </article>
   );
@@ -150,12 +150,12 @@ function Usage({ title, used, permanent, temporary, remaining, resetDate, text, 
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   const toneClass = tone === "critical" ? "text-rose-600" : tone === "warning" ? "text-amber-600" : "text-[#1d1a5e]";
-  return <div className="bg-white p-5"><span className="text-xs font-bold uppercase text-slate-400">{label}</span><strong className={`mt-1 block text-lg ${toneClass}`}>{value}</strong></div>;
+  return <div className="bg-white p-5"><span className="text-xs font-bold uppercase text-slate-400">{label}</span><strong className={`mt-1 block font-display text-lg font-bold ${toneClass}`}>{value}</strong></div>;
 }
 
 function RequestItem({ request, text }: { request: QuotaRequest; text: SpeechUsageText }) {
   const status = request.status === "partially_approved" ? "approved" : request.status;
-  const statusClass = status === "approved" ? "bg-emerald-100 text-emerald-800" : status === "rejected" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800";
+  const statusClass = status === "approved" ? "border border-cyan-200 bg-cyan-50 text-[#302992]" : status === "rejected" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800";
   const ttsValue = request.approved_tts_characters ?? request.requested_tts_characters ?? 0;
   const sttValue = request.approved_stt_seconds ?? request.requested_stt_seconds ?? 0;
   return (

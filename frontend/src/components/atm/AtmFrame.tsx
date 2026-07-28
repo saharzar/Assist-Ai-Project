@@ -46,19 +46,19 @@ export function AtmFrame({
           {children}
         </ATMRealisticShell>
 
-        <aside className="flex flex-col gap-4 rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-2xl">
+        <aside className="flex flex-col gap-4 rounded-xl border border-cyan-300/25 bg-[#111735]/95 p-5 shadow-[0_20px_55px_rgba(3,7,18,0.38)] backdrop-blur-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-slate-300">{labels.panelTitle}</p>
-              <p className="text-xs font-semibold text-slate-400">{labels.practiceMode}</p>
+              <p className="font-display text-sm font-bold uppercase tracking-wide text-white">{labels.panelTitle}</p>
+              <p className="text-xs font-semibold text-cyan-100/65">{labels.practiceMode}</p>
             </div>
-            <div className="h-3 w-20 rounded-full bg-teal-300" aria-hidden="true" />
+            <div className="flex h-2.5 w-20 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#5148cf]" /><i className="w-1/3 bg-[#2dd8d8]" /></div>
           </div>
 
           {soundControls}
           {assistantMessage}
 
-          <div className="rounded-lg border border-amber-300/40 bg-amber-100 p-4 text-sm font-bold leading-6 text-amber-950">
+          <div className="border-t border-cyan-100/15 pt-4 text-sm font-semibold leading-6 text-slate-200">
             {labels.warning}
           </div>
         </aside>
