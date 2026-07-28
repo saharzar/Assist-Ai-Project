@@ -64,3 +64,10 @@ export function loginUser(payload: LoginPayload) {
 export function fetchCurrentUser() {
   return apiRequest<User>("/auth/me");
 }
+
+export function updatePreferredLanguage(preferredLanguage: string) {
+  return apiRequest<User>("/users/me/preferences", {
+    method: "PATCH",
+    body: JSON.stringify({ preferred_language: preferredLanguage }),
+  });
+}

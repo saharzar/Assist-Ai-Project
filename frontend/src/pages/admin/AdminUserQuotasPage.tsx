@@ -248,15 +248,51 @@ function Edit({ quota, text, close, saved }: { quota: UserQuota; text: AdminQuot
     await updateUserQuota(quota.user_id, { tts_limit_characters: tts, stt_limit_seconds: Math.round(sttMinutes * 60), add_tts_characters: extraTts, add_stt_seconds: Math.round(extraSttMinutes * 60), enabled: quota.enabled, reason: reason.trim() || undefined });
     await saved();
   };
-  return <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/50 p-5"><form onSubmit={submit} className="w-full max-w-xl rounded-lg bg-white p-6"><h2 className="text-2xl font-bold">{text.editTitle} {quota.full_name}</h2><div className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"><AllowanceSummary label={text.currentTts} permanent={quota.tts_limit} temporary={quota.tts_extra} unit={text.characters} resetDate={quota.reset_date} text={text} /><AllowanceSummary label={text.currentStt} permanent={quota.stt_limit / 60} temporary={quota.stt_extra / 60} unit={text.minutes} resetDate={quota.reset_date} text={text} /></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><Num label={text.setTts} value={tts} set={setTts} /><Num label={text.setStt} value={sttMinutes} set={setSttMinutes} step={0.5} /><Num label={text.addTts} value={extraTts} set={setExtraTts} /><Num label={text.addStt} value={extraSttMinutes} set={setExtraSttMinutes} step={0.5} /></div><p className="mt-3 text-sm text-slate-600">{text.temporaryHelp.replace("{date}", formatShortDate(quota.reset_date, text.locale))}</p><label className="mt-3 block text-sm font-bold">{text.reason} <span className="font-normal text-slate-500">({text.optional})</span><textarea maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 min-h-20 w-full rounded-lg border p-3" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={close} className="rounded-lg border px-4 py-2 font-bold">{text.cancel}</button><button className="rounded-lg bg-teal-700 px-4 py-2 font-bold text-white">{text.save}</button></div></form></div>;
+  return <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
+    <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="quota-editor-title" className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-indigo-950/10 bg-white shadow-[0_28px_80px_rgba(29,26,94,0.28)]">
+      <header className="flex items-center gap-4 border-b border-indigo-950/10 bg-[#f8f8ff] px-6 py-5 sm:px-8">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a2586] font-extrabold text-white ring-4 ring-cyan-100">{initials(quota.full_name)}</span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.editTitle}</p>
+          <h2 id="quota-editor-title" className="truncate font-display text-2xl font-bold text-[#1d1a5e]">{quota.full_name}</h2>
+          <p className="truncate text-sm text-slate-500">{quota.email}</p>
+        </div>
+      </header>
+
+      <div className="overflow-y-auto px-6 py-6 sm:px-8">
+        <section className="grid gap-5 border-b border-indigo-950/10 pb-6 sm:grid-cols-2 sm:divide-x sm:divide-indigo-950/10">
+          <AllowanceSummary label={text.currentTts} permanent={quota.tts_limit} temporary={quota.tts_extra} unit={text.characters} resetDate={quota.reset_date} text={text} />
+          <AllowanceSummary label={text.currentStt} permanent={quota.stt_limit / 60} temporary={quota.stt_extra / 60} unit={text.minutes} resetDate={quota.reset_date} text={text} />
+        </section>
+
+        <section className="mt-6 grid gap-5 sm:grid-cols-2">
+          <Num label={text.setTts} value={tts} set={setTts} />
+          <Num label={text.setStt} value={sttMinutes} set={setSttMinutes} step={0.5} />
+          <Num label={text.addTts} value={extraTts} set={setExtraTts} temporary />
+          <Num label={text.addStt} value={extraSttMinutes} set={setExtraSttMinutes} step={0.5} temporary />
+        </section>
+
+        <p className="mt-5 border-l-4 border-cyan-400 bg-cyan-50/60 px-4 py-3 text-sm leading-6 text-slate-600">{text.temporaryHelp.replace("{date}", formatShortDate(quota.reset_date, text.locale))}</p>
+
+        <label className="mt-6 block text-sm font-bold text-[#1d1a5e]">{text.reason} <span className="font-normal text-slate-400">({text.optional})</span>
+          <textarea maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-lg border border-indigo-950/15 bg-white p-4 font-normal text-slate-700 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200" />
+        </label>
+      </div>
+
+      <footer className="flex flex-col-reverse gap-3 border-t border-indigo-950/10 bg-[#fafbff] px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+        <button type="button" onClick={close} className="min-h-[50px] rounded-lg border border-indigo-950/15 bg-white px-6 font-bold text-[#2a2586] transition hover:bg-[#f3f3fb] focus:outline-none focus:ring-2 focus:ring-cyan-300">{text.cancel}</button>
+        <button className="min-h-[50px] rounded-lg bg-[#2a2586] px-7 font-bold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">{text.save}</button>
+      </footer>
+    </form>
+  </div>;
 }
 
 function AllowanceSummary({ label, permanent, temporary, unit, resetDate, text }: { label: string; permanent: number; temporary: number; unit: string; resetDate: string | null; text: AdminQuotaText }) {
-  return <div><p className="text-xs font-bold uppercase text-slate-500">{label}</p><p className="mt-1 font-bold">{(permanent + temporary).toLocaleString(text.locale)} {unit} {text.total}</p><p className="text-xs text-slate-600">{permanent.toLocaleString(text.locale)} {text.permanent} + {temporary.toLocaleString(text.locale)} {text.temporary}</p>{temporary > 0 && <p className="mt-1 text-xs font-semibold text-teal-700">{text.temporaryExpires} {formatShortDate(resetDate, text.locale)}</p>}</div>;
+  return <div className="sm:px-5 sm:first:pl-0"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-2 text-2xl font-extrabold text-[#1d1a5e]">{(permanent + temporary).toLocaleString(text.locale)} <span className="text-sm font-bold text-slate-500">{unit} {text.total}</span></p><p className="mt-1 text-sm text-slate-600"><strong>{permanent.toLocaleString(text.locale)}</strong> {text.permanent} <span className="mx-1 text-slate-300">+</span> <strong className="text-teal-700">{temporary.toLocaleString(text.locale)}</strong> {text.temporary}</p>{temporary > 0 && <p className="mt-2 text-xs font-semibold text-teal-700">{text.temporaryExpires} {formatShortDate(resetDate, text.locale)}</p>}</div>;
 }
 
-function Num({ label, value, set, step = 1 }: { label: string; value: number; set: (value: number) => void; step?: number }) {
-  return <label className="text-sm font-bold">{label}<input type="number" min={0} step={step} value={value} onChange={(event) => set(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-lg border px-3" /></label>;
+function Num({ label, value, set, step = 1, temporary = false }: { label: string; value: number; set: (value: number) => void; step?: number; temporary?: boolean }) {
+  return <label className="text-sm font-bold text-[#1d1a5e]">{label}<input type="number" min={0} step={step} value={value} onChange={(event) => set(Number(event.target.value))} className={`mt-2 min-h-[54px] w-full rounded-lg border px-4 text-base font-semibold outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200 ${temporary ? "border-cyan-200 bg-cyan-50/40" : "border-indigo-950/15 bg-white"}`} /></label>;
 }
 
 function translateStatus(value: string, text: AdminQuotaText) {

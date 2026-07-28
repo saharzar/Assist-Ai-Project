@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 UserCategory = Literal["personal", "family_caregiver", "institution", "professional"]
 UserRole = Literal["user", "admin"]
 ApprovalStatus = Literal["pending", "approved", "denied", "suspended"]
+SupportedLanguage = Literal["en", "es", "de", "tr", "pt", "fr"]
 
 
 class UserBase(BaseModel):
@@ -22,6 +23,10 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class UserPreferencesUpdate(BaseModel):
+    preferred_language: SupportedLanguage
 
 
 class UserRead(UserBase):

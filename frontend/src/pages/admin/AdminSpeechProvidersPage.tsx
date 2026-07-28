@@ -141,7 +141,7 @@ function ProviderOverview({ dashboard, text, labels, language }: { dashboard: Gl
     { label: ui.activeStt, value: localizedProviderName(dashboard.active_stt_provider, language), detail: `${labels.priority} ${activeStt?.priority ?? "-"} · ${localizedStatus(activeStt?.health_status, language)}` },
     { label: ui.activeTts, value: localizedProviderName(dashboard.active_tts_provider, language), detail: `${labels.priority} ${activeTts?.priority ?? "-"} · ${localizedStatus(activeTts?.health_status, language)}` },
     { label: sttUsageLabel(language), value: `${sttMinutes.toLocaleString(text.locale, { maximumFractionDigits: 2 })} ${fullMinuteLabel(language)}`, detail: ui.across },
-    { label: ui.ttsUsage, value: ttsCharacters.toLocaleString(text.locale), detail: ui.across },
+    { label: ui.ttsUsage, value: `${ttsCharacters.toLocaleString(text.locale)} ${text.characters}`, detail: ui.across },
   ];
   return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <article key={card.label} className="rounded-xl border border-indigo-950/10 bg-white p-5"><p className="text-sm font-medium text-slate-400">{card.label}</p><p className="mt-2 text-2xl font-extrabold text-[#1d1a5e]">{card.value}</p><p className="mt-1 text-sm text-slate-400">{card.detail}</p></article>)}</div>;
 }

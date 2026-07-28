@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
@@ -51,6 +51,7 @@ export function AdminUsersPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const userListRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = isAuthenticated && user?.role === "admin";
 
@@ -138,6 +139,10 @@ export function AdminUsersPage() {
   const pageStart = Math.max(1, Math.min(visiblePage - 2, totalPages - 4));
   const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => pageStart + index);
   const paginatedUsers = filteredUsers.slice((visiblePage - 1) * USERS_PER_PAGE, visiblePage * USERS_PER_PAGE);
+  const changePage = (nextPage: number) => {
+    setCurrentPage(nextPage);
+    requestAnimationFrame(() => userListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
@@ -184,10 +189,13 @@ export function AdminUsersPage() {
       )}
 
       {!isLoading && !errorMessage && (
-        <div className="mt-7 grid gap-5">
-          <div className="flex items-center justify-between border-b border-indigo-950/10 pb-3">
+        <div ref={userListRef} className="mt-7 grid scroll-mt-36 gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-950/10 pb-3">
             <h2 className="text-lg font-bold text-[#1d1a5e]">{copy.users}</h2>
-            <span className="rounded-full bg-[#f3f3fb] px-3 py-1 text-sm font-bold tabular-nums text-[#2a2586]">{filteredUsers.length}</span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-[#f3f3fb] px-3 py-1 text-sm font-bold tabular-nums text-[#2a2586]">{filteredUsers.length}</span>
+              {totalPages > 1 && <div className="inline-flex items-center rounded-lg border border-indigo-950/10 bg-white p-1"><button type="button" aria-label={copy.previous} disabled={visiblePage === 1} onClick={() => changePage(visiblePage - 1)} className="h-9 min-w-9 rounded-md px-2 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:cursor-not-allowed disabled:opacity-30">←</button><span className="min-w-16 px-2 text-center text-sm font-bold text-slate-500">{visiblePage} / {totalPages}</span><button type="button" aria-label={copy.next} disabled={visiblePage === totalPages} onClick={() => changePage(visiblePage + 1)} className="h-9 min-w-9 rounded-md px-2 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:cursor-not-allowed disabled:opacity-30">→</button></div>}
+            </div>
           </div>
           {filteredUsers.length === 0 && (
             <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -275,11 +283,11 @@ export function AdminUsersPage() {
             <nav aria-label={`${copy.page} ${visiblePage}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
               <p className="text-sm font-semibold text-slate-500">{copy.page} {visiblePage} / {totalPages}</p>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={visiblePage === 1} onClick={() => setCurrentPage(visiblePage - 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.previous}</button>
+                <button type="button" disabled={visiblePage === 1} onClick={() => changePage(visiblePage - 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.previous}</button>
                 {pageNumbers.map((pageNumber) => (
-                  <button key={pageNumber} type="button" aria-label={`${copy.page} ${pageNumber}`} aria-current={visiblePage === pageNumber ? "page" : undefined} onClick={() => setCurrentPage(pageNumber)} className={`h-10 min-w-10 rounded-lg border px-2 text-sm font-bold ${visiblePage === pageNumber ? "border-[#2a2586] bg-[#2a2586] text-white" : "border-indigo-950/10 bg-white text-[#2a2586] hover:bg-[#f3f3fb]"}`}>{pageNumber}</button>
+                  <button key={pageNumber} type="button" aria-label={`${copy.page} ${pageNumber}`} aria-current={visiblePage === pageNumber ? "page" : undefined} onClick={() => changePage(pageNumber)} className={`h-10 min-w-10 rounded-lg border px-2 text-sm font-bold ${visiblePage === pageNumber ? "border-[#2a2586] bg-[#2a2586] text-white" : "border-indigo-950/10 bg-white text-[#2a2586] hover:bg-[#f3f3fb]"}`}>{pageNumber}</button>
                 ))}
-                <button type="button" disabled={visiblePage === totalPages} onClick={() => setCurrentPage(visiblePage + 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.next}</button>
+                <button type="button" disabled={visiblePage === totalPages} onClick={() => changePage(visiblePage + 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.next}</button>
               </div>
             </nav>
           )}
