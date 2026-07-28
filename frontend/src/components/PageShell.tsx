@@ -15,6 +15,7 @@ import {
   type TtsUsage,
 } from "../services/ttsUsageService";
 import atmWallBackground from "../assets/atm-wall-background.png";
+import assistAiLogo from "../assets/assist-ai-logo.png";
 import {
   fetchGlobalSpeechDashboard,
   SPEECH_PROVIDER_UPDATED_EVENT,
@@ -35,6 +36,7 @@ export function PageShell() {
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
   const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
+  const isLandingPage = location.pathname === "/";
   const homeTarget = isAuthenticated ? "/scenarios" : "/";
   const showHeader = !isAtmScenario || isAtmNavigationVisible;
 
@@ -133,7 +135,11 @@ export function PageShell() {
   return (
     <div
       className={`flex min-h-screen flex-col selection:bg-teal-100 selection:text-slate-900 ${
-        isAtmScenario ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"
+        isAtmScenario
+          ? "bg-slate-950 text-slate-100"
+          : isLandingPage
+            ? "bg-[#fafbff] text-indigo-950"
+            : "bg-slate-50 text-slate-800"
       }`}
       style={
         isAtmScenario
@@ -159,17 +165,31 @@ export function PageShell() {
             : navigationToggleText(language).show}
         </button>
       )}
+      {isLandingPage && (
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          <div className="absolute right-0 top-0 h-[58vh] max-h-[500px] min-h-[340px] w-[34vw] min-w-[390px] rounded-bl-[100%] bg-cyan-200/75 sm:min-w-[480px]" />
+          <div className="absolute bottom-0 left-0 h-[38vh] max-h-[330px] min-h-[210px] w-[21vw] min-w-[250px] rounded-tr-[100%] bg-indigo-200/45 sm:min-w-[330px]" />
+        </div>
+      )}
       {showHeader && (
-      <header id="primary-navigation" className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+      <header
+        id="primary-navigation"
+        className={`sticky top-0 z-20 ${
+          isLandingPage
+            ? "border-b border-transparent bg-transparent"
+            : "border-b border-indigo-100 bg-white/95 shadow-sm backdrop-blur"
+        }`}
+      >
+        <nav className={`mx-auto flex items-center justify-between ${
+          isLandingPage ? "h-20 max-w-none px-6 lg:px-12" : "h-16 max-w-6xl px-5"
+        }`}>
           <Link
             to={homeTarget}
-            className="flex items-center gap-3 text-xl font-bold tracking-tight text-slate-900 transition-opacity hover:opacity-85"
+            className="flex items-center transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
-              <span className="h-4 w-4 rounded-full border-2 border-teal-400" />
+            <span className="block w-11 overflow-hidden sm:w-auto">
+              <img src={assistAiLogo} alt="Assist-AI" className="h-11 w-auto max-w-none sm:h-12" />
             </span>
-            <span>ASSIST-AI</span>
           </Link>
           <div className="flex items-center gap-3">
             {ttsUsage && !isAdmin && (
@@ -239,7 +259,7 @@ export function PageShell() {
             ) : (
               <Link
                 to="/login"
-                className="inline-flex min-h-[52px] items-center rounded-lg bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                className="inline-flex min-h-[52px] items-center rounded-full bg-indigo-800 px-7 py-3 text-base font-bold text-white shadow-soft transition hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
               >
                 {t("login")}
               </Link>
@@ -270,7 +290,7 @@ export function PageShell() {
         className={`mx-auto flex w-full flex-1 flex-col ${
           isAtmScenario
             ? "max-w-[1600px] px-2 py-2 sm:px-4 sm:py-4"
-            : "max-w-7xl px-5 py-8 sm:py-10"
+            : `max-w-7xl px-5 ${isLandingPage ? "py-0" : "py-8 sm:py-10"}`
         }`}
       >
         <Outlet />

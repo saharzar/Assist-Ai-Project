@@ -1,46 +1,66 @@
 import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { useTranslation } from "../i18n";
+import { useTranslation, type LanguageCode } from "../i18n";
+
+const landingContent: Record<LanguageCode, {
+  eyebrow: string;
+  title: string;
+  accent: string;
+}> = {
+  en: { eyebrow: "AI practice partner", title: "Build confidence for", accent: "everyday situations" },
+  es: { eyebrow: "Compañero de práctica con IA", title: "Desarrolla confianza para", accent: "situaciones cotidianas" },
+  de: { eyebrow: "KI-Übungspartner", title: "Mehr Sicherheit für", accent: "Alltagssituationen" },
+  tr: { eyebrow: "Yapay zekâ pratik arkadaşın", title: "Günlük durumlar için", accent: "özgüven kazan" },
+  pt: { eyebrow: "Parceiro de prática com IA", title: "Ganha confiança para", accent: "situações do dia a dia" },
+  fr: { eyebrow: "Partenaire d'entraînement IA", title: "Gagne en confiance dans", accent: "les situations du quotidien" },
+};
 
 export function LandingPage() {
   const { isAuthenticated, user } = useAuth();
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
+  const content = landingContent[language];
 
   if (isAuthenticated) {
     return <Navigate to={user?.role === "admin" ? "/admin/users" : "/scenarios"} replace />;
   }
 
   return (
-    <section className="flex min-h-[70vh] flex-1 flex-col items-center justify-center py-10 text-center">
-      <div className="max-w-3xl">
-        <p className="text-sm font-bold uppercase tracking-[0.24em] text-teal-700">ASSIST-AI</p>
-        <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-          {t("heroTitle")}
+    <section className="relative z-10 flex min-h-[calc(100vh-7rem)] flex-1 items-center justify-center py-12 text-center sm:py-16">
+      <div className="mx-auto w-full max-w-[720px]">
+        <div className="inline-flex min-h-8 items-center gap-2 rounded-full border border-cyan-300 bg-cyan-50 px-4 py-1.5 text-xs font-semibold uppercase text-indigo-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" />
+          {content.eyebrow}
+        </div>
+
+        <h1 className="mt-7 font-sans text-[2.15rem] font-bold leading-[1.14] text-[#1d1a5e] sm:text-5xl lg:text-[3.5rem]">
+          <span className="block">{content.title}</span>
+          <span className="landing-title-accent mt-1 block pb-2">{content.accent}</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 sm:text-xl">
-          {t("heroSubtitle")}
-        </p>
-        <div className="mx-auto mt-10 flex w-full max-w-md flex-col gap-4">
+
+        <div className="mx-auto mt-11 flex w-full max-w-[340px] flex-col gap-3.5">
           <Link
             to="/register"
-            className="flex min-h-[60px] items-center justify-center rounded-lg bg-slate-900 px-6 py-4 text-lg font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+            className="inline-flex min-h-[64px] items-center justify-center rounded-lg bg-[#2a2586] px-7 py-4 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(42,37,134,0.5)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
           >
             {t("createAccount")}
           </Link>
           <Link
             to="/login"
-            className="flex min-h-[60px] items-center justify-center rounded-lg border-2 border-slate-200 bg-white px-6 py-4 text-lg font-bold text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="inline-flex min-h-[64px] items-center justify-center rounded-lg border-2 border-indigo-950/10 bg-white px-7 py-4 text-[15px] font-semibold text-[#2a2586] transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
           >
             {t("login")}
           </Link>
-          <Link
-            to="/guest"
-            className="flex min-h-[54px] items-center justify-center rounded-lg px-6 py-3 text-base font-bold text-teal-700 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-          >
-            {t("continueAsGuest")}
-          </Link>
         </div>
+
+        <Link
+          to="/guest"
+          className="group mt-5 inline-flex min-h-[44px] items-center text-sm font-semibold text-indigo-700 transition hover:text-indigo-950 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+        >
+          <span className="border-b-2 border-cyan-400 pb-0.5 transition-colors group-hover:border-indigo-700">
+            {t("continueAsGuest")}
+          </span>
+        </Link>
       </div>
     </section>
   );

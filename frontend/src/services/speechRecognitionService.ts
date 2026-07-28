@@ -616,7 +616,7 @@ class ManagedSpeechRecognizer {
       const BrowserRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (this.stopRequested || !BrowserRecognition) {
         console.error("ASSIST-AI could not resolve an STT provider", error);
-        this.callbacks.onError(error instanceof Error ? error.message : this.errorMessages.problem);
+        this.callbacks.onError(this.errorMessages.problem);
         this.endOnce();
         return;
       }

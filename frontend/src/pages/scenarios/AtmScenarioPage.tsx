@@ -326,6 +326,22 @@ export function AtmScenarioPage() {
     setIsListening(false);
   }, []);
 
+  const showLocalizedSpeechError = useCallback((message: string) => {
+    const translatedMessages = new Set([
+      text.speechMicBlocked,
+      text.speechProblem,
+      text.speechBrowserFallback,
+      text.speechNoMatch,
+      text.speechLimitReached,
+      text.speechNameUnsupported,
+      text.speechNameStartError,
+      text.speechPinUnsupported,
+      text.speechPinStartError,
+      text.voiceUnsupportedLetters,
+    ]);
+    setSpeechError(translatedMessages.has(message) ? message : text.speechProblem);
+  }, [text]);
+
   const completeNameConfirmation = useCallback((confirmed: boolean) => {
     if (confirmationSecondsRemaining > 0 || confirmationDecisionPending) {
       return;
@@ -583,9 +599,7 @@ export function AtmScenarioPage() {
         onResult: (nextTranscript) => {
           setTranscript(nextTranscript);
         },
-        onError: (message) => {
-          setSpeechError(message);
-        },
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "name",
@@ -615,7 +629,7 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechNameStartError);
     }
-  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
   const startPinListening = useCallback(async () => {
     stopSpeech();
@@ -651,9 +665,7 @@ export function AtmScenarioPage() {
         onResult: (nextTranscript) => {
           dispatch({ type: "PIN_REPLACE", value: nextTranscript });
         },
-        onError: (message) => {
-          setSpeechError(message);
-        },
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "pin",
@@ -683,7 +695,7 @@ export function AtmScenarioPage() {
       setIsListening(false);
       setSpeechError(text.speechPinStartError);
     }
-  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
   const startConfirmationListening = useCallback(async () => {
     if (confirmationSecondsRemaining > 0 || confirmationDecisionPending) {
@@ -723,7 +735,7 @@ export function AtmScenarioPage() {
           }
           completeNameConfirmation(decision === "confirm");
         },
-        onError: (message) => setSpeechError(message),
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "confirmation",
@@ -759,6 +771,7 @@ export function AtmScenarioPage() {
     language,
     recordInputMode,
     refreshSttUsage,
+    showLocalizedSpeechError,
     stopSpeech,
     text,
   ]);
@@ -798,7 +811,7 @@ export function AtmScenarioPage() {
           dispatch({ type: "LETTER_CLEAR" });
           Array.from(letters).forEach((letter) => dispatch({ type: "LETTER_INPUT", letter }));
         },
-        onError: (message) => setSpeechError(message),
+        onError: showLocalizedSpeechError,
         onEnd: finishListeningSession,
       },
       "letters",
@@ -825,7 +838,7 @@ export function AtmScenarioPage() {
       setSpeechError(text.speechProblem);
       finishListeningSession();
     }
-  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, stopSpeech, text]);
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
   const stopListening = useCallback(() => {
     if (stopListeningTimerRef.current) {
