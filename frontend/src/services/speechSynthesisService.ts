@@ -12,6 +12,17 @@ type SpeechCallbacks = {
   onUsageUpdate?: (usage: TtsUsage) => void;
 };
 
+type PreparedSpeech = {
+  audioBlob: Blob | null;
+  provider: string | null;
+  remaining: number | null;
+  usage: TtsUsage | null;
+};
+
+const preparedSpeechCache = new Map<string, PreparedSpeech>();
+const pendingSpeechRequests = new Map<string, Promise<PreparedSpeech>>();
+const MAX_PREPARED_SPEECH_ITEMS = 8;
+
 let currentAssistantAudio: HTMLAudioElement | null = null;
 let currentAssistantAudioUrl: string | null = null;
 let currentAssistantAbortController: AbortController | null = null;
@@ -68,6 +79,19 @@ export function speakAssistantMessage(
   void playBackendTts(message, callbacks, speechId, currentAssistantAbortController, language);
 }
 
+export async function preloadAssistantMessage(
+  message: string,
+  language: LanguageCode = "en",
+) {
+  if (!message.trim()) return;
+
+  try {
+    await getPreparedSpeech(message, language);
+  } catch {
+    // Playback will retry normally and surface any error to the user.
+  }
+}
+
 async function playBackendTts(
   message: string,
   callbacks: SpeechCallbacks,
@@ -76,53 +100,27 @@ async function playBackendTts(
   language: LanguageCode,
 ) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getSessionHeaders(),
-        "X-Speech-Request-ID": crypto.randomUUID(),
-        "X-Browser-Speech-Supported": String("speechSynthesis" in window),
-      },
-      body: JSON.stringify({ text: message, language }),
-      signal: abortController.signal,
-    });
-
-    const selectedProvider = response.headers.get("X-Speech-Provider");
-    if (selectedProvider) {
-      notifySpeechProviderUsed("tts", selectedProvider.replace("-cache", "") as GlobalSpeechProvider);
-    }
-    if (response.status === 204 && selectedProvider === "browser") {
+    const prepared = await getPreparedSpeech(message, language, abortController.signal);
+    if (prepared.provider === "browser" && !prepared.audioBlob) {
       playBrowserTts(message, language, callbacks, speechId);
       return;
-    }
-
-    if (!response.ok) {
-      throw new ApiError(await readTtsError(response), response.status);
     }
 
     if (activeSpeechId !== speechId) {
       return;
     }
 
-    const remainingHeader = response.headers.get("X-TTS-Remaining-Characters");
-    const limitHeader = response.headers.get("X-TTS-Limit-Characters");
-    const resetDateHeader = response.headers.get("X-TTS-Reset-Date");
-    if (remainingHeader) {
-      callbacks.onCreditsRemaining?.(Number(remainingHeader));
+    if (prepared.remaining !== null) {
+      callbacks.onCreditsRemaining?.(prepared.remaining);
     }
-    if (remainingHeader && limitHeader) {
-      const usage = {
-        remaining: Number(remainingHeader),
-        used: Number(limitHeader) - Number(remainingHeader),
-        limit: Number(limitHeader),
-        resetDate: resetDateHeader ?? "",
-      };
-      callbacks.onUsageUpdate?.(usage);
-      notifyTtsUsageUpdated(usage);
+    if (prepared.usage) {
+      callbacks.onUsageUpdate?.(prepared.usage);
     }
 
-    const audioBlob = await response.blob();
+    const audioBlob = prepared.audioBlob;
+    if (!audioBlob) {
+      throw new Error("Assistant voice returned no audio.");
+    }
     if (activeSpeechId !== speechId) {
       return;
     }
@@ -157,6 +155,87 @@ async function playBackendTts(
       currentAssistantAbortController = null;
     }
   }
+}
+
+function getSpeechCacheKey(message: string, language: LanguageCode) {
+  return `${language}:${message.trim()}`;
+}
+
+async function getPreparedSpeech(
+  message: string,
+  language: LanguageCode,
+  signal?: AbortSignal,
+) {
+  const cacheKey = getSpeechCacheKey(message, language);
+  const cached = preparedSpeechCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pending = pendingSpeechRequests.get(cacheKey);
+  if (pending) return pending;
+
+  const request = fetchPreparedSpeech(message, language, signal)
+    .then((prepared) => {
+      preparedSpeechCache.set(cacheKey, prepared);
+      while (preparedSpeechCache.size > MAX_PREPARED_SPEECH_ITEMS) {
+        const oldestKey = preparedSpeechCache.keys().next().value;
+        if (oldestKey) preparedSpeechCache.delete(oldestKey);
+      }
+      return prepared;
+    })
+    .finally(() => pendingSpeechRequests.delete(cacheKey));
+
+  pendingSpeechRequests.set(cacheKey, request);
+  return request;
+}
+
+async function fetchPreparedSpeech(
+  message: string,
+  language: LanguageCode,
+  signal?: AbortSignal,
+): Promise<PreparedSpeech> {
+  const response = await fetch(`${API_BASE_URL}/api/tts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getSessionHeaders(),
+      "X-Speech-Request-ID": crypto.randomUUID(),
+      "X-Browser-Speech-Supported": String("speechSynthesis" in window),
+    },
+    body: JSON.stringify({ text: message, language }),
+    signal,
+  });
+
+  const provider = response.headers.get("X-Speech-Provider");
+  if (provider) {
+    notifySpeechProviderUsed("tts", provider.replace("-cache", "") as GlobalSpeechProvider);
+  }
+  if (response.status === 204 && provider === "browser") {
+    return { audioBlob: null, provider, remaining: null, usage: null };
+  }
+  if (!response.ok) {
+    throw new ApiError(await readTtsError(response), response.status);
+  }
+
+  const remainingHeader = response.headers.get("X-TTS-Remaining-Characters");
+  const limitHeader = response.headers.get("X-TTS-Limit-Characters");
+  const resetDateHeader = response.headers.get("X-TTS-Reset-Date");
+  const remaining = remainingHeader ? Number(remainingHeader) : null;
+  const usage = remainingHeader && limitHeader
+    ? {
+        remaining: Number(remainingHeader),
+        used: Number(limitHeader) - Number(remainingHeader),
+        limit: Number(limitHeader),
+        resetDate: resetDateHeader ?? "",
+      }
+    : null;
+  if (usage) notifyTtsUsageUpdated(usage);
+
+  return {
+    audioBlob: await response.blob(),
+    provider,
+    remaining,
+    usage,
+  };
 }
 
 function playBrowserTts(

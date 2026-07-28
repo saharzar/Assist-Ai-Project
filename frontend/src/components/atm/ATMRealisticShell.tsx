@@ -111,7 +111,7 @@ export function ATMRealisticShell({
           draggable={false}
         />
 
-        <div className="absolute left-[12.2%] top-[10.9%] h-[50.3%] w-[59%] overflow-hidden rounded-[0.7%] bg-slate-100/95 p-[1.2%] text-slate-950 shadow-inner">
+        <div className="absolute left-[12.2%] top-[10.9%] h-[50.3%] w-[59%] overflow-hidden rounded-[0.7%] bg-[#f8f9ff]/95 p-[1.2%] text-[#171452] shadow-inner">
           {children}
         </div>
 
@@ -201,7 +201,7 @@ function OverlayButton({
         width: `${width}%`,
         height: `${height}%`,
       }}
-      className="absolute rounded-md border border-white/0 bg-teal-300/0 transition hover:bg-teal-300/30 focus:bg-teal-300/35 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-2 focus:ring-offset-slate-950 active:bg-teal-200/40"
+      className="absolute rounded-md border border-white/0 bg-cyan-300/0 transition hover:bg-cyan-300/30 focus:bg-indigo-300/30 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 active:bg-indigo-300/35"
     >
       <span className="sr-only">{label}</span>
     </button>

@@ -80,9 +80,10 @@ export function AtmPinScreen({
               onKeyUp={(event) => {
                 if (event.key === "Enter" || event.key === " ") onVoiceStop();
               }}
-              className="mt-2 min-h-11 w-full rounded-lg bg-sky-700 px-3 text-sm font-bold text-white outline-none hover:bg-sky-800 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-900"
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 active:bg-[#171452]"
             >
-              {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+              <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
             </button>
             <p className="mt-1 text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
           </>
@@ -102,3 +103,4 @@ export function AtmPinScreen({
     </div>
   );
 }
+import { Mic } from "lucide-react";

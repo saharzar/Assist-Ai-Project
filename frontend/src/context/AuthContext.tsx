@@ -4,6 +4,7 @@ import {
   fetchCurrentUser,
   loginUser,
   registerUser,
+  updatePreferredLanguage,
   type LoginPayload,
   type RegisterPayload,
   type User,
@@ -22,6 +23,7 @@ type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<User>;
   register: (payload: RegisterPayload) => Promise<string>;
   continueAsGuest: (saveProgress: boolean, preferredLanguage: string) => Promise<void>;
+  setPreferredLanguage: (preferredLanguage: string) => Promise<User>;
   logout: () => void;
 };
 
@@ -114,6 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setGuestSession(response);
         setIsLoading(false);
+      },
+      setPreferredLanguage: async (preferredLanguage) => {
+        const updatedUser = await updatePreferredLanguage(preferredLanguage);
+        localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return updatedUser;
       },
       logout: () => {
         localStorage.removeItem(TOKEN_KEY);

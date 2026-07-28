@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
@@ -29,14 +29,42 @@ const statusLabelKeys = {
 
 const dashboardCopy = {
   en: { overview: "Account overview", emptyTitle: "No users in this queue", emptyBody: "There are no accounts matching the selected status right now.", showAll: "Show all users", users: "User accounts", previous: "Previous", next: "Next", page: "Page" },
-  es: { overview: "Resumen de cuentas", emptyTitle: "No hay usuarios en esta cola", emptyBody: "Ahora mismo no hay cuentas con el estado seleccionado.", showAll: "Mostrar todos", users: "Cuentas de usuario", previous: "Anterior", next: "Siguiente", page: "Pagina" },
-  de: { overview: "Kontoubersicht", emptyTitle: "Keine Benutzer in dieser Liste", emptyBody: "Derzeit gibt es keine Konten mit dem ausgewahlten Status.", showAll: "Alle Benutzer anzeigen", users: "Benutzerkonten", previous: "Zuruck", next: "Weiter", page: "Seite" },
-  tr: { overview: "Hesap ozeti", emptyTitle: "Bu listede kullanici yok", emptyBody: "Secilen durumla eslesen hesap bulunmuyor.", showAll: "Tum kullanicilari goster", users: "Kullanici hesaplari", previous: "Onceki", next: "Sonraki", page: "Sayfa" },
-  pt: { overview: "Resumo de contas", emptyTitle: "Nao ha utilizadores nesta fila", emptyBody: "Nao existem contas com o estado selecionado neste momento.", showAll: "Mostrar todos", users: "Contas de utilizador", previous: "Anterior", next: "Seguinte", page: "Pagina" },
-  fr: { overview: "Apercu des comptes", emptyTitle: "Aucun utilisateur dans cette liste", emptyBody: "Aucun compte ne correspond actuellement au statut selectionne.", showAll: "Afficher tous", users: "Comptes utilisateurs", previous: "Precedent", next: "Suivant", page: "Page" },
+  es: { overview: "Resumen de cuentas", emptyTitle: "No hay usuarios en esta cola", emptyBody: "Ahora mismo no hay cuentas con el estado seleccionado.", showAll: "Mostrar todos", users: "Cuentas de usuario", previous: "Anterior", next: "Siguiente", page: "Página" },
+  de: { overview: "Kontoübersicht", emptyTitle: "Keine Benutzer in dieser Liste", emptyBody: "Derzeit gibt es keine Konten mit dem ausgewählten Status.", showAll: "Alle Benutzer anzeigen", users: "Benutzerkonten", previous: "Zurück", next: "Weiter", page: "Seite" },
+  tr: { overview: "Hesap özeti", emptyTitle: "Bu listede kullanıcı yok", emptyBody: "Seçilen durumla eşleşen hesap bulunmuyor.", showAll: "Tüm kullanıcıları göster", users: "Kullanıcı hesapları", previous: "Önceki", next: "Sonraki", page: "Sayfa" },
+  pt: { overview: "Resumo de contas", emptyTitle: "Não há utilizadores nesta fila", emptyBody: "Não existem contas com o estado selecionado neste momento.", showAll: "Mostrar todos", users: "Contas de utilizador", previous: "Anterior", next: "Seguinte", page: "Página" },
+  fr: { overview: "Aperçu des comptes", emptyTitle: "Aucun utilisateur dans cette liste", emptyBody: "Aucun compte ne correspond actuellement au statut sélectionné.", showAll: "Afficher tous", users: "Comptes utilisateurs", previous: "Précédent", next: "Suivant", page: "Page" },
 } as const;
 
 const USERS_PER_PAGE = 5;
+
+const filterStyles: Record<AdminUserStatusFilter, { active: string; idle: string; count: string }> = {
+  pending: {
+    active: "border-amber-200 bg-amber-50/30 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-amber-100 bg-amber-50/30 hover:border-amber-200",
+    count: "text-[#2a2586]",
+  },
+  approved: {
+    active: "border-emerald-200 bg-emerald-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-emerald-100 bg-emerald-50/35 hover:border-emerald-200",
+    count: "text-[#2a2586]",
+  },
+  denied: {
+    active: "border-rose-200 bg-rose-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-rose-100 bg-rose-50/35 hover:border-rose-200",
+    count: "text-[#2a2586]",
+  },
+  suspended: {
+    active: "border-violet-200 bg-violet-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-violet-100 bg-violet-50/35 hover:border-violet-200",
+    count: "text-[#2a2586]",
+  },
+  all: {
+    active: "border-cyan-200 bg-cyan-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-cyan-100 bg-cyan-50/35 hover:border-cyan-200",
+    count: "text-[#2a2586]",
+  },
+};
 
 export function AdminUsersPage() {
   const { user, isAuthenticated } = useAuth();
@@ -51,6 +79,7 @@ export function AdminUsersPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const userListRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = isAuthenticated && user?.role === "admin";
 
@@ -138,31 +167,36 @@ export function AdminUsersPage() {
   const pageStart = Math.max(1, Math.min(visiblePage - 2, totalPages - 4));
   const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => pageStart + index);
   const paginatedUsers = filteredUsers.slice((visiblePage - 1) * USERS_PER_PAGE, visiblePage * USERS_PER_PAGE);
+  const changePage = (nextPage: number) => {
+    setCurrentPage(nextPage);
+    requestAnimationFrame(() => userListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   return (
-    <section className="flex flex-1 flex-col">
-      <div className="max-w-3xl">
-        <p className="text-sm font-bold uppercase text-teal-700">{copy.overview}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">{t("adminUsers")}</h1>
-        <p className="mt-2 text-base leading-7 text-slate-600">{t("viewPendingAccounts")}</p>
+    <section className="flex flex-1 flex-col text-[#1d1a3d]">
+      <div className="max-w-4xl border-b border-indigo-950/10 pb-7">
+        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+        <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("adminUsers")}</h1>
+        <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">{t("viewPendingAccounts")}</p>
       </div>
 
-      <div className="mt-7 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {filters.map((filter) => (
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {filters.map((filter) => {
+          const styles = filterStyles[filter];
+          const isActive = statusFilter === filter;
+          return (
           <button
             key={filter}
             type="button"
             onClick={() => setStatusFilter(filter)}
-            className={`flex min-h-[76px] items-center justify-between rounded-lg border px-4 py-3 text-left transition ${
-              statusFilter === filter
-                ? "border-teal-500 bg-teal-50 text-teal-900 shadow-sm"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-            }`}
+            aria-pressed={isActive}
+            className={`relative flex min-h-[112px] flex-col items-start justify-between overflow-hidden rounded-lg border p-5 text-left transition ${isActive ? styles.active : styles.idle}`}
           >
-            <span className="text-sm font-bold">{filter === "all" ? t("all") : t(statusLabelKeys[filter])}</span>
-            <span className="text-2xl font-bold tabular-nums">{statusCounts[filter]}</span>
+            <span className="text-sm font-bold text-slate-700">{filter === "all" ? t("all") : t(statusLabelKeys[filter])}</span>
+            <span className={`text-4xl font-extrabold tabular-nums ${styles.count}`}>{statusCounts[filter]}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {isLoading && (
@@ -184,17 +218,25 @@ export function AdminUsersPage() {
       )}
 
       {!isLoading && !errorMessage && (
-        <div className="mt-7 grid gap-5">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h2 className="text-lg font-bold text-slate-950">{copy.users}</h2>
-            <span className="text-sm font-semibold tabular-nums text-slate-500">{filteredUsers.length}</span>
+        <div ref={userListRef} className="mt-7 grid scroll-mt-36 gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-950/10 pb-3">
+            <h2 className="text-lg font-bold text-[#1d1a5e]">{copy.users}</h2>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-[#f3f3fb] px-3 py-1 text-sm font-bold tabular-nums text-[#2a2586]">{filteredUsers.length}</span>
+              {totalPages > 1 && <div className="inline-flex items-center rounded-lg border border-indigo-950/10 bg-white p-1"><button type="button" aria-label={copy.previous} disabled={visiblePage === 1} onClick={() => changePage(visiblePage - 1)} className="h-9 min-w-9 rounded-md px-2 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:cursor-not-allowed disabled:opacity-30">←</button><span className="min-w-16 px-2 text-center text-sm font-bold text-slate-500">{visiblePage} / {totalPages}</span><button type="button" aria-label={copy.next} disabled={visiblePage === totalPages} onClick={() => changePage(visiblePage + 1)} className="h-9 min-w-9 rounded-md px-2 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:cursor-not-allowed disabled:opacity-30">→</button></div>}
+            </div>
           </div>
           {filteredUsers.length === 0 && (
-            <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-2xl font-bold text-teal-700" aria-hidden="true">0</span>
-              <h3 className="mt-4 text-xl font-bold text-slate-950">{copy.emptyTitle}</h3>
-              <p className="mt-2 max-w-md text-slate-600">{copy.emptyBody}</p>
-              {statusFilter !== "all" && <button type="button" onClick={() => setStatusFilter("all")} className="mt-5 min-h-[44px] rounded-lg bg-slate-900 px-5 text-sm font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">{copy.showAll}</button>}
+            <div className="relative overflow-hidden rounded-lg border border-cyan-200 bg-white px-6 py-10 shadow-[0_14px_35px_rgba(29,26,94,0.05)]">
+              <span className="absolute inset-y-0 left-0 w-1.5 bg-cyan-400" aria-hidden="true" />
+              <div className="mx-auto flex max-w-2xl flex-col items-center text-center sm:flex-row sm:text-left">
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-8 border-cyan-100 bg-[#302992] text-2xl font-extrabold text-white" aria-hidden="true">0</span>
+                <div className="mt-5 sm:ml-6 sm:mt-0">
+                  <h3 className="text-xl font-bold text-[#1d1a5e]">{copy.emptyTitle}</h3>
+                  <p className="mt-1 max-w-md leading-6 text-slate-600">{copy.emptyBody}</p>
+                </div>
+                {statusFilter !== "all" && <button type="button" onClick={() => setStatusFilter("all")} className="mt-5 min-h-[44px] shrink-0 rounded-lg bg-[#302992] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(48,41,146,0.18)] hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 sm:ml-auto sm:mt-0">{copy.showAll}</button>}
+              </div>
             </div>
           )}
           {paginatedUsers.map((item) => {
@@ -203,30 +245,35 @@ export function AdminUsersPage() {
             if (!canManageAccount) return null;
 
             return (
-              <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  <Info label={t("fullName")} value={item.full_name} />
-                  <Info label={t("email")} value={item.email} />
+              <article key={item.id} className="overflow-hidden rounded-xl border border-indigo-950/10 bg-white shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-indigo-950/10 px-6 py-5">
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f3f3fb] text-sm font-extrabold text-[#2a2586]" aria-hidden="true">{initials(item.full_name)}</span>
+                    <div><h3 className="text-lg font-bold text-[#1d1a5e]">{item.full_name}</h3><p className="text-sm text-slate-400">{item.email}</p></div>
+                  </div>
+                  <StatusPill status={item.approval_status} label={t(statusLabelKeys[item.approval_status])} />
+                </div>
+                <div className="grid gap-5 px-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
                   <Info label={t("userCategory")} value={t(categoryLabelKeys[item.user_category])} />
                   <Info label={t("preferredLanguage")} value={item.preferred_language.toUpperCase()} />
-                  <Info label={t("approvalStatus")} value={t(statusLabelKeys[item.approval_status])} />
                   <Info label={t("createdDate")} value={new Date(item.created_at).toLocaleDateString()} />
+                  <Info label={t("approvalStatus")} value={t(statusLabelKeys[item.approval_status])} />
                 </div>
 
                 {canManageAccount && item.approval_status === "pending" && (
-                  <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                  <div className="grid gap-3 border-t border-indigo-950/10 bg-[#fafbff] px-6 py-4 md:grid-cols-[1fr_auto_auto]">
                     <input
                       value={rejectionReasons[item.id] ?? ""}
                       onChange={(event) =>
                         setRejectionReasons((current) => ({ ...current, [item.id]: event.target.value }))
                       }
                       placeholder={t("rejectionReason")}
-                      className="min-h-[48px] rounded-lg border border-slate-300 px-4 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500"
+                      className="min-h-[48px] rounded-lg border border-indigo-950/10 bg-white px-4 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
                     />
                     <button
                       type="button"
                       onClick={() => void handleApprove(item)}
-                      className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                      className="min-h-[48px] rounded-lg bg-[#2a2586] px-5 py-2 font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
                       {t("approve")}
                     </button>
@@ -241,7 +288,7 @@ export function AdminUsersPage() {
                 )}
 
                 {canManageAccount && item.approval_status === "approved" && (
-                  <div className="mt-5 flex justify-end">
+                  <div className="flex justify-end border-t border-indigo-950/10 bg-[#fafbff] px-6 py-4">
                     <button
                       type="button"
                       onClick={() => void handleSuspend(item)}
@@ -253,11 +300,11 @@ export function AdminUsersPage() {
                 )}
 
                 {canManageAccount && item.approval_status === "suspended" && (
-                  <div className="mt-5 flex justify-end">
+                  <div className="flex justify-end border-t border-indigo-950/10 bg-[#fafbff] px-6 py-4">
                     <button
                       type="button"
                       onClick={() => void handleActivate(item)}
-                      className="min-h-[48px] rounded-lg bg-teal-600 px-5 py-2 font-bold text-white hover:bg-teal-700"
+                      className="min-h-[48px] rounded-lg bg-[#2a2586] px-5 py-2 font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
                       {t("activate")}
                     </button>
@@ -270,11 +317,11 @@ export function AdminUsersPage() {
             <nav aria-label={`${copy.page} ${visiblePage}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
               <p className="text-sm font-semibold text-slate-500">{copy.page} {visiblePage} / {totalPages}</p>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={visiblePage === 1} onClick={() => setCurrentPage(visiblePage - 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.previous}</button>
+                <button type="button" disabled={visiblePage === 1} onClick={() => changePage(visiblePage - 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.previous}</button>
                 {pageNumbers.map((pageNumber) => (
-                  <button key={pageNumber} type="button" aria-label={`${copy.page} ${pageNumber}`} aria-current={visiblePage === pageNumber ? "page" : undefined} onClick={() => setCurrentPage(pageNumber)} className={`h-10 min-w-10 rounded-md border px-2 text-sm font-bold ${visiblePage === pageNumber ? "border-teal-600 bg-teal-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>{pageNumber}</button>
+                  <button key={pageNumber} type="button" aria-label={`${copy.page} ${pageNumber}`} aria-current={visiblePage === pageNumber ? "page" : undefined} onClick={() => changePage(pageNumber)} className={`h-10 min-w-10 rounded-lg border px-2 text-sm font-bold ${visiblePage === pageNumber ? "border-[#2a2586] bg-[#2a2586] text-white" : "border-indigo-950/10 bg-white text-[#2a2586] hover:bg-[#f3f3fb]"}`}>{pageNumber}</button>
                 ))}
-                <button type="button" disabled={visiblePage === totalPages} onClick={() => setCurrentPage(visiblePage + 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.next}</button>
+                <button type="button" disabled={visiblePage === totalPages} onClick={() => changePage(visiblePage + 1)} className="min-h-[40px] rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{copy.next}</button>
               </div>
             </nav>
           )}
@@ -287,7 +334,7 @@ export function AdminUsersPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="deny-user-title"
-            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-xl border border-indigo-950/10 bg-white p-6 shadow-xl"
           >
             <h2 id="deny-user-title" className="text-2xl font-bold text-slate-950">
               {t("confirmDenyTitle")}
@@ -322,8 +369,22 @@ export function AdminUsersPage() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 font-semibold text-slate-900">{value}</p>
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-[#1d1a3d]">{value}</p>
     </div>
   );
+}
+
+function StatusPill({ status, label }: { status: User["approval_status"]; label: string }) {
+  const styles = {
+    pending: "bg-amber-50 text-amber-700",
+    approved: "bg-cyan-50 text-teal-700",
+    denied: "bg-rose-50 text-rose-700",
+    suspended: "bg-slate-100 text-slate-600",
+  };
+  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${styles[status]}`}>{label}</span>;
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "U";
 }

@@ -26,86 +26,36 @@ export function AdminScenarioAnalyticsPage() {
   }
 
   return (
-    <section className="flex flex-1 flex-col text-slate-900">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+    <section className="flex flex-1 flex-col text-[#1d1a3d]">
+      <div className="border-b border-indigo-950/10 pb-7">
         <div className="max-w-3xl">
-          <p className="text-sm font-bold uppercase text-teal-700">{text.adminDashboard}</p>
-          <h1 className="mt-1 text-3xl font-bold">{text.scenarioAnalytics}</h1>
-          <p className="mt-2 text-slate-600">
+          <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+          <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
+          <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">
             {text.selectorDescription}
           </p>
         </div>
-        <Link
-          to="/admin/users"
-          className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-        >
-          {text.manageUsers}
-        </Link>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {scenarios.map((scenario) => {
           const translatedScenario = translateScenario(scenario);
-          const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
           const scenarioNumber = Number(scenario.id).toString().padStart(2, "0");
+          const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
 
           return (
             <article
               key={scenario.id}
-              className={`flex min-h-48 flex-col justify-between rounded-lg border p-5 shadow-sm ${
-                isAvailable
-                  ? "border-teal-300 bg-white"
-                  : "border-slate-200 bg-slate-100 text-slate-500 grayscale"
-              }`}
+              className={`flex min-h-[168px] flex-col rounded-lg border p-5 transition ${isAvailable ? "border-cyan-300 bg-cyan-50/35 shadow-[0_10px_26px_rgba(29,26,94,0.06)]" : "border-indigo-950/10 bg-white/70 hover:border-indigo-200 hover:bg-white"}`}
             >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <span
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sm font-bold ${
-                      isAvailable
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {scenarioNumber}
-                  </span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      isAvailable
-                        ? "bg-teal-100 text-teal-800"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {isAvailable ? text.available : text.comingSoon}
-                  </span>
+              <div className="flex items-start gap-4">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold ${isAvailable ? "bg-[#2a2586] text-white" : "bg-[#f1f0fa] text-[#777493]"}`}>{scenarioNumber}</span>
+                <div className="min-w-0">
+                  <h2 className={`font-bold leading-5 ${isAvailable ? "text-[#1d1a5e]" : "text-slate-500"}`}>{translatedScenario.title}</h2>
+                  <p className={`mt-2 text-xs font-semibold uppercase tracking-wide ${isAvailable ? "text-teal-700" : "text-slate-400"}`}>{isAvailable ? "ATM" : text.comingSoon}</p>
                 </div>
-                <h2
-                  className={`mt-5 text-lg font-bold leading-6 ${
-                    isAvailable ? "text-slate-950" : "text-slate-500"
-                  }`}
-                >
-                  {translatedScenario.title}
-                </h2>
               </div>
-
-              {isAvailable ? (
-                <Link
-                  to="/admin/atm-analytics"
-                  className="mt-5 inline-flex min-h-[46px] items-center justify-center rounded-lg bg-slate-900 px-4 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-                  aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}
-                >
-                  {text.viewAnalytics}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-label={`${text.analyticsUnavailable}: ${translatedScenario.title}`}
-                  className="mt-5 min-h-[46px] cursor-not-allowed rounded-lg bg-slate-200 px-4 font-bold text-slate-500"
-                >
-                  {text.analyticsUnavailable}
-                </button>
-              )}
+              {isAvailable ? <Link to="/admin/atm-analytics" className="mt-auto inline-flex min-h-[42px] items-center justify-center rounded-lg bg-[#2a2586] px-4 text-sm font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400" aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}>{text.viewAnalytics}</Link> : <span className="mt-auto min-h-[42px]" aria-hidden="true" />}
             </article>
           );
         })}

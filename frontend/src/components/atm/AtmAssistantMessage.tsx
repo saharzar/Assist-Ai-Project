@@ -18,7 +18,7 @@ export function AtmAssistantMessage({
   onStop: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-slate-900">
+    <div className="rounded-lg border border-cyan-200/70 bg-white p-4 text-[#1d1a5e] shadow-[0_8px_24px_rgba(3,7,18,0.12)]">
       <p className="text-base font-semibold leading-7">{message}</p>
       {ttsError && (
         <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
@@ -31,7 +31,7 @@ export function AtmAssistantMessage({
           aria-label={repeatLabel}
           onClick={onRepeat}
           disabled={!soundEnabled}
-          className="min-h-[44px] rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-[44px] rounded-lg bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {repeatLabel}
         </button>
@@ -40,7 +40,7 @@ export function AtmAssistantMessage({
             type="button"
             aria-label={stopLabel}
             onClick={onStop}
-            className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="min-h-[44px] rounded-lg border border-indigo-200 bg-[#f4f3ff] px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
           >
             {stopLabel}
           </button>

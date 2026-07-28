@@ -26,7 +26,7 @@ export function AlphabetKeypad({
               type="button"
               aria-label={`Letter ${letter}`}
               onClick={() => onLetter(letter)}
-              className="min-h-[46px] rounded-lg bg-slate-900 text-base font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="min-h-[46px] rounded-lg bg-slate-900 text-base font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             >
               {letter}
             </button>
@@ -38,7 +38,7 @@ export function AlphabetKeypad({
           type="button"
           aria-label="Clear letters"
           onClick={onClear}
-          className="min-h-[52px] rounded-lg border border-slate-300 bg-white px-3 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="min-h-[52px] rounded-lg border border-slate-300 bg-white px-3 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           Clear
         </button>
@@ -46,7 +46,7 @@ export function AlphabetKeypad({
           type="button"
           aria-label="Backspace letters"
           onClick={onBackspace}
-          className="min-h-[52px] rounded-lg border border-slate-300 bg-white px-3 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="min-h-[52px] rounded-lg border border-slate-300 bg-white px-3 font-bold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           Back
         </button>
@@ -54,7 +54,7 @@ export function AlphabetKeypad({
           type="button"
           aria-label="Submit letters"
           onClick={onEnter}
-          className="min-h-[52px] rounded-lg bg-teal-600 px-3 font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="min-h-[52px] rounded-lg bg-[#302992] px-3 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           Enter
         </button>
