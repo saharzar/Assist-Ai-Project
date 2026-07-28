@@ -42,8 +42,10 @@ export function ScenarioCataloguePage() {
   const translatedScenarios = scenarios.map(translateScenario);
 
   return (
-    <section className="flex flex-1 flex-col pb-6">
-      <div className="max-w-3xl pt-1">
+    <section className="catalogue-page relative isolate flex flex-1 flex-col overflow-hidden rounded-lg px-5 pb-10 pt-6 sm:px-8 lg:px-10">
+      <div className="catalogue-grid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+      <div className="relative max-w-3xl pt-1">
+        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
         <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">
           {t("scenarioCatalogueTitle")}
         </h1>
@@ -65,7 +67,7 @@ export function ScenarioCataloguePage() {
       )}
 
       {!isLoading && !errorMessage && (
-        <div className="mt-6 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
+        <div className="relative mt-8 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
           {translatedScenarios.map((scenario) => (
             <ScenarioCard
               key={scenario.id}

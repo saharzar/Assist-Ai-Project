@@ -38,6 +38,39 @@ const dashboardCopy = {
 
 const USERS_PER_PAGE = 5;
 
+const filterStyles: Record<AdminUserStatusFilter, { active: string; idle: string; count: string; marker: string }> = {
+  pending: {
+    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
+    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    count: "text-[#2a2586]",
+    marker: "bg-amber-400",
+  },
+  approved: {
+    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
+    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    count: "text-[#2a2586]",
+    marker: "bg-emerald-500",
+  },
+  denied: {
+    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
+    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    count: "text-[#2a2586]",
+    marker: "bg-rose-500",
+  },
+  suspended: {
+    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
+    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    count: "text-[#2a2586]",
+    marker: "bg-violet-500",
+  },
+  all: {
+    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
+    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    count: "text-[#2a2586]",
+    marker: "bg-cyan-400",
+  },
+};
+
 export function AdminUsersPage() {
   const { user, isAuthenticated } = useAuth();
   const { language, t } = useTranslation();
@@ -146,28 +179,35 @@ export function AdminUsersPage() {
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="max-w-3xl border-b border-indigo-950/10 pb-6">
+      <div className="relative max-w-4xl overflow-hidden border-b border-indigo-950/10 pb-7">
+        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
+        <div className="pl-5">
         <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{copy.overview}</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">{t("adminUsers")}</h1>
         <p className="mt-2 text-base leading-7 text-slate-600">{t("viewPendingAccounts")}</p>
+        </div>
       </div>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {filters.map((filter) => (
+        {filters.map((filter) => {
+          const styles = filterStyles[filter];
+          const isActive = statusFilter === filter;
+          return (
           <button
             key={filter}
             type="button"
             onClick={() => setStatusFilter(filter)}
-            className={`flex min-h-[96px] flex-col items-start justify-between rounded-xl border p-5 text-left transition ${
-              statusFilter === filter
-                ? "border-cyan-300 bg-cyan-50 text-[#1d1a5e] shadow-sm"
-                : "border-indigo-950/10 bg-white text-slate-600 hover:border-cyan-200 hover:bg-[#fafbff]"
-            }`}
+            aria-pressed={isActive}
+            className={`relative flex min-h-[112px] flex-col items-start justify-between overflow-hidden rounded-lg border p-5 text-left transition ${isActive ? styles.active : styles.idle}`}
           >
-            <span className="text-sm font-semibold">{filter === "all" ? t("all") : t(statusLabelKeys[filter])}</span>
-            <span className="text-3xl font-extrabold tabular-nums text-[#2a2586]">{statusCounts[filter]}</span>
+            <span className="flex w-full items-center justify-between gap-2 text-sm font-bold text-slate-700">
+              {filter === "all" ? t("all") : t(statusLabelKeys[filter])}
+              <span className={`h-1 w-8 rounded-full ${styles.marker}`} aria-hidden="true" />
+            </span>
+            <span className={`text-4xl font-extrabold tabular-nums ${styles.count}`}>{statusCounts[filter]}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {isLoading && (
@@ -198,11 +238,16 @@ export function AdminUsersPage() {
             </div>
           </div>
           {filteredUsers.length === 0 && (
-            <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-2xl font-bold text-teal-700" aria-hidden="true">0</span>
-              <h3 className="mt-4 text-xl font-bold text-slate-950">{copy.emptyTitle}</h3>
-              <p className="mt-2 max-w-md text-slate-600">{copy.emptyBody}</p>
-              {statusFilter !== "all" && <button type="button" onClick={() => setStatusFilter("all")} className="mt-5 min-h-[44px] rounded-lg bg-slate-900 px-5 text-sm font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">{copy.showAll}</button>}
+            <div className="relative overflow-hidden rounded-lg border border-cyan-200 bg-white px-6 py-10 shadow-[0_14px_35px_rgba(29,26,94,0.05)]">
+              <span className="absolute inset-y-0 left-0 w-1.5 bg-cyan-400" aria-hidden="true" />
+              <div className="mx-auto flex max-w-2xl flex-col items-center text-center sm:flex-row sm:text-left">
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-8 border-cyan-100 bg-[#302992] text-2xl font-extrabold text-white" aria-hidden="true">0</span>
+                <div className="mt-5 sm:ml-6 sm:mt-0">
+                  <h3 className="text-xl font-bold text-[#1d1a5e]">{copy.emptyTitle}</h3>
+                  <p className="mt-1 max-w-md leading-6 text-slate-600">{copy.emptyBody}</p>
+                </div>
+                {statusFilter !== "all" && <button type="button" onClick={() => setStatusFilter("all")} className="mt-5 min-h-[44px] shrink-0 rounded-lg bg-[#302992] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(48,41,146,0.18)] hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 sm:ml-auto sm:mt-0">{copy.showAll}</button>}
+              </div>
             </div>
           )}
           {paginatedUsers.map((item) => {

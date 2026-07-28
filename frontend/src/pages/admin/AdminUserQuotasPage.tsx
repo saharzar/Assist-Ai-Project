@@ -84,12 +84,14 @@ export function AdminUserQuotasPage() {
       </div>
       {message && <p className="mt-4 rounded-lg border bg-white p-4 font-semibold">{message}</p>}
 
+      <HistorySummary requests={reviewedRequests} text={text} />
+
       <section className="mt-8">
         <div className="flex items-end justify-between gap-4"><div><h2 className="text-2xl font-bold text-[#1d1a5e]">{text.pendingTitle}</h2><p className="mt-1 text-sm text-slate-600">{text.pendingIntro}</p></div><span className="rounded-full bg-amber-50 px-4 py-1.5 text-sm font-bold text-amber-700">{pendingRequests.length} {text.pending.toLowerCase()}</span></div>
         <div className="mt-3 grid gap-3">
           {pendingRequests.length ? pendingRequests.map((request) => {
             const requestUser = usersById.get(request.user_id);
-            return <article key={request.id} className="rounded-xl border border-amber-200 bg-white p-6 shadow-[0_0_0_4px_rgba(251,191,36,0.10)]"><div className="flex flex-wrap items-center justify-between gap-5"><div><div className="flex flex-wrap items-center gap-2"><strong className="text-lg text-[#1d1a5e]">{requestUser?.full_name ?? `${text.user} #${request.user_id}`}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{request.service_type.toUpperCase()}</span></div>{requestUser && <p className="text-sm text-slate-400">{requestUser.email}</p>}<p className="mt-3 text-sm font-medium text-slate-700">“{request.reason}”</p><p className="mt-1 text-sm text-slate-600">{text.requested}: <strong>{(request.requested_tts_characters ?? 0).toLocaleString(text.locale)} {text.chars}</strong> · <strong>{formatSttMinutes(request.requested_stt_seconds, text)}</strong></p><p className="mt-1 text-xs text-slate-400">{text.submitted} {formatDate(request.created_at, text.locale)}</p></div><div className="flex gap-3"><button onClick={() => void review(request, true)} className="min-h-[48px] rounded-lg bg-teal-600 px-6 font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.approve}</button><button onClick={() => void review(request, false)} className="min-h-[48px] rounded-lg border border-rose-500 px-6 font-bold text-rose-700 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300">{text.reject}</button></div></div></article>;
+            return <article key={request.id} className="rounded-xl border border-amber-200 bg-white p-6 shadow-[0_0_0_4px_rgba(251,191,36,0.10)]"><div className="flex flex-wrap items-center justify-between gap-5"><div><div className="flex flex-wrap items-center gap-2"><strong className="text-lg text-[#1d1a5e]">{requestUser?.full_name ?? `${text.user} #${request.user_id}`}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{serviceTypeLabel(request.service_type, text)}</span></div>{requestUser && <p className="text-sm text-slate-400">{requestUser.email}</p>}<p className="mt-3 text-sm font-medium text-slate-700">“{request.reason}”</p><p className="mt-1 text-sm text-slate-600">{text.requested}: <strong>{(request.requested_tts_characters ?? 0).toLocaleString(text.locale)} {text.chars}</strong> · <strong>{formatSttMinutes(request.requested_stt_seconds, text)}</strong></p><p className="mt-1 text-xs text-slate-400">{text.submitted} {formatDate(request.created_at, text.locale)}</p></div><div className="flex gap-3"><button onClick={() => void review(request, true)} className="min-h-[48px] rounded-lg bg-teal-600 px-6 font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.approve}</button><button onClick={() => void review(request, false)} className="min-h-[48px] rounded-lg border border-rose-500 px-6 font-bold text-rose-700 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300">{text.reject}</button></div></div></article>;
           }) : <p className="rounded-lg border border-dashed bg-white py-10 text-center font-semibold text-slate-500">{text.noPending}</p>}
         </div>
       </section>
@@ -108,8 +110,7 @@ export function AdminUserQuotasPage() {
 
       <section className="mt-10">
         <div><h2 className="text-2xl font-bold text-[#1d1a5e]">{text.history}</h2><p className="mt-1 text-sm text-slate-600">{text.historyIntro}</p></div>
-        <HistorySummary requests={reviewedRequests} text={text} />
-        <div className="mt-4 grid gap-4">
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
           {visibleHistory.map((request) => {
               const requestUser = usersById.get(request.user_id);
               return <HistoryItem key={request.id} request={request} name={requestUser?.full_name ?? `${text.user} #${request.user_id}`} email={requestUser?.email} text={text} />;
@@ -162,18 +163,17 @@ function HistoryItem({ request, name, email, text }: { request: QuotaRequest; na
   const approved = request.status === "approved" || request.status === "partially_approved";
   const requestedTts = request.requested_tts_characters ?? 0;
   const approvedTts = request.approved_tts_characters ?? 0;
-  return <article className={`overflow-hidden rounded-xl border bg-white ${approved ? "border-emerald-200" : "border-rose-200"}`}>
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-indigo-950/10 px-6 py-4">
-      <div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-extrabold ${approved ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{initials(name)}</span><div><div className="flex flex-wrap items-center gap-2"><strong className="text-[#1d1a5e]">{name}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{request.service_type.toUpperCase()}</span></div>{email && <p className="text-xs text-slate-400">{email}</p>}</div></div>
+  return <article className={`overflow-hidden rounded-lg border bg-white shadow-[0_8px_22px_rgba(29,26,94,0.04)] ${approved ? "border-emerald-200" : "border-rose-200"}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-indigo-950/10 px-5 py-4">
+      <div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-extrabold ${approved ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{initials(name)}</span><div><div className="flex flex-wrap items-center gap-2"><strong className="text-[#1d1a5e]">{name}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{serviceTypeLabel(request.service_type, text)}</span></div>{email && <p className="text-xs text-slate-400">{email}</p>}</div></div>
       <div className="text-right"><StatusBadge status={request.status} text={text} /><time className="mt-2 block text-xs text-slate-400">{formatDate(request.reviewed_at ?? request.created_at, text.locale)}</time></div>
     </div>
-    <div className="flex flex-wrap items-center gap-5 px-6 py-5 text-sm">
-      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${approved ? "bg-emerald-50 text-teal-700" : "bg-rose-50 text-rose-700"}`}>{approved ? text.approved : text.rejected}</span>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2"><p><span className="mr-2 text-xs font-bold text-slate-400">TTS</span><strong className="text-lg text-[#1d1a5e]">{(approved ? approvedTts : requestedTts).toLocaleString(text.locale)}</strong><span className="ml-1 text-xs text-slate-400">{text.chars}</span></p><p><span className="mr-2 text-xs font-bold text-slate-400">STT</span><strong className="text-lg text-[#1d1a5e]">{formatSttMinutes(approved ? request.approved_stt_seconds : request.requested_stt_seconds, text)}</strong></p></div>
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-sm">
+      <p><span className="mr-2 text-xs font-bold text-slate-400">TTS</span><strong className="text-lg text-[#1d1a5e]">{(approved ? approvedTts : requestedTts).toLocaleString(text.locale)}</strong><span className="ml-1 text-xs text-slate-400">{text.chars}</span></p><p><span className="mr-2 text-xs font-bold text-slate-400">STT</span><strong className="text-lg text-[#1d1a5e]">{formatSttMinutes(approved ? request.approved_stt_seconds : request.requested_stt_seconds, text)}</strong></p>
     </div>
-    <div className="border-t border-indigo-950/10 bg-[#fafbff] px-6 py-5">
+    <div className="border-t border-indigo-950/10 bg-[#fafbff] px-5 py-4">
       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.reason}</p>
-      <blockquote className="mt-2 border-l-4 border-cyan-400 pl-4 text-sm font-medium italic leading-6 text-slate-700">
+      <blockquote className="mt-2 line-clamp-2 border-l-4 border-cyan-400 pl-3 text-sm font-medium italic leading-6 text-slate-700" title={request.reason || undefined}>
         {request.reason ? `“${request.reason}”` : "-"}
       </blockquote>
     </div>
@@ -297,6 +297,11 @@ function Num({ label, value, set, step = 1, temporary = false }: { label: string
 
 function translateStatus(value: string, text: AdminQuotaText) {
   return text[value] ?? value.replace(/_/g, " ");
+}
+
+function serviceTypeLabel(serviceType: QuotaRequest["service_type"], text: AdminQuotaText) {
+  if (serviceType === "both") return `${text.tts} + ${text.stt}`;
+  return serviceType === "tts" ? text.tts : text.stt;
 }
 
 function initials(name: string) {

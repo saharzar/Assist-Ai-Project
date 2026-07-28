@@ -28,6 +28,44 @@ body {
   -webkit-background-clip: text;
 }
 
+.catalogue-page {
+  background-color: #f9faff;
+  border: 1px solid rgba(29, 26, 94, 0.07);
+}
+
+.catalogue-page::before,
+.catalogue-page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.catalogue-page::before {
+  top: 0;
+  right: 0;
+  width: min(38%, 520px);
+  height: 230px;
+  background: #dffafb;
+  clip-path: polygon(28% 0, 100% 0, 100% 100%, 0 62%);
+}
+
+.catalogue-page::after {
+  bottom: 0;
+  left: 0;
+  width: min(30%, 420px);
+  height: 190px;
+  background: #eeedff;
+  clip-path: polygon(0 25%, 100% 100%, 0 100%);
+}
+
+.catalogue-grid {
+  background-image:
+    linear-gradient(rgba(55, 48, 163, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55, 48, 163, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
 button,
 a {
   min-height: 44px;

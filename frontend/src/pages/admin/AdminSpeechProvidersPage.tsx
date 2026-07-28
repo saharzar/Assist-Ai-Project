@@ -98,7 +98,7 @@ export function AdminSpeechProvidersPage() {
   };
 
   return <section className="flex flex-1 flex-col text-[#1d1a3d]">
-    <div className="border-b border-indigo-950/10 pb-6"><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{ui.adminDashboard}</p><h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1></div>
+    <div className="relative overflow-hidden border-b border-indigo-950/10 pb-7"><span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" /><div className="pl-5"><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{ui.adminDashboard}</p><h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1></div></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
     {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>
@@ -143,7 +143,13 @@ function ProviderOverview({ dashboard, text, labels, language }: { dashboard: Gl
     { label: sttUsageLabel(language), value: `${sttMinutes.toLocaleString(text.locale, { maximumFractionDigits: 2 })} ${fullMinuteLabel(language)}`, detail: ui.across },
     { label: ui.ttsUsage, value: `${ttsCharacters.toLocaleString(text.locale)} ${text.characters}`, detail: ui.across },
   ];
-  return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <article key={card.label} className="rounded-xl border border-indigo-950/10 bg-white p-5"><p className="text-sm font-medium text-slate-400">{card.label}</p><p className="mt-2 text-2xl font-extrabold text-[#1d1a5e]">{card.value}</p><p className="mt-1 text-sm text-slate-400">{card.detail}</p></article>)}</div>;
+  const cardStyles = [
+    { surface: "border-indigo-200 bg-indigo-50/45", accent: "bg-[#3932a8]", badge: "bg-indigo-100 text-[#302992]", service: "STT" },
+    { surface: "border-cyan-200 bg-cyan-50/45", accent: "bg-cyan-400", badge: "bg-cyan-100 text-teal-800", service: "TTS" },
+    { surface: "border-violet-200 bg-violet-50/40", accent: "bg-violet-500", badge: "bg-violet-100 text-violet-800", service: "STT" },
+    { surface: "border-teal-200 bg-teal-50/45", accent: "bg-teal-500", badge: "bg-teal-100 text-teal-800", service: "TTS" },
+  ];
+  return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card, index) => { const style = cardStyles[index]; return <article key={card.label} className={`relative overflow-hidden rounded-lg border p-5 shadow-[0_10px_24px_rgba(29,26,94,0.04)] ${style.surface}`}><span className={`absolute inset-x-0 top-0 h-1 ${style.accent}`} aria-hidden="true" /><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold text-slate-500">{card.label}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${style.badge}`}>{style.service}</span></div><p className="mt-3 text-2xl font-extrabold text-[#1d1a5e]">{card.value}</p><p className="mt-1 text-sm font-medium text-slate-500">{card.detail}</p></article>; })}</div>;
 }
 
 type ProviderSectionProps = {
