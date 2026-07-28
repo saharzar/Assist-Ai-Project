@@ -76,47 +76,44 @@ export function AdminUserQuotasPage() {
   };
 
   return (
-    <section>
-      <p className="text-sm font-bold uppercase text-teal-700">{text.dashboard}</p>
-      <h1 className="mt-1 text-3xl font-bold">{text.title}</h1>
-      <p className="mt-2 text-slate-600">{text.intro}</p>
+    <section className="text-[#1d1a3d]">
+      <div className="border-b border-indigo-950/10 pb-6">
+        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.dashboard}</p>
+        <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1>
+        <p className="mt-2 text-slate-600">{text.intro}</p>
+      </div>
       {message && <p className="mt-4 rounded-lg border bg-white p-4 font-semibold">{message}</p>}
 
       <section className="mt-8">
-        <div className="flex items-end justify-between gap-4"><div><h2 className="text-2xl font-bold">{text.pendingTitle}</h2><p className="mt-1 text-sm text-slate-600">{text.pendingIntro}</p></div><span className="rounded-md bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900">{pendingRequests.length} {text.pending.toLowerCase()}</span></div>
+        <div className="flex items-end justify-between gap-4"><div><h2 className="text-2xl font-bold text-[#1d1a5e]">{text.pendingTitle}</h2><p className="mt-1 text-sm text-slate-600">{text.pendingIntro}</p></div><span className="rounded-full bg-amber-50 px-4 py-1.5 text-sm font-bold text-amber-700">{pendingRequests.length} {text.pending.toLowerCase()}</span></div>
         <div className="mt-3 grid gap-3">
           {pendingRequests.length ? pendingRequests.map((request) => {
             const requestUser = usersById.get(request.user_id);
-            return <article key={request.id} className="rounded-lg border bg-white p-4"><div className="flex flex-wrap justify-between gap-3"><div><strong>{requestUser?.full_name ?? `${text.user} #${request.user_id}`} · {request.service_type.toUpperCase()}</strong>{requestUser && <p className="text-xs text-slate-500">{requestUser.email}</p>}<p className="mt-2 text-sm text-slate-600">{request.reason}</p><p className="mt-1 text-xs">{text.requested}: {(request.requested_tts_characters ?? 0).toLocaleString(text.locale)} {text.characters} · {formatSttMinutes(request.requested_stt_seconds, text)}</p><p className="mt-1 text-xs text-slate-500">{text.submitted} {formatDate(request.created_at, text.locale)}</p></div><div className="flex gap-2"><button onClick={() => void review(request, true)} className="rounded-lg bg-teal-700 px-4 font-bold text-white">{text.approve}</button><button onClick={() => void review(request, false)} className="rounded-lg border border-rose-300 px-4 font-bold text-rose-700">{text.reject}</button></div></div></article>;
+            return <article key={request.id} className="rounded-xl border border-amber-200 bg-white p-6 shadow-[0_0_0_4px_rgba(251,191,36,0.10)]"><div className="flex flex-wrap items-center justify-between gap-5"><div><div className="flex flex-wrap items-center gap-2"><strong className="text-lg text-[#1d1a5e]">{requestUser?.full_name ?? `${text.user} #${request.user_id}`}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{request.service_type.toUpperCase()}</span></div>{requestUser && <p className="text-sm text-slate-400">{requestUser.email}</p>}<p className="mt-3 text-sm font-medium text-slate-700">“{request.reason}”</p><p className="mt-1 text-sm text-slate-600">{text.requested}: <strong>{(request.requested_tts_characters ?? 0).toLocaleString(text.locale)} {text.chars}</strong> · <strong>{formatSttMinutes(request.requested_stt_seconds, text)}</strong></p><p className="mt-1 text-xs text-slate-400">{text.submitted} {formatDate(request.created_at, text.locale)}</p></div><div className="flex gap-3"><button onClick={() => void review(request, true)} className="min-h-[48px] rounded-lg bg-teal-600 px-6 font-bold text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.approve}</button><button onClick={() => void review(request, false)} className="min-h-[48px] rounded-lg border border-rose-500 px-6 font-bold text-rose-700 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300">{text.reject}</button></div></div></article>;
           }) : <p className="rounded-lg border border-dashed bg-white py-10 text-center font-semibold text-slate-500">{text.noPending}</p>}
         </div>
       </section>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={text.search} className="min-h-11 min-w-64 flex-1 rounded-lg border px-3" />
-        <select value={filter} onChange={(event) => { setFilter(event.target.value); setPage(1); }} className="min-h-11 rounded-lg border px-3">
+      <div className="mt-8 flex flex-wrap gap-3">
+        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={text.search} className="min-h-[52px] min-w-64 flex-1 rounded-xl border border-indigo-950/10 bg-white px-4 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200" />
+        <select value={filter} onChange={(event) => { setFilter(event.target.value); setPage(1); }} className="min-h-[52px] rounded-xl border border-indigo-950/10 bg-white px-4 outline-none focus:border-cyan-400">
           <option value="all">{text.allStatuses}</option><option value="warning">{text.warning}</option><option value="critical">{text.critical}</option><option value="exhausted">{text.exhausted}</option><option value="normal">{text.normal}</option>
         </select>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-lg border bg-white">
-        <table className="w-full min-w-[980px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">{text.user}</th><th>TTS</th><th>STT</th><th>{text.period}</th><th>{text.status}</th><th>{text.request}</th><th>{text.action}</th></tr></thead>
-          <tbody>{visibleUsers.map((row) => <tr key={row.user_id} className="border-t align-top"><td className="p-3"><strong>{row.full_name}</strong><br /><span className="text-xs text-slate-500">{row.email}</span></td><td className="py-3"><strong>{(row.tts_limit + row.tts_extra).toLocaleString(text.locale)} {text.total}</strong><br /><small className="text-slate-600">{row.tts_limit.toLocaleString(text.locale)} {text.permanent}</small><br /><small className={row.tts_extra ? "font-semibold text-teal-700" : "text-slate-500"}>+ {row.tts_extra.toLocaleString(text.locale)} {text.temporary}</small><br /><small>{row.tts_remaining.toLocaleString(text.locale)} {text.remaining}</small></td><td className="py-3"><strong>{formatSttMinutes(row.stt_limit + row.stt_extra, text)} {text.total}</strong><br /><small className="text-slate-600">{formatSttMinutes(row.stt_limit, text)} {text.permanent}</small><br /><small className={row.stt_extra ? "font-semibold text-teal-700" : "text-slate-500"}>+ {formatSttMinutes(row.stt_extra, text)} {text.temporary}</small><br /><small>{formatSttMinutes(row.stt_remaining, text)} {text.remaining}</small></td><td className="py-3">{translateStatus(row.period_type, text)}<br /><small>{text.resets} {formatShortDate(row.reset_date, text.locale)}</small>{(row.tts_extra > 0 || row.stt_extra > 0) && <><br /><small className="font-semibold text-teal-700">{text.extrasExpire}</small></>}</td><td className="py-3"><span className="font-bold">{translateStatus(row.enabled ? row.status : "disabled", text)}</span></td><td className="py-3">{row.pending_request ? <span className="font-bold text-amber-700">{text.pending}</span> : "-"}</td><td className="py-3"><button onClick={() => setEditing(row)} className="rounded-md border px-3 py-2 font-bold">{text.edit}</button></td></tr>)}</tbody>
-        </table>
-      </div>
+      <div className="mt-4 flex gap-5 text-sm text-slate-600"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-[#3730a3]" />{text.permanent}</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-cyan-400" />{text.temporary}</span></div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">{visibleUsers.map((row) => <QuotaCard key={row.user_id} row={row} text={text} edit={() => setEditing(row)} />)}</div>
+      {!visibleUsers.length && <p className="mt-5 rounded-xl border border-dashed border-indigo-950/10 bg-white py-12 text-center font-semibold text-slate-500">{text.loadError}</p>}
       <Pagination page={page} pages={userPages} onPage={setPage} text={text} />
 
       <section className="mt-10">
-        <div><h2 className="text-2xl font-bold">{text.history}</h2><p className="mt-1 text-sm text-slate-600">{text.historyIntro}</p></div>
-        <div className="mt-4 overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full min-w-[1050px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">{text.user}</th><th>{text.service}</th><th>{text.requested}</th><th>{text.reason}</th><th>{text.decision}</th><th>{text.approved}</th><th>{text.adminResponse}</th><th>{text.reviewed}</th></tr></thead>
-            <tbody>{visibleHistory.map((request) => {
+        <div><h2 className="text-2xl font-bold text-[#1d1a5e]">{text.history}</h2><p className="mt-1 text-sm text-slate-600">{text.historyIntro}</p></div>
+        <HistorySummary requests={reviewedRequests} text={text} />
+        <div className="mt-4 grid gap-4">
+          {visibleHistory.map((request) => {
               const requestUser = usersById.get(request.user_id);
-              return <tr key={request.id} className="border-t align-top"><td className="p-3"><strong>{requestUser?.full_name ?? `${text.user} #${request.user_id}`}</strong>{requestUser && <><br /><span className="text-xs text-slate-500">{requestUser.email}</span></>}</td><td className="p-3 font-bold uppercase">{request.service_type}</td><td className="p-3">{(request.requested_tts_characters ?? 0).toLocaleString(text.locale)} {text.chars}<br />{formatSttMinutes(request.requested_stt_seconds, text)}</td><td className="max-w-64 p-3 text-slate-600">{request.reason}</td><td className="p-3"><StatusBadge status={request.status} text={text} /></td><td className="p-3">{(request.approved_tts_characters ?? 0).toLocaleString(text.locale)} {text.chars}<br />{formatSttMinutes(request.approved_stt_seconds, text)}</td><td className="max-w-64 p-3 text-slate-600">{request.admin_response ?? "-"}</td><td className="whitespace-nowrap p-3">{formatDate(request.reviewed_at ?? request.created_at, text.locale)}</td></tr>;
-            })}</tbody>
-          </table>
+              return <HistoryItem key={request.id} request={request} name={requestUser?.full_name ?? `${text.user} #${request.user_id}`} email={requestUser?.email} text={text} />;
+            })}
           {!visibleHistory.length && <p className="py-10 text-center font-semibold text-slate-500">{text.noHistory}</p>}
         </div>
         <Pagination page={historyPage} pages={historyPages} onPage={setHistoryPage} text={text} />
@@ -125,6 +122,93 @@ export function AdminUserQuotasPage() {
       {editing && <Edit quota={editing} text={text} close={() => setEditing(null)} saved={async () => { setEditing(null); await load(); }} />}
     </section>
   );
+}
+
+function QuotaCard({ row, text, edit }: { row: UserQuota; text: AdminQuotaText; edit: () => void }) {
+  const status = row.pending_request ? "pending" : row.enabled ? row.status : "disabled";
+  const statusStyle = status === "pending"
+    ? "bg-amber-50 text-amber-700"
+    : status === "normal"
+      ? "bg-cyan-50 text-teal-700"
+      : "bg-rose-50 text-rose-700";
+
+  return <article className="rounded-xl border border-indigo-950/10 bg-white p-6 transition-shadow hover:shadow-sm">
+    <div className="flex items-start justify-between gap-4">
+      <div><h2 className="text-lg font-bold text-[#1d1a5e]">{row.full_name}</h2><p className="text-sm text-slate-400">{row.email}</p></div>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyle}`}>{translateStatus(status, text)}</span>
+    </div>
+    <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <QuotaRing label="TTS" total={row.tts_limit + row.tts_extra} permanent={row.tts_limit} temporary={row.tts_extra} remaining={row.tts_remaining} unit={text.chars} text={text} />
+      <QuotaRing label="STT" total={(row.stt_limit + row.stt_extra) / 60} permanent={row.stt_limit / 60} temporary={row.stt_extra / 60} remaining={row.stt_remaining / 60} unit={text.min} text={text} />
+    </div>
+    <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-t border-indigo-950/10 pt-4">
+      <div><p className="font-semibold text-[#1d1a3d]">{translateStatus(row.period_type, text)}</p><p className="text-sm text-slate-400">{row.tts_extra > 0 || row.stt_extra > 0 ? text.extrasExpire : text.resets} {formatShortDate(row.reset_date, text.locale)}</p></div>
+      <button type="button" onClick={edit} className="min-h-[42px] rounded-lg border border-indigo-950/10 px-5 font-bold text-[#2a2586] hover:bg-[#f3f3fb] focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.edit}</button>
+    </div>
+  </article>;
+}
+
+function QuotaRing({ label, total, permanent, temporary, remaining, unit, text }: { label: string; total: number; permanent: number; temporary: number; remaining: number; unit: string; text: AdminQuotaText }) {
+  const temporaryShare = total > 0 ? Math.min(100, Math.max(0, temporary / total * 100)) : 0;
+  const ring = `conic-gradient(#2dd8d8 0 ${temporaryShare}%, #3730a3 ${temporaryShare}% 100%)`;
+  const format = (value: number) => Number(value.toFixed(2)).toLocaleString(text.locale);
+  return <div className="flex items-center gap-4">
+    <div className="relative h-[76px] w-[76px] shrink-0 rounded-full" style={{ background: ring }} aria-label={`${label}: ${format(permanent)} ${text.permanent}, ${format(temporary)} ${text.temporary}`} role="img"><span className="absolute inset-[9px] rounded-full bg-white" /></div>
+    <div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="text-xl font-extrabold text-[#1d1a5e]">{format(total)} <span className="text-xs font-semibold text-slate-400">{unit}</span></p><p className="text-xs text-slate-500">{format(permanent)} {text.permanent}</p>{temporary > 0 && <p className="text-xs font-semibold text-teal-600">+ {format(temporary)} {text.temporary}</p>}<p className="mt-1 text-xs text-slate-400">{format(remaining)} {text.remaining}</p></div>
+  </div>;
+}
+
+function HistoryItem({ request, name, email, text }: { request: QuotaRequest; name: string; email?: string; text: AdminQuotaText }) {
+  const approved = request.status === "approved" || request.status === "partially_approved";
+  const requestedTts = request.requested_tts_characters ?? 0;
+  const approvedTts = request.approved_tts_characters ?? 0;
+  return <article className={`overflow-hidden rounded-xl border bg-white ${approved ? "border-emerald-200" : "border-rose-200"}`}>
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-indigo-950/10 px-6 py-4">
+      <div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-extrabold ${approved ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{initials(name)}</span><div><div className="flex flex-wrap items-center gap-2"><strong className="text-[#1d1a5e]">{name}</strong><span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-bold text-[#3730a3]">{request.service_type.toUpperCase()}</span></div>{email && <p className="text-xs text-slate-400">{email}</p>}</div></div>
+      <div className="text-right"><StatusBadge status={request.status} text={text} /><time className="mt-2 block text-xs text-slate-400">{formatDate(request.reviewed_at ?? request.created_at, text.locale)}</time></div>
+    </div>
+    <div className="flex flex-wrap items-center gap-5 px-6 py-5 text-sm">
+      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${approved ? "bg-emerald-50 text-teal-700" : "bg-rose-50 text-rose-700"}`}>{approved ? text.approved : text.rejected}</span>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2"><p><span className="mr-2 text-xs font-bold text-slate-400">TTS</span><strong className="text-lg text-[#1d1a5e]">{(approved ? approvedTts : requestedTts).toLocaleString(text.locale)}</strong><span className="ml-1 text-xs text-slate-400">{text.chars}</span></p><p><span className="mr-2 text-xs font-bold text-slate-400">STT</span><strong className="text-lg text-[#1d1a5e]">{formatSttMinutes(approved ? request.approved_stt_seconds : request.requested_stt_seconds, text)}</strong></p></div>
+    </div>
+    <div className="grid gap-4 border-t border-indigo-950/10 bg-[#fafbff] px-6 py-4 md:grid-cols-2">
+      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.reason}</p><p className="mt-1 text-sm italic text-slate-600">{request.reason ? `“${request.reason}”` : "-"}</p></div>
+      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.adminResponse}</p><p className="mt-1 text-sm text-slate-600">{request.admin_response ?? "-"}</p></div>
+    </div>
+  </article>;
+}
+
+function HistorySummary({ requests, text }: { requests: QuotaRequest[]; text: AdminQuotaText }) {
+  const now = new Date();
+  const monthlyRequests = requests.filter((request) => {
+    const reviewedAt = new Date(request.reviewed_at ?? request.created_at);
+    return reviewedAt.getFullYear() === now.getFullYear() && reviewedAt.getMonth() === now.getMonth();
+  });
+  const approved = monthlyRequests.filter((request) => request.status === "approved" || request.status === "partially_approved").length;
+  const rejected = monthlyRequests.filter((request) => request.status === "rejected").length;
+  const grantedCharacters = monthlyRequests.reduce((sum, request) => sum + (request.approved_tts_characters ?? 0), 0);
+  const grantedMinutes = monthlyRequests.reduce((sum, request) => sum + (request.approved_stt_seconds ?? 0), 0) / 60;
+  const total = monthlyRequests.length;
+  const approvalPercent = total ? approved / total * 100 : 0;
+  const ring = total
+    ? `conic-gradient(#2dd8d8 0 ${approvalPercent}%, #f3f3fb ${approvalPercent}% 100%)`
+    : "#f3f3fb";
+  const stats = [
+    { label: text.reviewed, value: total.toLocaleString(text.locale) },
+    { label: text.approved, value: approved.toLocaleString(text.locale), color: "text-teal-600" },
+    { label: text.rejected, value: rejected.toLocaleString(text.locale), color: "text-rose-600" },
+    { label: `TTS · ${text.chars}`, value: grantedCharacters.toLocaleString(text.locale) },
+    { label: `STT · ${text.min}`, value: Number(grantedMinutes.toFixed(2)).toLocaleString(text.locale) },
+  ];
+
+  return <section className="mt-5 grid gap-4 rounded-xl border border-indigo-950/10 bg-white p-5 lg:grid-cols-[170px_1fr]">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-950/10 pb-4 lg:col-span-2"><div><p className="text-sm font-bold text-[#1d1a5e]">{monthlySummaryTitle(text.locale)}</p><p className="mt-1 text-xs text-slate-400">{monthlyResetNote(text.locale)}</p></div><span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-teal-700">{now.toLocaleDateString(text.locale, { month: "long", year: "numeric" })}</span></div>
+    <div className="flex items-center gap-4 lg:border-r lg:border-indigo-950/10 lg:pr-5">
+      <div className="relative h-20 w-20 shrink-0 rounded-full" style={{ background: ring }} role="img" aria-label={`${text.approved}: ${approvalPercent.toFixed(0)}%`}><span className="absolute inset-2.5 flex items-center justify-center rounded-full bg-white text-sm font-extrabold text-[#1d1a5e]">{approvalPercent.toFixed(0)}%</span></div>
+      <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{text.decision}</p><p className="mt-1 text-sm font-semibold text-[#1d1a5e]">{text.approved}</p></div>
+    </div>
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">{stats.map((stat) => <div key={stat.label} className="rounded-lg bg-[#fafbff] p-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</p><p className={`mt-2 text-2xl font-extrabold ${stat.color ?? "text-[#1d1a5e]"}`}>{stat.value}</p></div>)}</div>
+  </section>;
 }
 
 function StatusBadge({ status, text }: { status: string; text: AdminQuotaText }) {
@@ -175,4 +259,26 @@ function Num({ label, value, set, step = 1 }: { label: string; value: number; se
 
 function translateStatus(value: string, text: AdminQuotaText) {
   return text[value] ?? value.replace(/_/g, " ");
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "U";
+}
+
+function monthlySummaryTitle(locale: string) {
+  if (locale.startsWith("es")) return "Resumen mensual";
+  if (locale.startsWith("de")) return "Monatliche Übersicht";
+  if (locale.startsWith("tr")) return "Aylık özet";
+  if (locale.startsWith("pt")) return "Resumo mensal";
+  if (locale.startsWith("fr")) return "Résumé mensuel";
+  return "Monthly summary";
+}
+
+function monthlyResetNote(locale: string) {
+  if (locale.startsWith("es")) return "Estas estadísticas se reinician al comienzo de cada mes.";
+  if (locale.startsWith("de")) return "Diese Statistiken werden zu Beginn jedes Monats zurückgesetzt.";
+  if (locale.startsWith("tr")) return "Bu istatistikler her ayın başında sıfırlanır.";
+  if (locale.startsWith("pt")) return "Estas estatísticas são reiniciadas no início de cada mês.";
+  if (locale.startsWith("fr")) return "Ces statistiques sont réinitialisées au début de chaque mois.";
+  return "These statistics restart at the beginning of each month.";
 }

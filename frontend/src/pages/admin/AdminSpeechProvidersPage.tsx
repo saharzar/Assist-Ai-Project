@@ -87,17 +87,17 @@ export function AdminSpeechProvidersPage() {
     finally { setSaving(false); }
   };
 
-  return <section className="flex flex-1 flex-col text-slate-900">
-    <div><p className="text-sm font-bold uppercase text-teal-700">Admin dashboard</p><h1 className="mt-1 text-3xl font-bold">{text.title}</h1></div>
+  return <section className="flex flex-1 flex-col text-[#1d1a3d]">
+    <div className="border-b border-indigo-950/10 pb-6"><p className="text-xs font-bold uppercase tracking-wider text-teal-700">Admin dashboard</p><h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
     {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200">
+      <ProviderOverview dashboard={dashboard} text={text} labels={labels} language={language} />
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-b border-indigo-950/10">
         <div className="flex gap-1" role="tablist" aria-label="Speech provider views">
-          {(["routing", "activity"] as const).map((view) => <button key={view} type="button" role="tab" aria-selected={activeView === view} onClick={() => setActiveView(view)} className={`border-b-2 px-4 py-3 text-sm font-bold capitalize ${activeView === view ? "border-teal-600 text-teal-800" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{view}</button>)}
+          {(["routing", "activity"] as const).map((view) => <button key={view} type="button" role="tab" aria-selected={activeView === view} onClick={() => setActiveView(view)} className={`border-b-2 px-4 py-3 text-sm font-bold capitalize ${activeView === view ? "border-[#2a2586] text-[#2a2586]" : "border-transparent text-slate-400 hover:text-[#2a2586]"}`}>{view}</button>)}
         </div>
-        {activeView === "routing" && (
-          <div className="mb-2 inline-flex rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Speech service">
+          <div className="mb-2 inline-flex rounded-lg bg-[#f3f3fb] p-1" role="tablist" aria-label="Speech service">
             {(["stt", "tts"] as const).map((service) => (
               <button
                 key={service}
@@ -105,20 +105,34 @@ export function AdminSpeechProvidersPage() {
                 role="tab"
                 aria-selected={activeService === service}
                 onClick={() => setActiveService(service)}
-                className={`min-h-[40px] rounded-md px-6 text-sm font-bold uppercase transition ${activeService === service ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                className={`min-h-[40px] rounded-md px-7 text-sm font-bold uppercase transition ${activeService === service ? "bg-white text-[#2a2586] shadow-sm" : "text-slate-500 hover:text-[#2a2586]"}`}
               >
                 {service}
               </button>
             ))}
           </div>
-        )}
       </div>
       {activeView === "routing" ? <>
         <CompactProviderSection service={activeService} draft={draft} labels={labels} text={text} language={language} updateCapability={updateCapability} move={move} />
-        <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[44px] self-start rounded-lg bg-teal-700 px-5 text-sm font-bold text-white disabled:opacity-60">{labels.save}</button>
+        <button type="button" disabled={saving} onClick={() => void save()} className="mt-5 min-h-[46px] self-start rounded-lg bg-[#2a2586] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:opacity-60">{labels.save}</button>
       </> : <CompactHistory dashboard={dashboard} title={text.monthlyHistory} eventTitle={text.eventHistory} locale={text.locale} />}
     </> : !error ? <p className="py-12 text-center font-semibold">{text.loadError}</p> : null}
   </section>;
+}
+
+function ProviderOverview({ dashboard, text, labels, language }: { dashboard: GlobalSpeechDashboard; text: ReturnType<typeof getText>; labels: Record<string, string>; language: LanguageCode }) {
+  const activeStt = dashboard.capabilities.find((item) => item.service_type === "stt" && item.provider_key === dashboard.active_stt_provider);
+  const activeTts = dashboard.capabilities.find((item) => item.service_type === "tts" && item.provider_key === dashboard.active_tts_provider);
+  const sttSeconds = dashboard.usage_history.reduce((total, item) => item.service_type === "stt" ? total + item.audio_seconds_used : total, 0);
+  const sttMinutes = sttSeconds / 60;
+  const ttsCharacters = dashboard.usage_history.reduce((total, item) => item.service_type === "tts" ? total + item.characters_used : total, 0);
+  const cards = [
+    { label: "Active STT provider", value: providerName(dashboard.active_stt_provider), detail: `${labels.priority} ${activeStt?.priority ?? "-"} · ${activeStt?.health_status ?? "-"}` },
+    { label: "Active TTS provider", value: providerName(dashboard.active_tts_provider), detail: `${labels.priority} ${activeTts?.priority ?? "-"} · ${activeTts?.health_status ?? "-"}` },
+    { label: sttUsageLabel(language), value: `${sttMinutes.toLocaleString(text.locale, { maximumFractionDigits: 2 })} ${fullMinuteLabel(language)}`, detail: acrossProvidersLabel(language) },
+    { label: "TTS characters (30d)", value: ttsCharacters.toLocaleString(text.locale), detail: "Across all providers" },
+  ];
+  return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <article key={card.label} className="rounded-xl border border-indigo-950/10 bg-white p-5"><p className="text-sm font-medium text-slate-400">{card.label}</p><p className="mt-2 text-2xl font-extrabold text-[#1d1a5e]">{card.value}</p><p className="mt-1 text-sm text-slate-400">{card.detail}</p></article>)}</div>;
 }
 
 type ProviderSectionProps = {
@@ -138,26 +152,33 @@ function CompactProviderSection({ service, draft, labels, text, language, update
     [draft.capabilities, service],
   );
   const active = service === "tts" ? draft.active_tts_provider : draft.active_stt_provider;
+  const minuteUnit = fullMinuteLabel(language);
 
   return <section className="mt-5">
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
-      <div><p className="text-xs font-bold uppercase text-slate-500">{service}</p><p className="font-bold text-teal-800">{labels.active}: {providerName(active)}</p></div>
-      <p className="max-w-xl text-sm font-semibold text-slate-600">Requests use the first available provider in the priority order below.</p>
+    <div className="rounded-xl border border-indigo-950/10 bg-white px-6 py-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Failover order · {service}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">{items.map((item, index) => <div key={item.provider_key} className="contents"><span className={`rounded-lg px-4 py-3 text-sm font-bold ${item.provider_key === active ? "border border-cyan-300 bg-cyan-50 text-[#2a2586]" : "bg-[#f3f3fb] text-slate-600"}`}><i className={`mr-2 inline-block h-2 w-2 rounded-full ${item.provider_key === active ? "bg-cyan-400" : "bg-slate-400"}`} />{providerName(item.provider_key)}{item.quota_type === "unlimited" ? ` (${labels.unlimited})` : ""}</span>{index < items.length - 1 && <span className="text-slate-400">→</span>}</div>)}</div>
     </div>
-    <div className="mt-3 space-y-3">{items.map((item, index) => <article key={item.provider_key} className="rounded-lg border border-slate-200 bg-white">
-      <div className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(180px,1.5fr)_1fr_1fr_auto]">
+    <div className="mt-4 overflow-hidden rounded-xl border border-indigo-950/10 bg-white">{items.map((item, index) => <article key={item.provider_key} className={`border-b border-indigo-950/10 last:border-b-0 ${providerRowStyle(item.provider_key, item.provider_key === active)}`}>
+      <div className="grid items-center gap-4 px-5 py-5 md:grid-cols-[44px_minmax(190px,1.5fr)_minmax(150px,1fr)_110px_auto]">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-extrabold ${providerNumberStyle(item.provider_key)}`}>{index + 1}</span>
         <div><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${item.provider_key === active ? "bg-teal-500" : item.enabled ? "bg-slate-300" : "bg-slate-200"}`} /><h3 className="font-bold">{item.display_name}</h3></div><p className="mt-1 text-xs text-slate-500">{labels.priority} {item.priority} · {item.configured ? item.health_status : labels.unsupported}</p></div>
-        <Metric label={text.used} value={item.quota_type === "unlimited" ? `${item.used} ${text.requests}` : `${item.used.toLocaleString(text.locale)} / ${item.quota_limit?.toLocaleString(text.locale)}`} />
-        <Metric label={text.status} value={item.quota_status} />
-        <div className="flex gap-1"><button type="button" aria-label={labels.up} disabled={index === 0} onClick={() => move(service, item.provider_key, -1)} className="h-9 w-9 rounded-md border border-slate-300 font-bold disabled:opacity-30">↑</button><button type="button" aria-label={labels.down} disabled={index === items.length - 1} onClick={() => move(service, item.provider_key, 1)} className="h-9 w-9 rounded-md border border-slate-300 font-bold disabled:opacity-30">↓</button></div>
+        <div><Metric label={text.used} value={item.quota_type === "unlimited" ? `${item.used} ${text.requests}` : `${formatCapabilityAmount(item.used, service, text.locale)} / ${formatCapabilityAmount(item.quota_limit ?? 0, service, text.locale)} ${service === "stt" ? minuteUnit : item.usage_unit} · ${(item.usage_percent ?? 0).toFixed(1)}%`} /><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-indigo-950/5"><div className={`h-full rounded-full ${providerBarStyle(item.provider_key)}`} style={{ width: `${item.quota_type === "unlimited" ? 0 : Math.max(1, Math.min(100, item.usage_percent ?? 0))}%` }} /></div></div>
+        <div><p className="text-xs font-bold uppercase text-slate-500">{text.status}</p><span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${providerStatusStyle(item.quota_status, item.quota_type)}`}>{item.quota_type === "unlimited" ? labels.unlimited : item.quota_status}</span></div>
+        <div className="flex gap-1"><button type="button" aria-label={labels.up} disabled={index === 0} onClick={() => move(service, item.provider_key, -1)} className="h-9 w-9 rounded-lg border border-indigo-950/10 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:opacity-30">↑</button><button type="button" aria-label={labels.down} disabled={index === items.length - 1} onClick={() => move(service, item.provider_key, 1)} className="h-9 w-9 rounded-lg border border-indigo-950/10 font-bold text-[#2a2586] hover:bg-[#f3f3fb] disabled:opacity-30">↓</button></div>
       </div>
-      <details className="border-t border-slate-100">
-        <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Configure provider</summary>
-        <div className="grid gap-4 border-t border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={item.enabled} disabled={!item.configured} onChange={(event) => { if (!event.target.checked && active === item.provider_key && !window.confirm(labels.confirmDisable)) return; updateCapability(item.provider_key, service, { enabled: event.target.checked }); }} />{labels.enabled}</label><button type="button" disabled={!item.configured} onClick={() => void testSpeechProvider(service, item.provider_key).then((result) => setTestResults((current) => ({ ...current, [item.provider_key]: result.status })))} className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold disabled:opacity-40">{testLabel(language)}</button>{testResults[item.provider_key] && <p className="mt-1 text-xs font-semibold">{testResults[item.provider_key]}</p>}</div>
-          <Metric label={text.remaining} value={item.remaining === null ? labels.unlimited : item.remaining.toLocaleString(text.locale)} />
-          {item.quota_type === "limited" && <><NumberField label={`${labels.limit} (${item.usage_unit})`} value={item.quota_limit ?? 1} onChange={(quota_limit) => updateCapability(item.provider_key, service, { quota_limit })} /><NumberField label={`${labels.warning.replace(" %", "")} (${item.usage_unit})`} value={item.warning_threshold_value} max={item.quota_limit ?? undefined} onChange={(warning_threshold_value) => updateCapability(item.provider_key, service, { warning_threshold_value })} /><NumberField label={`${labels.switching.replace(" %", "")} (${item.usage_unit})`} value={item.switch_threshold_value} max={item.quota_limit ?? undefined} onChange={(switch_threshold_value) => updateCapability(item.provider_key, service, { switch_threshold_value })} /><label className="text-sm font-bold">{labels.period}<select value={item.billing_period_type} onChange={(event) => updateCapability(item.provider_key, service, { billing_period_type: event.target.value as SpeechCapability["billing_period_type"] })} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3">{["calendar_month", "custom_monthly", "manual"].map((value) => <option key={value} value={value}>{labels[value]}</option>)}</select></label>{item.billing_period_type === "custom_monthly" && <NumberField label={labels.resetDay} value={item.reset_day ?? 1} max={28} onChange={(reset_day) => updateCapability(item.provider_key, service, { reset_day })} />}</>}
+      <details className="border-t border-indigo-950/5 bg-white/70">
+        <summary className="cursor-pointer px-5 py-3 text-sm font-bold text-[#3730a3] hover:bg-cyan-50/60">Configure provider ›</summary>
+        <div className="border-t border-indigo-950/10 bg-[#fafbff] p-5">
+          <div className="mb-5 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-indigo-950/10 bg-white p-4"><label className="flex items-center justify-between gap-3 font-bold text-[#1d1a5e]"><span>{labels.enabled}</span><input type="checkbox" checked={item.enabled} disabled={!item.configured} onChange={(event) => { if (!event.target.checked && active === item.provider_key && !window.confirm(labels.confirmDisable)) return; updateCapability(item.provider_key, service, { enabled: event.target.checked }); }} className="h-5 w-5 accent-[#2a2586]" /></label><p className="mt-2 text-xs text-slate-400">{item.configured ? labels.configured : labels.unsupported}</p></div>
+            <div className="rounded-xl border border-indigo-950/10 bg-white p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{labels.health}</p><p className="mt-1 font-bold text-[#1d1a5e]">{item.health_status}</p></div><button type="button" disabled={!item.configured} onClick={() => void testSpeechProvider(service, item.provider_key).then((result) => setTestResults((current) => ({ ...current, [item.provider_key]: result.status })))} className="min-h-[40px] rounded-lg border border-cyan-300 bg-cyan-50 px-4 text-sm font-bold text-[#2a2586] hover:bg-cyan-100 disabled:opacity-40">{testLabel(language)}</button></div>{testResults[item.provider_key] && <p className="mt-2 text-xs font-semibold text-teal-700">{testResults[item.provider_key]}</p>}</div>
+          </div>
+          <div className="grid gap-4 rounded-xl border border-indigo-950/10 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label={text.remaining} value={item.remaining === null ? labels.unlimited : `${formatCapabilityAmount(item.remaining, service, text.locale)} ${service === "stt" ? minuteUnit : item.usage_unit}`} />
+          {item.quota_type === "limited" && <><NumberField label={`${labels.limit} (${service === "stt" ? minuteUnit : item.usage_unit})`} value={toCapabilityDisplay(item.quota_limit ?? 1, service)} step={service === "stt" ? 0.5 : 1} onChange={(value) => updateCapability(item.provider_key, service, { quota_limit: fromCapabilityDisplay(value, service) })} /><NumberField label={`${labels.warning.replace(" %", "")} (${service === "stt" ? minuteUnit : item.usage_unit})`} value={toCapabilityDisplay(item.warning_threshold_value, service)} max={toCapabilityDisplay(item.quota_limit ?? 1, service)} step={service === "stt" ? 0.5 : 1} onChange={(value) => updateCapability(item.provider_key, service, { warning_threshold_value: fromCapabilityDisplay(value, service) })} /><NumberField label={`${labels.switching.replace(" %", "")} (${service === "stt" ? minuteUnit : item.usage_unit})`} value={toCapabilityDisplay(item.switch_threshold_value, service)} max={toCapabilityDisplay(item.quota_limit ?? 1, service)} step={service === "stt" ? 0.5 : 1} onChange={(value) => updateCapability(item.provider_key, service, { switch_threshold_value: fromCapabilityDisplay(value, service) })} /><label className="text-sm font-bold text-slate-600">{labels.period}<select value={item.billing_period_type} onChange={(event) => updateCapability(item.provider_key, service, { billing_period_type: event.target.value as SpeechCapability["billing_period_type"] })} className="mt-2 min-h-[44px] w-full rounded-lg border border-indigo-950/10 bg-white px-3 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200">{["calendar_month", "custom_monthly", "manual"].map((value) => <option key={value} value={value}>{labels[value]}</option>)}</select></label>{item.billing_period_type === "custom_monthly" && <NumberField label={labels.resetDay} value={item.reset_day ?? 1} max={28} onChange={(reset_day) => updateCapability(item.provider_key, service, { reset_day })} />}</>}
           <Metric label={labels.lastSuccess} value={formatDate(item.last_success_at, text.locale)} /><Metric label={labels.lastFailure} value={formatDate(item.last_failure_at, text.locale)} />
+          </div>
         </div>
       </details>
     </article>)}</div>
@@ -170,15 +191,36 @@ function CompactHistory({ dashboard, title, eventTitle, locale }: { dashboard: G
   const [eventPage, setEventPage] = useState(0);
   const usageItems = dashboard.usage_history.slice(usagePage * pageSize, (usagePage + 1) * pageSize);
   const eventItems = dashboard.events.slice(eventPage * pageSize, (eventPage + 1) * pageSize);
-  return <div className="mt-6 grid gap-6 lg:grid-cols-2">
-    <ActivityList title={title} page={usagePage} total={dashboard.usage_history.length} pageSize={pageSize} onPage={setUsagePage}>{usageItems.map((item) => <div key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="flex items-center justify-between border-b border-slate-100 py-3 text-sm last:border-0"><div><strong>{item.provider.toUpperCase()}</strong><span className="ml-2 text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span><p className="text-xs text-slate-500">{new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)}</p></div><strong>{item.service_type === "tts" ? item.characters_used.toLocaleString(locale) : `${item.audio_seconds_used}s`}</strong></div>)}</ActivityList>
-    <ActivityList title={eventTitle} page={eventPage} total={dashboard.events.length} pageSize={pageSize} onPage={setEventPage}>{eventItems.map((item) => <div key={item.id} className="border-b border-slate-100 py-3 text-sm last:border-0"><div className="flex items-start justify-between gap-3"><div><strong className="capitalize">{item.event_type.replace(/_/g, " ")}</strong><p className="mt-0.5 text-xs text-slate-500">{formatDate(item.created_at, locale)}{item.administrator_name ? ` · ${item.administrator_name}` : ""}</p></div><span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{item.service_type.toUpperCase()}</span></div>{(item.previous_provider || item.new_provider) && <p className="mt-2 text-xs font-bold text-teal-800">{providerName((item.previous_provider ?? item.new_provider) as GlobalSpeechProvider)} → {providerName((item.new_provider ?? item.previous_provider) as GlobalSpeechProvider)}</p>}<p className="mt-2 text-sm leading-5 text-slate-700">{item.reason}</p></div>)}</ActivityList>
+  return <div className="mt-6">
+    <UsageComparison dashboard={dashboard} locale={locale} />
+    <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+    <ActivityList title={title} page={usagePage} total={dashboard.usage_history.length} pageSize={pageSize} onPage={setUsagePage}>{usageItems.map((item) => <div key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="flex items-center justify-between border-b border-slate-100 py-3 text-sm last:border-0"><div><strong>{item.provider.toUpperCase()}</strong><span className="ml-2 text-xs font-bold text-slate-500">{item.service_type.toUpperCase()}</span><p className="text-xs text-slate-500">{new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)}</p></div><strong>{item.service_type === "tts" ? item.characters_used.toLocaleString(locale) : `${formatMinutes(item.audio_seconds_used, locale)} ${fullMinuteLabelFromLocale(locale)}`}</strong></div>)}</ActivityList>
+    <ActivityList title={eventTitle} page={eventPage} total={dashboard.events.length} pageSize={pageSize} onPage={setEventPage}>{eventItems.map((item) => <div key={item.id} className="border-b border-slate-100 py-3 pl-4 text-sm last:border-0" style={{ borderLeft: `3px solid ${item.service_type === "tts" ? "#2dd8d8" : "#3730a3"}` }}><div className="flex items-start justify-between gap-3"><div><strong className="capitalize">{item.event_type.replace(/_/g, " ")}</strong><p className="mt-0.5 text-xs text-slate-500">{formatDate(item.created_at, locale)}{item.administrator_name ? ` · ${item.administrator_name}` : ""}</p></div><span className="rounded-md bg-[#f3f3fb] px-2 py-1 text-xs font-bold text-[#2a2586]">{item.service_type.toUpperCase()}</span></div>{(item.previous_provider || item.new_provider) && <p className="mt-2 text-xs font-bold text-teal-700">{providerName((item.previous_provider ?? item.new_provider) as GlobalSpeechProvider)} → {providerName((item.new_provider ?? item.previous_provider) as GlobalSpeechProvider)}</p>}<p className="mt-2 text-sm leading-5 text-slate-700">{item.reason}</p></div>)}</ActivityList>
+    </div>
   </div>;
+}
+
+function UsageComparison({ dashboard, locale }: { dashboard: GlobalSpeechDashboard; locale: string }) {
+  const providers = (["azure", "soniox"] as GlobalSpeechProvider[]).map((provider) => ({
+    provider,
+    stt: dashboard.usage_history.filter((item) => item.provider === provider && item.service_type === "stt").reduce((sum, item) => sum + item.audio_seconds_used, 0) / 60,
+    tts: dashboard.usage_history.filter((item) => item.provider === provider && item.service_type === "tts").reduce((sum, item) => sum + item.characters_used, 0),
+  }));
+  const maxStt = Math.max(1, ...providers.map((item) => item.stt));
+  const maxTts = Math.max(1, ...providers.map((item) => item.tts));
+  return <section className="grid gap-8 rounded-xl border border-indigo-950/10 bg-white p-7 md:grid-cols-2">
+    <UsageBars title={`STT usage · ${fullMinuteLabelFromLocale(locale)} this period`} values={providers.map((item) => ({ name: providerName(item.provider), value: item.stt, percent: item.stt / maxStt * 100 }))} locale={locale} />
+    <UsageBars title="TTS usage · characters this period" values={providers.map((item) => ({ name: providerName(item.provider), value: item.tts, percent: item.tts / maxTts * 100 }))} locale={locale} />
+  </section>;
+}
+
+function UsageBars({ title, values, locale }: { title: string; values: Array<{ name: string; value: number; percent: number }>; locale: string }) {
+  return <div><h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</h2><div className="mt-5 flex h-36 items-end justify-around gap-6">{values.map((item, index) => <div key={item.name} className="flex h-full flex-1 flex-col items-center justify-end"><strong className="mb-2 text-sm text-[#1d1a5e]">{item.value.toLocaleString(locale, { maximumFractionDigits: 2 })}</strong><div className={`w-11 rounded-t-lg ${index === 0 ? "bg-[#3730a3]" : "bg-cyan-400"}`} style={{ height: `${Math.max(6, item.percent)}%` }} /><span className="mt-2 text-sm text-slate-400">{item.name}</span></div>)}</div></div>;
 }
 
 function ActivityList({ title, page, total, pageSize, onPage, children }: { title: string; page: number; total: number; pageSize: number; onPage: (page: number) => void; children: React.ReactNode }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  return <section className="rounded-lg border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><h2 className="text-lg font-bold">{title}</h2><span className="text-xs font-bold text-slate-500">{page + 1} / {pages}</span></div><div className="mt-2 min-h-[240px]">{children}</div><div className="mt-3 flex justify-end gap-2"><button type="button" aria-label="Previous page" disabled={page === 0} onClick={() => onPage(page - 1)} className="h-9 w-9 rounded-md border border-slate-300 disabled:opacity-30">←</button><button type="button" aria-label="Next page" disabled={page + 1 >= pages} onClick={() => onPage(page + 1)} className="h-9 w-9 rounded-md border border-slate-300 disabled:opacity-30">→</button></div></section>;
+  return <section className="rounded-xl border border-indigo-950/10 bg-white p-5"><div className="flex items-center justify-between"><h2 className="text-lg font-bold text-[#1d1a5e]">{title}</h2><span className="text-xs font-bold text-slate-400">{page + 1} / {pages}</span></div><div className="mt-2 min-h-[240px]">{children}</div><div className="mt-3 flex justify-end gap-2"><button type="button" aria-label="Previous page" disabled={page === 0} onClick={() => onPage(page - 1)} className="h-9 w-9 rounded-lg border border-indigo-950/10 text-[#2a2586] disabled:opacity-30">←</button><button type="button" aria-label="Next page" disabled={page + 1 >= pages} onClick={() => onPage(page + 1)} className="h-9 w-9 rounded-lg border border-indigo-950/10 text-[#2a2586] disabled:opacity-30">→</button></div></section>;
 }
 
 function ProviderSection({ service, draft, labels, text, language, updateDashboard, updateCapability, move }: { service: "tts" | "stt"; draft: GlobalSpeechDashboard; labels: Record<string, string>; text: ReturnType<typeof getText>; language: LanguageCode; updateDashboard: React.Dispatch<React.SetStateAction<GlobalSpeechDashboard | null>>; updateCapability: (key: GlobalSpeechProvider, service: "tts" | "stt", changes: Partial<SpeechCapability>) => void; move: (service: "tts" | "stt", key: GlobalSpeechProvider, direction: -1 | 1) => void }) {
@@ -196,9 +238,35 @@ function ProviderSection({ service, draft, labels, text, language, updateDashboa
 }
 
 function History({ dashboard, title, eventTitle, locale }: { dashboard: GlobalSpeechDashboard; title: string; eventTitle: string; locale: string }) { return <div className="mt-9 grid gap-8 lg:grid-cols-2"><section><h2 className="text-xl font-bold">{title}</h2><div className="mt-3 space-y-2">{dashboard.usage_history.slice(0, 12).map((item) => <p key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.provider.toUpperCase()} {item.service_type.toUpperCase()}</strong> · {new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)} · {item.service_type === "tts" ? item.characters_used : item.audio_seconds_used}</p>)}</div></section><section><h2 className="text-xl font-bold">{eventTitle}</h2><div className="mt-3 space-y-2">{dashboard.events.slice(0, 12).map((item) => <p key={item.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.event_type.replace(/_/g, " ")}</strong> · {item.service_type.toUpperCase()}<br />{item.reason}</p>)}</div></section></div>; }
-function NumberField({ label, value, max, onChange }: { label: string; value: number; max?: number; onChange: (value: number) => void }) { return <label className="text-sm font-bold">{label}<input type="number" min={1} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-1 min-h-[44px] w-full rounded-lg border border-slate-300 px-3" /></label>; }
+function NumberField({ label, value, max, step = 1, onChange }: { label: string; value: number; max?: number; step?: number; onChange: (value: number) => void }) { return <label className="text-sm font-bold text-slate-600">{label}<input type="number" min={step} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-2 min-h-[44px] w-full rounded-lg border border-indigo-950/10 bg-white px-3 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200" /></label>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-xs font-bold uppercase text-slate-500">{label}</p><p className="mt-1 font-semibold">{value}</p></div>; }
 function providerName(value: GlobalSpeechProvider) { return value === "azure" ? "Microsoft Azure" : value === "soniox" ? "Soniox" : "Browser"; }
+function providerRowStyle(provider: GlobalSpeechProvider, active: boolean) {
+  if (active) return "bg-cyan-50/70 shadow-[inset_4px_0_0_#2dd8d8]";
+  if (provider === "azure") return "bg-indigo-50/35 shadow-[inset_4px_0_0_#6366f1]";
+  if (provider === "soniox") return "bg-teal-50/30 shadow-[inset_4px_0_0_#14b8a6]";
+  return "bg-amber-50/35 shadow-[inset_4px_0_0_#f59e0b]";
+}
+function providerNumberStyle(provider: GlobalSpeechProvider) {
+  return provider === "azure" ? "bg-indigo-100 text-indigo-700" : provider === "soniox" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700";
+}
+function providerBarStyle(provider: GlobalSpeechProvider) {
+  return provider === "azure" ? "bg-indigo-500" : provider === "soniox" ? "bg-teal-500" : "bg-amber-500";
+}
+function providerStatusStyle(status: string, quotaType: SpeechCapability["quota_type"]) {
+  if (quotaType === "unlimited") return "bg-amber-100 text-amber-700";
+  if (status === "normal") return "bg-emerald-100 text-emerald-700";
+  if (status === "warning") return "bg-amber-100 text-amber-700";
+  return "bg-rose-100 text-rose-700";
+}
+function toCapabilityDisplay(value: number, service: "tts" | "stt") { return service === "stt" ? Number((value / 60).toFixed(2)) : value; }
+function fromCapabilityDisplay(value: number, service: "tts" | "stt") { return service === "stt" ? Math.round(value * 60) : value; }
+function formatCapabilityAmount(value: number, service: "tts" | "stt", locale: string) { return toCapabilityDisplay(value, service).toLocaleString(locale, { maximumFractionDigits: 2 }); }
+function formatMinutes(seconds: number, locale: string) { return (seconds / 60).toLocaleString(locale, { maximumFractionDigits: 2 }); }
+function fullMinuteLabel(language: LanguageCode) { return ({ en: "minutes", es: "minutos", de: "Minuten", tr: "dakika", pt: "minutos", fr: "minutes" })[language]; }
+function sttUsageLabel(language: LanguageCode) { return ({ en: "STT usage (30 days)", es: "Uso de STT (30 días)", de: "STT-Nutzung (30 Tage)", tr: "STT kullanımı (30 gün)", pt: "Uso de STT (30 dias)", fr: "Utilisation STT (30 jours)" })[language]; }
+function acrossProvidersLabel(language: LanguageCode) { return ({ en: "Across all providers", es: "En todos los proveedores", de: "Über alle Anbieter", tr: "Tüm sağlayıcılarda", pt: "Em todos os provedores", fr: "Tous fournisseurs confondus" })[language]; }
+function fullMinuteLabelFromLocale(locale: string) { return locale.startsWith("es") ? "minutos" : locale.startsWith("de") ? "Minuten" : locale.startsWith("tr") ? "dakika" : locale.startsWith("pt") ? "minutos" : "minutes"; }
 function formatDate(value: string | null, locale: string) { return value ? new Date(value).toLocaleString(locale) : "-"; }
 function getText() { return speechProviderTranslations.en; }
 function testLabel(language: LanguageCode) { return ({ en: "Test provider", es: "Probar proveedor", de: "Anbieter testen", tr: "Sağlayıcıyı test et", pt: "Testar provedor", fr: "Tester le fournisseur" })[language]; }

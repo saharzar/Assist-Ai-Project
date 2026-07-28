@@ -26,24 +26,18 @@ export function AdminScenarioAnalyticsPage() {
   }
 
   return (
-    <section className="flex flex-1 flex-col text-slate-900">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+    <section className="flex flex-1 flex-col text-[#1d1a3d]">
+      <div className="border-b border-indigo-950/10 pb-7">
         <div className="max-w-3xl">
-          <p className="text-sm font-bold uppercase text-teal-700">{text.adminDashboard}</p>
-          <h1 className="mt-1 text-3xl font-bold">{text.scenarioAnalytics}</h1>
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.adminDashboard}</p>
+          <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
           <p className="mt-2 text-slate-600">
             {text.selectorDescription}
           </p>
         </div>
-        <Link
-          to="/admin/users"
-          className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-        >
-          {text.manageUsers}
-        </Link>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-7 overflow-hidden rounded-xl border border-indigo-950/10 bg-white">
         {scenarios.map((scenario) => {
           const translatedScenario = translateScenario(scenario);
           const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
@@ -52,46 +46,18 @@ export function AdminScenarioAnalyticsPage() {
           return (
             <article
               key={scenario.id}
-              className={`flex min-h-48 flex-col justify-between rounded-lg border p-5 shadow-sm ${
-                isAvailable
-                  ? "border-teal-300 bg-white"
-                  : "border-slate-200 bg-slate-100 text-slate-500 grayscale"
-              }`}
+              className={`grid items-center gap-4 border-b border-indigo-950/10 px-5 py-4 last:border-b-0 sm:grid-cols-[48px_1fr_auto] ${isAvailable ? "bg-white" : "bg-slate-50/60"}`}
             >
+              <span className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-extrabold ${isAvailable ? "bg-[#2a2586] text-white" : "bg-[#f3f3fb] text-slate-400"}`}>{scenarioNumber}</span>
               <div>
-                <div className="flex items-start justify-between gap-3">
-                  <span
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sm font-bold ${
-                      isAvailable
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {scenarioNumber}
-                  </span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      isAvailable
-                        ? "bg-teal-100 text-teal-800"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {isAvailable ? text.available : text.comingSoon}
-                  </span>
-                </div>
-                <h2
-                  className={`mt-5 text-lg font-bold leading-6 ${
-                    isAvailable ? "text-slate-950" : "text-slate-500"
-                  }`}
-                >
-                  {translatedScenario.title}
-                </h2>
+                <h2 className={`font-bold ${isAvailable ? "text-[#1d1a3d]" : "text-slate-500"}`}>{translatedScenario.title}</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-400">{isAvailable ? text.available : text.comingSoon}</p>
               </div>
 
               {isAvailable ? (
                 <Link
                   to="/admin/atm-analytics"
-                  className="mt-5 inline-flex min-h-[46px] items-center justify-center rounded-lg bg-slate-900 px-4 font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-cyan-300 bg-cyan-50 px-4 text-sm font-bold text-[#2a2586] hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}
                 >
                   {text.viewAnalytics}
@@ -101,7 +67,7 @@ export function AdminScenarioAnalyticsPage() {
                   type="button"
                   disabled
                   aria-label={`${text.analyticsUnavailable}: ${translatedScenario.title}`}
-                  className="mt-5 min-h-[46px] cursor-not-allowed rounded-lg bg-slate-200 px-4 font-bold text-slate-500"
+                  className="min-h-[40px] cursor-not-allowed rounded-lg bg-[#f3f3fb] px-4 text-sm font-bold text-slate-400"
                 >
                   {text.analyticsUnavailable}
                 </button>

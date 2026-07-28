@@ -131,6 +131,41 @@ export function AtmScenarioPage() {
     });
   }, [guestSessionToken, language, token]);
 
+  const abandonCurrentAnalyticsSession = useCallback(() => {
+    if (latestStatusRef.current === "success" || latestStatusRef.current === "security_terminated") {
+      return;
+    }
+    const knownSessionId = analyticsSessionIdRef.current;
+    const startPromise = analyticsStartRef.current;
+    if (!knownSessionId && !startPromise) {
+      return;
+    }
+    const credentials = analyticsCredentialsRef.current;
+    const finalStep = latestStatusRef.current;
+    analyticsSessionIdRef.current = null;
+    analyticsStartRef.current = null;
+
+    if (knownSessionId) {
+      void abandonAtmAnalyticsSession(
+        knownSessionId,
+        finalStep,
+        credentials.token,
+        credentials.guestToken,
+      ).catch(() => undefined);
+      return;
+    }
+
+    void startPromise?.then((sessionId) => {
+      if (!sessionId) return;
+      return abandonAtmAnalyticsSession(
+        sessionId,
+        finalStep,
+        credentials.token,
+        credentials.guestToken,
+      );
+    }).catch(() => undefined);
+  }, []);
+
   const recordInputMode = useCallback(
     (inputMode: AtmInputMode) => {
       if (recordedInputModesRef.current.has(inputMode)) {
@@ -166,25 +201,8 @@ export function AtmScenarioPage() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      const startPromise = analyticsStartRef.current;
-      if (!startPromise || latestStatusRef.current === "success") {
-        return;
-      }
-      void analyticsQueueRef.current.finally(async () => {
-        const sessionId = await startPromise;
-        if (sessionId) {
-          const credentials = analyticsCredentialsRef.current;
-          await abandonAtmAnalyticsSession(
-            sessionId,
-            latestStatusRef.current,
-            credentials.token,
-            credentials.guestToken,
-          ).catch(() => undefined);
-        }
-      });
-    };
-  }, []);
+    return abandonCurrentAnalyticsSession;
+  }, [abandonCurrentAnalyticsSession]);
 
   const assistantMessage = useMemo(() => {
     if (state.status === "confirm_name" && state.fullName) {
@@ -540,25 +558,30 @@ export function AtmScenarioPage() {
       finishListeningSession();
     };
 
+    const leaveScenario = () => {
+      stopAllScenarioAudio();
+      abandonCurrentAnalyticsSession();
+    };
+
     const handleNavigationClick = (event: MouseEvent) => {
       const element = event.target as HTMLElement | null;
       if (element?.closest("header a, header button")) {
-        stopAllScenarioAudio();
+        leaveScenario();
       }
     };
 
-    window.addEventListener("pagehide", stopAllScenarioAudio);
-    window.addEventListener("beforeunload", stopAllScenarioAudio);
-    window.addEventListener("popstate", stopAllScenarioAudio);
+    window.addEventListener("pagehide", leaveScenario);
+    window.addEventListener("beforeunload", leaveScenario);
+    window.addEventListener("popstate", leaveScenario);
     document.addEventListener("click", handleNavigationClick, true);
 
     return () => {
-      window.removeEventListener("pagehide", stopAllScenarioAudio);
-      window.removeEventListener("beforeunload", stopAllScenarioAudio);
-      window.removeEventListener("popstate", stopAllScenarioAudio);
+      window.removeEventListener("pagehide", leaveScenario);
+      window.removeEventListener("beforeunload", leaveScenario);
+      window.removeEventListener("popstate", leaveScenario);
       document.removeEventListener("click", handleNavigationClick, true);
     };
-  }, [finishListeningSession, stopSpeech]);
+  }, [abandonCurrentAnalyticsSession, finishListeningSession, stopSpeech]);
 
   useEffect(() => {
     isListeningRef.current = isListening;

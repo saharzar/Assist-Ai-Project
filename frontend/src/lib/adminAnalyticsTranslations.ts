@@ -19,6 +19,7 @@ export type AdminAnalyticsText = {
   successful: string;
   successRate: string;
   abandoned: string;
+  securityTerminated: string;
   stillInProgress: string;
   averageDuration: string;
   averageIncorrectPins: string;
@@ -56,6 +57,7 @@ export type AdminAnalyticsText = {
   voice: string;
   keyboard: string;
   stepNames: Record<string, string>;
+  terminationReasons: Record<string, string>;
   locale: string;
 };
 
@@ -79,6 +81,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Successful",
     successRate: "success rate",
     abandoned: "Abandoned",
+    securityTerminated: "Security terminated",
     stillInProgress: "still in progress",
     averageDuration: "Average duration",
     averageIncorrectPins: "Average incorrect PINs",
@@ -116,6 +119,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Voice",
     keyboard: "Keyboard",
     stepNames: { welcome: "Welcome", enter_name: "Name entry", confirm_name: "Name confirmation", pin_attempt: "PIN entry", letter_check: "Letter check", lockout: "Wait screen", success: "Success" },
+    terminationReasons: { identity_verification_failed_three_times: "Identity verification failed three times", pin_failed_twice_after_verification: "PIN verification failed twice after identity check", verification_failed: "Identity verification failed", pin_failed_after_verification: "PIN verification failed after identity check" },
     locale: "en-US",
   },
   es: {
@@ -137,6 +141,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Exitosas",
     successRate: "tasa de éxito",
     abandoned: "Abandonadas",
+    securityTerminated: "Finalizadas por seguridad",
     stillInProgress: "aún en curso",
     averageDuration: "Duración media",
     averageIncorrectPins: "PIN incorrectos de media",
@@ -174,6 +179,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Voz",
     keyboard: "Teclado",
     stepNames: { welcome: "Bienvenida", enter_name: "Ingreso del nombre", confirm_name: "Confirmación del nombre", pin_attempt: "Ingreso del PIN", letter_check: "Verificación de letras", lockout: "Pantalla de espera", success: "Éxito" },
+    terminationReasons: { identity_verification_failed_three_times: "La verificación de identidad falló tres veces", pin_failed_twice_after_verification: "La verificación del PIN falló dos veces después de comprobar la identidad", verification_failed: "La verificación de identidad falló", pin_failed_after_verification: "La verificación del PIN falló después de comprobar la identidad" },
     locale: "es-ES",
   },
   de: {
@@ -195,6 +201,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Erfolgreich",
     successRate: "Erfolgsquote",
     abandoned: "Abgebrochen",
+    securityTerminated: "Aus Sicherheitsgründen beendet",
     stillInProgress: "noch in Bearbeitung",
     averageDuration: "Durchschnittliche Dauer",
     averageIncorrectPins: "Durchschnittlich falsche PINs",
@@ -232,6 +239,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Sprache",
     keyboard: "Tastatur",
     stepNames: { welcome: "Willkommen", enter_name: "Namenseingabe", confirm_name: "Namensbestätigung", pin_attempt: "PIN-Eingabe", letter_check: "Buchstabenprüfung", lockout: "Wartebildschirm", success: "Erfolg" },
+    terminationReasons: { identity_verification_failed_three_times: "Identitätsprüfung dreimal fehlgeschlagen", pin_failed_twice_after_verification: "PIN-Prüfung nach der Identitätsprüfung zweimal fehlgeschlagen", verification_failed: "Identitätsprüfung fehlgeschlagen", pin_failed_after_verification: "PIN-Prüfung nach der Identitätsprüfung fehlgeschlagen" },
     locale: "de-DE",
   },
   tr: {
@@ -253,6 +261,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Başarılı",
     successRate: "başarı oranı",
     abandoned: "Yarım bırakılan",
+    securityTerminated: "Güvenlik nedeniyle sonlandırıldı",
     stillInProgress: "hâlâ devam ediyor",
     averageDuration: "Ortalama süre",
     averageIncorrectPins: "Ortalama hatalı PIN",
@@ -290,6 +299,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Ses",
     keyboard: "Klavye",
     stepNames: { welcome: "Karşılama", enter_name: "Ad girişi", confirm_name: "Ad onayı", pin_attempt: "PIN girişi", letter_check: "Harf kontrolü", lockout: "Bekleme ekranı", success: "Başarılı" },
+    terminationReasons: { identity_verification_failed_three_times: "Kimlik doğrulama üç kez başarısız oldu", pin_failed_twice_after_verification: "Kimlik doğrulamasından sonra PIN kontrolü iki kez başarısız oldu", verification_failed: "Kimlik doğrulama başarısız oldu", pin_failed_after_verification: "Kimlik doğrulamasından sonra PIN kontrolü başarısız oldu" },
     locale: "tr-TR",
   },
   pt: {
@@ -311,6 +321,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Bem-sucedidas",
     successRate: "taxa de sucesso",
     abandoned: "Abandonadas",
+    securityTerminated: "Terminadas por segurança",
     stillInProgress: "ainda em andamento",
     averageDuration: "Duração média",
     averageIncorrectPins: "Média de PINs incorretos",
@@ -348,6 +359,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Voz",
     keyboard: "Teclado",
     stepNames: { welcome: "Boas-vindas", enter_name: "Entrada do nome", confirm_name: "Confirmação do nome", pin_attempt: "Entrada do PIN", letter_check: "Verificação de letras", lockout: "Tela de espera", success: "Sucesso" },
+    terminationReasons: { identity_verification_failed_three_times: "A verificação de identidade falhou três vezes", pin_failed_twice_after_verification: "A verificação do PIN falhou duas vezes após confirmar a identidade", verification_failed: "A verificação de identidade falhou", pin_failed_after_verification: "A verificação do PIN falhou após confirmar a identidade" },
     locale: "pt-PT",
   },
   fr: {
@@ -369,6 +381,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     successful: "Réussies",
     successRate: "taux de réussite",
     abandoned: "Abandonnées",
+    securityTerminated: "Terminées pour des raisons de sécurité",
     stillInProgress: "encore en cours",
     averageDuration: "Durée moyenne",
     averageIncorrectPins: "Moyenne de PIN incorrects",
@@ -406,6 +419,7 @@ export const adminAnalyticsTranslations: Record<LanguageCode, AdminAnalyticsText
     voice: "Voix",
     keyboard: "Clavier",
     stepNames: { welcome: "Accueil", enter_name: "Saisie du nom", confirm_name: "Confirmation du nom", pin_attempt: "Saisie du PIN", letter_check: "Vérification des lettres", lockout: "Écran d’attente", success: "Réussite" },
+    terminationReasons: { identity_verification_failed_three_times: "La vérification d’identité a échoué trois fois", pin_failed_twice_after_verification: "La vérification du code PIN a échoué deux fois après le contrôle d’identité", verification_failed: "La vérification d’identité a échoué", pin_failed_after_verification: "La vérification du code PIN a échoué après le contrôle d’identité" },
     locale: "fr-FR",
   },
 };
