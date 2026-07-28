@@ -30,7 +30,8 @@ body {
 
 .catalogue-page {
   background-color: #f9faff;
-  border: 1px solid rgba(29, 26, 94, 0.07);
+  border-top: 1px solid rgba(29, 26, 94, 0.07);
+  border-bottom: 1px solid rgba(29, 26, 94, 0.07);
 }
 
 .catalogue-page::before,
@@ -64,6 +65,80 @@ body {
     linear-gradient(rgba(55, 48, 163, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(55, 48, 163, 0.025) 1px, transparent 1px);
   background-size: 36px 36px;
+}
+
+.speech-usage-page {
+  background-color: #fafbff;
+  border-top: 1px solid rgba(29, 26, 94, 0.07);
+  border-bottom: 1px solid rgba(29, 26, 94, 0.07);
+}
+
+.speech-usage-page::before,
+.speech-usage-page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.speech-usage-page::before {
+  top: 0;
+  right: 0;
+  width: min(32%, 480px);
+  height: 280px;
+  background: #e2fbfb;
+  clip-path: polygon(34% 0, 100% 0, 100% 100%, 0 45%);
+}
+
+.speech-usage-page::after {
+  bottom: 0;
+  left: 0;
+  width: min(24%, 350px);
+  height: 230px;
+  background: #efeffd;
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.speech-usage-grid {
+  background-image: linear-gradient(90deg, transparent 0 49.9%, rgba(55, 48, 163, 0.025) 50%, transparent 50.1%);
+  background-size: 72px 100%;
+}
+
+.admin-dashboard-main {
+  position: relative;
+  isolation: isolate;
+}
+
+.admin-dashboard-main::before,
+.admin-dashboard-main::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.admin-dashboard-main::before {
+  top: 150px;
+  right: 0;
+  width: min(28vw, 430px);
+  height: 360px;
+  background: rgba(45, 216, 216, 0.1);
+  clip-path: polygon(38% 0, 100% 0, 100% 78%, 0 100%, 20% 36%);
+}
+
+.admin-dashboard-main::after {
+  bottom: 0;
+  left: 0;
+  width: min(23vw, 360px);
+  height: 300px;
+  background: rgba(55, 48, 163, 0.065);
+  clip-path: polygon(0 22%, 100% 100%, 0 100%);
+}
+
+body:has(.admin-dashboard-main) {
+  background-color: #f8f9ff;
+  background-image: linear-gradient(115deg, rgba(55, 48, 163, 0.018) 0 16%, transparent 16% 100%);
+  background-attachment: fixed;
 }
 
 button,

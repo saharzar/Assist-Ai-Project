@@ -38,36 +38,31 @@ const dashboardCopy = {
 
 const USERS_PER_PAGE = 5;
 
-const filterStyles: Record<AdminUserStatusFilter, { active: string; idle: string; count: string; marker: string }> = {
+const filterStyles: Record<AdminUserStatusFilter, { active: string; idle: string; count: string }> = {
   pending: {
-    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
-    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    active: "border-amber-200 bg-amber-50/30 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-amber-100 bg-amber-50/30 hover:border-amber-200",
     count: "text-[#2a2586]",
-    marker: "bg-amber-400",
   },
   approved: {
-    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
-    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    active: "border-emerald-200 bg-emerald-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-emerald-100 bg-emerald-50/35 hover:border-emerald-200",
     count: "text-[#2a2586]",
-    marker: "bg-emerald-500",
   },
   denied: {
-    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
-    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    active: "border-rose-200 bg-rose-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-rose-100 bg-rose-50/35 hover:border-rose-200",
     count: "text-[#2a2586]",
-    marker: "bg-rose-500",
   },
   suspended: {
-    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
-    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    active: "border-violet-200 bg-violet-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-violet-100 bg-violet-50/35 hover:border-violet-200",
     count: "text-[#2a2586]",
-    marker: "bg-violet-500",
   },
   all: {
-    active: "border-cyan-300 bg-cyan-50/60 shadow-[0_10px_24px_rgba(34,211,238,0.08)]",
-    idle: "border-indigo-950/10 bg-white hover:border-indigo-200 hover:bg-[#fafbff]",
+    active: "border-cyan-200 bg-cyan-50/35 ring-2 ring-[#2a2586]/10 shadow-[0_8px_20px_rgba(29,26,94,0.04)]",
+    idle: "border-cyan-100 bg-cyan-50/35 hover:border-cyan-200",
     count: "text-[#2a2586]",
-    marker: "bg-cyan-400",
   },
 };
 
@@ -200,10 +195,7 @@ export function AdminUsersPage() {
             aria-pressed={isActive}
             className={`relative flex min-h-[112px] flex-col items-start justify-between overflow-hidden rounded-lg border p-5 text-left transition ${isActive ? styles.active : styles.idle}`}
           >
-            <span className="flex w-full items-center justify-between gap-2 text-sm font-bold text-slate-700">
-              {filter === "all" ? t("all") : t(statusLabelKeys[filter])}
-              <span className={`h-1 w-8 rounded-full ${styles.marker}`} aria-hidden="true" />
-            </span>
+            <span className="text-sm font-bold text-slate-700">{filter === "all" ? t("all") : t(statusLabelKeys[filter])}</span>
             <span className={`text-4xl font-extrabold tabular-nums ${styles.count}`}>{statusCounts[filter]}</span>
           </button>
           );

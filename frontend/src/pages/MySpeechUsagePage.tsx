@@ -60,7 +60,9 @@ export function MySpeechUsagePage() {
   const pending = requests.filter((request) => request.status === "pending").length;
 
   return (
-    <section className="mx-auto max-w-[1500px] pb-12">
+    <section className="speech-usage-page relative isolate flex w-full flex-1 flex-col overflow-hidden">
+      <div className="speech-usage-grid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+      <div className="mx-auto max-w-7xl px-5 pb-14 pt-9">
       <header className="border-b border-[#deddeb] pb-8">
         <p className="text-sm font-bold uppercase text-teal-700">{text.eyebrow}</p>
         <h1 className="mt-2 text-4xl font-extrabold text-[#1d1a5e]">{text.title}</h1>
@@ -122,6 +124,7 @@ export function MySpeechUsagePage() {
             {requests.length ? requests.map((request) => <RequestItem key={request.id} request={request} text={text} />) : <p className="rounded-lg border border-dashed border-[#cbc9df] bg-white py-12 text-center text-slate-500">{text.empty}</p>}
           </div>
       </section>
+      </div>
     </section>
   );
 }

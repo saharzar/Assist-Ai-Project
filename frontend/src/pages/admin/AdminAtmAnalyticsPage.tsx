@@ -68,8 +68,9 @@ export function AdminAtmAnalyticsPage() {
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="flex flex-col justify-between gap-5 border-b border-indigo-950/10 pb-7 sm:flex-row sm:items-end">
-        <div>
+      <div className="relative flex flex-col justify-between gap-5 overflow-hidden border-b border-indigo-950/10 pb-7 sm:flex-row sm:items-end">
+        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
+        <div className="pl-5">
           <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.adminDashboard}</p>
           <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.atmAnalytics}</h1>
           <p className="mt-2 text-slate-600">{text.atmDescription}</p>
@@ -81,12 +82,13 @@ export function AdminAtmAnalyticsPage() {
         </div>
       </div>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label={text.totalSessions} value={finalizedStats.total} />
-        <Metric label={text.successful} value={finalizedStats.successful} detail={`${finalizedStats.total ? (finalizedStats.successful / finalizedStats.total * 100).toFixed(1) : 0}% ${text.successRate}`} />
-        <Metric label={text.abandoned} value={finalizedStats.abandoned} />
-        <Metric label={text.registeredSessions} value={finalizedStats.registered} />
-        <Metric label={text.guestSessions} value={finalizedStats.guests} />
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <Metric label={text.totalSessions} value={finalizedStats.total} tone="indigo" />
+        <Metric label={text.successful} value={finalizedStats.successful} detail={`${finalizedStats.total ? (finalizedStats.successful / finalizedStats.total * 100).toFixed(1) : 0}% ${text.successRate}`} tone="cyan" />
+        <Metric label={text.abandoned} value={finalizedStats.abandoned} tone="violet" />
+        <Metric label={text.securityTerminated} value={finalizedStats.securityTerminated} tone="rose" />
+        <Metric label={text.registeredSessions} value={finalizedStats.registered} tone="indigo" />
+        <Metric label={text.guestSessions} value={finalizedStats.guests} tone="cyan" />
       </div>
 
       <AnalyticsCharts stats={finalizedStats} text={text} />
@@ -137,8 +139,10 @@ export function AdminAtmAnalyticsPage() {
   );
 }
 
-function Metric({ label, value, detail }: { label: string; value: number | string; detail?: string }) {
-  return <article className="rounded-xl border border-indigo-950/10 bg-white p-5"><p className="text-sm font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{value}</p>{detail && <p className="mt-1 text-xs font-semibold text-teal-600">{detail}</p>}</article>;
+function Metric({ label, value, detail, tone }: { label: string; value: number | string; detail?: string; tone: "indigo" | "cyan" | "violet" | "rose" }) {
+  const styles = tone === "cyan" ? "border-cyan-100 bg-cyan-50/35" : tone === "violet" ? "border-violet-100 bg-violet-50/30" : tone === "rose" ? "border-rose-100 bg-rose-50/30" : "border-indigo-100 bg-indigo-50/30";
+  const accent = tone === "cyan" ? "bg-cyan-400" : tone === "violet" ? "bg-violet-400" : tone === "rose" ? "bg-rose-400" : "bg-[#3932a8]";
+  return <article className={`relative overflow-hidden rounded-lg border p-5 ${styles}`}><span className={`absolute inset-x-0 top-0 h-1 ${accent}`} aria-hidden="true" /><p className="text-sm font-semibold text-slate-500">{label}</p><p className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{value}</p>{detail && <p className="mt-1 text-xs font-semibold text-teal-600">{detail}</p>}</article>;
 }
 
 type FinalizedStats = { total: number; successful: number; securityTerminated: number; abandoned: number; registered: number; guests: number };

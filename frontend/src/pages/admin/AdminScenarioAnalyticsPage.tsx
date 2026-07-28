@@ -27,8 +27,9 @@ export function AdminScenarioAnalyticsPage() {
 
   return (
     <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="border-b border-indigo-950/10 pb-7">
-        <div className="max-w-3xl">
+      <div className="relative overflow-hidden border-b border-indigo-950/10 pb-7">
+        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
+        <div className="max-w-3xl pl-5">
           <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.adminDashboard}</p>
           <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
           <p className="mt-2 text-slate-600">
@@ -37,41 +38,25 @@ export function AdminScenarioAnalyticsPage() {
         </div>
       </div>
 
-      <div className="mt-7 overflow-hidden rounded-xl border border-indigo-950/10 bg-white">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {scenarios.map((scenario) => {
           const translatedScenario = translateScenario(scenario);
-          const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
           const scenarioNumber = Number(scenario.id).toString().padStart(2, "0");
+          const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
 
           return (
             <article
               key={scenario.id}
-              className={`grid items-center gap-4 border-b border-indigo-950/10 px-5 py-4 last:border-b-0 sm:grid-cols-[48px_1fr_auto] ${isAvailable ? "bg-white" : "bg-slate-50/60"}`}
+              className={`flex min-h-[168px] flex-col rounded-lg border p-5 transition ${isAvailable ? "border-cyan-300 bg-cyan-50/35 shadow-[0_10px_26px_rgba(29,26,94,0.06)]" : "border-indigo-950/10 bg-white/70 hover:border-indigo-200 hover:bg-white"}`}
             >
-              <span className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-extrabold ${isAvailable ? "bg-[#2a2586] text-white" : "bg-[#f3f3fb] text-slate-400"}`}>{scenarioNumber}</span>
-              <div>
-                <h2 className={`font-bold ${isAvailable ? "text-[#1d1a3d]" : "text-slate-500"}`}>{translatedScenario.title}</h2>
-                <p className="mt-1 text-xs font-semibold text-slate-400">{isAvailable ? text.available : text.comingSoon}</p>
+              <div className="flex items-start gap-4">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold ${isAvailable ? "bg-[#2a2586] text-white" : "bg-[#f1f0fa] text-[#777493]"}`}>{scenarioNumber}</span>
+                <div className="min-w-0">
+                  <h2 className={`font-bold leading-5 ${isAvailable ? "text-[#1d1a5e]" : "text-slate-500"}`}>{translatedScenario.title}</h2>
+                  <p className={`mt-2 text-xs font-semibold uppercase tracking-wide ${isAvailable ? "text-teal-700" : "text-slate-400"}`}>{isAvailable ? "ATM" : text.comingSoon}</p>
+                </div>
               </div>
-
-              {isAvailable ? (
-                <Link
-                  to="/admin/atm-analytics"
-                  className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-cyan-300 bg-cyan-50 px-4 text-sm font-bold text-[#2a2586] hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                  aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}
-                >
-                  {text.viewAnalytics}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-label={`${text.analyticsUnavailable}: ${translatedScenario.title}`}
-                  className="min-h-[40px] cursor-not-allowed rounded-lg bg-[#f3f3fb] px-4 text-sm font-bold text-slate-400"
-                >
-                  {text.analyticsUnavailable}
-                </button>
-              )}
+              {isAvailable ? <Link to="/admin/atm-analytics" className="mt-auto inline-flex min-h-[42px] items-center justify-center rounded-lg bg-[#2a2586] px-4 text-sm font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400" aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}>{text.viewAnalytics}</Link> : <span className="mt-auto min-h-[42px]" aria-hidden="true" />}
             </article>
           );
         })}

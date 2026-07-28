@@ -39,6 +39,7 @@ export function PageShell() {
   const isLandingPage = location.pathname === "/";
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   const isBrandedPublicPage = isLandingPage || isAuthPage;
+  const isFullBleedContent = location.pathname === "/scenarios" || location.pathname === "/speech-usage";
   const homeTarget = isAuthenticated ? "/scenarios" : "/";
   const showHeader = !isAtmScenario || isAtmNavigationVisible;
 
@@ -293,10 +294,12 @@ export function PageShell() {
       </header>
       )}
       <main
-        className={`mx-auto flex w-full flex-1 flex-col ${
+        className={`mx-auto flex w-full flex-1 flex-col ${isAdmin ? "admin-dashboard-main" : ""} ${
           isAtmScenario
             ? "max-w-[1600px] px-2 py-2 sm:px-4 sm:py-4"
-            : `max-w-7xl px-5 ${isBrandedPublicPage ? "py-0" : "py-8 sm:py-10"}`
+            : isFullBleedContent
+              ? "max-w-none px-0 py-0"
+              : `max-w-7xl px-5 ${isBrandedPublicPage ? "py-0" : "py-8 sm:py-10"}`
         }`}
       >
         <Outlet />
