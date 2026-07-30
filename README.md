@@ -1,17 +1,63 @@
 # ASSIST-AI
 
-ASSIST-AI is an English practice platform that helps learners build confidence in everyday situations through simple, step-by-step scenario guidance. The current app includes a polished React frontend, authentication, guest mode, user category selection, admin account approval, SMTP email notifications, a PostgreSQL-backed FastAPI API, and an interactive ATM withdrawal practice scenario with voice guidance.
+## AI-Supported Practice for Social Skills and Community Inclusion
 
-## Tech Stack
+**ASSIST-AI** is an accessible, multilingual virtual-assistant platform designed to help autistic adults practice everyday social and independent-living situations in a calm, structured environment. Through guided simulations, optional voice interaction, visual feedback, and repeatable step-by-step experiences, the platform supports users in building confidence and strengthening skills that can contribute to greater independence and inclusion in society.
+
+**Formal project title:** *Design and Development of an Artificial Intelligence-Supported Virtual Assistant for Autistic Adults to Practice and Strengthen Social Skills and Support Inclusion in Society.*
+
+The project combines an accessible React interface with a secure FastAPI and PostgreSQL backend. Its first complete simulation is a realistic ATM practice scenario where users can safely rehearse name confirmation, PIN entry, identity verification, error recovery, and security-related outcomes without providing real banking information.
+
+> ASSIST-AI is an educational practice tool. It does not provide medical advice, replace professional support, or request real banking credentials.
+
+## Project Purpose
+
+ASSIST-AI explores how artificial intelligence and virtual-assistant technologies can provide consistent, low-pressure practice for situations that may otherwise feel unfamiliar or stressful. The platform is designed around the following principles:
+
+- **Predictable guidance:** scenarios are divided into clear, manageable steps.
+- **Multiple interaction methods:** users can respond through speech, typing, or realistic on-screen controls where supported.
+- **Calm error recovery:** mistakes produce understandable guidance and safe opportunities to try again.
+- **Accessible repetition:** users can repeat assistant messages and practice scenarios at their own pace.
+- **Multilingual access:** interface text, assistant guidance, speech synthesis, and speech recognition support six languages.
+- **Privacy-conscious simulation:** practice data is separated from real-world sensitive information.
+- **Responsible administration:** account approval, quotas, provider routing, and scenario analytics are managed through protected admin tools.
+
+## Supported Languages
+
+- English
+- Turkish
+- German
+- Spanish
+- Portuguese
+- French
+
+The selected language controls the interface, feedback, errors, and assistant prompts. Name recognition is designed to remain flexible across supported languages so that a person's name is not unnecessarily restricted by the interface language.
+
+## Technology Stack
 
 - Frontend: React, TypeScript, Vite, Tailwind CSS
 - Backend: FastAPI, SQLAlchemy, Alembic, JWT authentication
 - Database: PostgreSQL via Docker Compose
-- Data: Static typed scenario lists plus persisted users, guest sessions, TTS usage, and cached TTS audio metadata
+- Speech: Microsoft Azure AI Speech, Soniox, and browser fallback according to administrator-defined routing order
+- Deployment: Docker Compose, Nginx, and Linux VPS support
+- Data: Persisted users, guest sessions, scenario analytics, speech quotas, provider events, usage periods, and cached TTS metadata
+
+## Architecture
+
+```text
+Browser
+  -> React + TypeScript frontend
+  -> Docker frontend Nginx
+  -> FastAPI backend
+  -> PostgreSQL
+  -> Azure AI Speech / Soniox / browser fallback
+```
+
+Speech-provider secrets remain in the backend environment and are never included in the browser bundle. The backend authenticates requests, enforces personal and provider quotas, records usage, applies provider routing, and returns generated audio or recognized text to the frontend.
 
 ## Current Status
 
-ASSIST-AI currently includes authentication, admin account management, and the ATM practice scenario.
+ASSIST-AI currently provides a production-ready project foundation, account and administration workflows, speech-provider management, usage controls, analytics, and one fully interactive ATM scenario. Eleven additional scenarios are presented in the catalogue as disabled previews for future development.
 
 This version includes:
 
@@ -24,8 +70,8 @@ This version includes:
 - User category selection during sign up
 - Scenario catalogue with the ATM scenario enabled
 - Realistic ATM practice interface with clickable keypad and keyboard overlays
-- Azure Speech voice assistant prompts with per-user TTS character usage tracking
-- Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, audit history, and admin bulk management
+- Azure and Soniox speech-provider support with configurable TTS/STT priority and browser fallback
+- Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, and audit history
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
 - Speech input for supported steps and applause feedback on success
 - `GET /health`
@@ -45,6 +91,31 @@ This version includes:
 - `POST /api/tts`
 
 Other scenarios are visible as locked or disabled previews while the ATM scenario is the active practice flow.
+
+## ATM Practice Flow
+
+The ATM scenario uses a realistic ATM image with responsive interactive overlays for the screen, numeric keypad, command keys, and alphabet keyboard. Its current flow is:
+
+1. Start the practice session.
+2. Say or type a full name.
+3. Review the recognized name and confirm it after a three-second safety delay.
+4. Enter a randomly generated four-digit practice PIN by keypad or voice.
+5. Experience a simulated system problem on the first PIN submission and enter the PIN again.
+6. Complete an identity check using the second letter of the first name and the final letter of the surname.
+7. Continue according to the stored PIN result and identity-verification result.
+8. Finish successfully, retry safely, or end the session after repeated security failures.
+
+The assistant stops speaking when the user begins recording, changes screens, leaves the scenario, or starts another message. Repeated fixed prompts can be served from the shared backend TTS cache, while dynamic name and PIN segments are generated only when needed.
+
+Scenario analytics classify completed sessions as **successful**, early exits as **abandoned**, and repeated verification or post-verification PIN failures as **security terminated**.
+
+## User Roles
+
+- **Registered user:** accesses approved scenarios, profile preferences, personal speech usage, and quota requests.
+- **Guest:** can preview the catalogue and use supported guest flows with an explicit progress-saving choice.
+- **Administrator:** manages accounts, speech providers, personal quotas, requests, and scenario analytics.
+
+Backend authorization protects every administrative API. Frontend navigation and route guards improve the experience but are not treated as the security boundary.
 
 ## Run PostgreSQL
 
@@ -118,9 +189,9 @@ curl -X POST http://127.0.0.1:8000/admin/email/test -H "Authorization: Bearer YO
 
 The endpoint returns `{"message":"Test email processed."}` whether the message was handled by console mode or SMTP mode.
 
-## Azure Speech Voice Assistant
+## Speech Services
 
-ASSIST-AI uses Azure AI Speech for Text-To-Speech through the backend. The frontend never receives the Azure key. It calls `POST /api/tts`, and the backend:
+ASSIST-AI supports Azure AI Speech and Soniox through the backend, with browser speech available as a final fallback where supported. The frontend never receives provider API keys. For TTS, it calls `POST /api/tts`, and the backend:
 
 1. Confirms the user is logged in.
 2. Checks the user's TTS character limit.
@@ -172,11 +243,11 @@ TTS billing is character-based, so ASSIST-AI tracks usage by characters, not tok
 
 Generated audio is cached under `backend/media/tts-cache`, and metadata is stored in PostgreSQL. The `backend/media/` folder is ignored by Git because cached audio is generated locally. Repeated prompts are returned from cache without using new TTS characters. PIN and name-confirmation prompts are split so fixed sentence parts can be cached while only the dynamic name or PIN part is generated when needed.
 
-Administrators can open **Speech Provider Management** from the admin dashboard to monitor the internally estimated monthly Azure TTS character usage and STT audio duration. Automatic mode continues using Azure after the warning threshold and routes new requests to browser speech at the switch threshold. Azure provider failures also activate browser fallback until the next billing month. Automatic, Azure, and Browser modes can be configured independently for TTS and STT.
+Administrators can open **Speech Provider Management** to monitor monthly TTS character usage and STT duration, configure each provider, and arrange separate priority orders for TTS and STT. When a provider reaches its configured switch value or cannot complete a request, the backend selects the next enabled provider in that service's priority order.
 
 The monthly provider totals are global estimates based only on ASSIST-AI requests; Azure does not provide a remaining-free-quota API. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Azure quota, and request IDs prevent retries from being counted twice.
 
-Global speech routing is stored in PostgreSQL and becomes effective immediately for every registered user and guest. Administrators can independently order TTS and STT providers, force a provider, disable providers, configure calendar or custom monthly periods, and edit provider-specific thresholds. Azure and Soniox support both TTS and STT, and browser speech is used only when the current client reports that capability.
+Global speech routing is stored in PostgreSQL and becomes effective for registered users and supported guest requests. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Azure and Soniox support both TTS and STT, while browser speech is used only when the client reports that capability.
 
 Provider warning and automatic-switch levels are configured as real usage values rather than percentages. TTS levels use characters and STT levels use audio seconds. Crossing a warning level sends one email per provider and billing period to `ADMIN_NOTIFICATION_EMAIL` (or `ADMIN_EMAIL` when no notification address is set). Crossing the switch level makes the next eligible provider in the configured priority order active for subsequent requests.
 
@@ -184,7 +255,7 @@ Provider warning and automatic-switch levels are configured as real usage values
 
 Personal quotas are separate from global provider quotas. A registered user must have enough personal allowance before an enabled, healthy provider can process a request. TTS is measured in generated characters and cached playback is free. STT is measured in audio seconds. Browser speech is excluded by default and can be included with `COUNT_BROWSER_USAGE_AGAINST_USER_QUOTA=true`.
 
-Users can open **My Speech Usage** to see usage, remaining allowance, reset dates, threshold status, and request more access. Administrators can open **User Speech Quotas** to search users, edit permanent limits, add temporary current-period allowance, disable speech, make bulk changes, and review requests. Temporary allowance expires at reset; permanent changes remain. All adjustments are audited, and previous periods are preserved.
+Users can open **My Speech Usage** to review usage, remaining allowance, reset dates, status, request history, and request additional access. Administrators can open **User Speech Quotas** to search users, edit individual permanent limits, add temporary current-period allowances, disable speech access, and approve or reject quota requests. Temporary allowances expire at reset, while permanent changes remain. Adjustments and request decisions are audited, and previous usage periods are preserved.
 
 Default quotas are stored in PostgreSQL with environment-backed initial values. Admin all-user updates distinguish future users, users still using defaults, and explicit overrides of every user. Quota-request email uses `ADMIN_QUOTA_REQUEST_EMAIL`, then falls back to the existing admin notification addresses.
 
