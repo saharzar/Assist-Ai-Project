@@ -9,13 +9,45 @@ export const ATM_ERROR = {
   wrongPin: "wrong_pin",
   incompleteLetters: "incomplete_letters",
   letterMismatch: "letter_mismatch",
+  invalidAmount: "invalid_amount",
+  insufficientFunds: "insufficient_funds",
 } as const;
 
 function createDemoPin() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-export function createInitialAtmState(): AtmState {
+function createPracticeBalance(previousBalance?: number) {
+  let balance = (Math.floor(Math.random() * 46) + 5) * 100;
+  if (balance === previousBalance) {
+    balance = balance === 5000 ? 500 : balance + 100;
+  }
+  return balance;
+}
+
+function prepareWithdrawal(state: AtmState, amount: number): AtmState {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { ...state, errorMessage: ATM_ERROR.invalidAmount };
+  }
+  if (amount > state.accountBalance) {
+    return {
+      ...state,
+      withdrawalInput: "",
+      withdrawnAmount: amount,
+      errorMessage: ATM_ERROR.insufficientFunds,
+    };
+  }
+  return {
+    ...state,
+    status: "withdrawal_confirm",
+    withdrawalInput: String(amount),
+    withdrawnAmount: amount,
+    remainingBalance: 0,
+    errorMessage: "",
+  };
+}
+
+export function createInitialAtmState(previousBalance?: number): AtmState {
   return {
     status: "welcome",
     fullName: "",
@@ -24,6 +56,10 @@ export function createInitialAtmState(): AtmState {
     expectedSecondLetter: "",
     expectedLastLetter: "",
     demoPin: createDemoPin(),
+    accountBalance: createPracticeBalance(previousBalance),
+    withdrawalInput: "",
+    withdrawnAmount: 0,
+    remainingBalance: 0,
     currentPinInput: "",
     pinAttemptCount: 0,
     letterInput: "",
@@ -185,10 +221,11 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.currentPinInput === state.demoPin) {
         return {
           ...state,
-          status: "success",
+          status: "withdrawal",
           currentPinInput: "",
+          withdrawalInput: "",
           errorMessage: "",
-          assistantMessage: "Well done. You completed this ATM practice step successfully.",
+          assistantMessage: "Your identity is verified. Choose how much practice money to withdraw.",
         };
       }
 
@@ -268,7 +305,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       const expected = `${state.expectedSecondLetter}${state.expectedLastLetter}`.normalize("NFC").toLocaleLowerCase();
       if (state.letterInput.trim().normalize("NFC").toLocaleLowerCase() === expected) {
         if (state.pinWasCorrectBeforeVerification) {
-          return {...state,status:"success",letterInput:"",identityVerified:true,errorMessage:"",assistantMessage:"Well done. Your identity was verified and you completed the ATM practice."};
+          return {...state,status:"withdrawal",letterInput:"",withdrawalInput:"",identityVerified:true,errorMessage:"",assistantMessage:"Your identity is verified. Choose how much practice money to withdraw."};
         }
         return {
           ...state,
@@ -284,6 +321,63 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if(attempts>=3)return{...state,status:"security_terminated",letterInput:"",verificationAttemptCount:attempts,securityTerminationReason:"verification_failed",lockoutSecondsRemaining:LOCKOUT_SECONDS,errorMessage:"",assistantMessage:"For your security, this ATM session has ended. Please wait before starting again."};
       return{...state,letterInput:"",verificationAttemptCount:attempts,errorMessage:`${ATM_ERROR.letterMismatch}:${3-attempts}`,assistantMessage:"That does not match our information. Please check the letters and try again."};
     }
+
+    case "WITHDRAWAL_DIGIT":
+      if (state.status !== "withdrawal" || state.withdrawalInput.length >= 5) return state;
+      return { ...state, withdrawalInput: `${state.withdrawalInput}${action.digit}`.replace(/^0+/, ""), errorMessage: "" };
+
+    case "WITHDRAWAL_REPLACE":
+      if (state.status !== "withdrawal") return state;
+      return { ...state, withdrawalInput: action.value.replace(/\D/g, "").slice(0, 5).replace(/^0+/, ""), errorMessage: "" };
+
+    case "WITHDRAWAL_BACKSPACE":
+      if (state.status !== "withdrawal") return state;
+      return { ...state, withdrawalInput: state.withdrawalInput.slice(0, -1), errorMessage: "" };
+
+    case "WITHDRAWAL_CLEAR":
+      if (state.status !== "withdrawal") return state;
+      return { ...state, withdrawalInput: "", errorMessage: "" };
+
+    case "WITHDRAWAL_SELECT":
+      if (state.status !== "withdrawal") return state;
+      return prepareWithdrawal(state, action.amount);
+
+    case "WITHDRAWAL_SUBMIT":
+      if (state.status !== "withdrawal") return state;
+      return prepareWithdrawal(state, Number(state.withdrawalInput));
+
+    case "WITHDRAWAL_WARNING_COMPLETE":
+      if (state.status !== "withdrawal" || state.errorMessage !== ATM_ERROR.insufficientFunds) return state;
+      return {
+        ...state,
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        errorMessage: "",
+      };
+
+    case "WITHDRAWAL_CONFIRM":
+      if (state.status !== "withdrawal_confirm") return state;
+      return {
+        ...state,
+        status: "withdrawal_result",
+        remainingBalance: state.accountBalance - state.withdrawnAmount,
+        errorMessage: "",
+      };
+
+    case "WITHDRAWAL_REJECT":
+      if (state.status !== "withdrawal_confirm") return state;
+      return {
+        ...state,
+        status: "withdrawal",
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+      };
+
+    case "WITHDRAWAL_RESULT_CONTINUE":
+      if (state.status !== "withdrawal_result") return state;
+      return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal practice successfully." };
 
     case "LOCKOUT_TICK":
       return {
@@ -313,7 +407,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       };
 
     case "RESET":
-      return createInitialAtmState();
+      return createInitialAtmState(state.accountBalance);
 
     default:
       return state;

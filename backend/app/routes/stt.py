@@ -67,7 +67,7 @@ async def create_stt_transcript(
     request: Request,
     response: Response,
     language: str = Query(default="en", pattern="^(en|es|de|tr|pt|fr)$"),
-    mode: str = Query(default="name", pattern="^(name|pin|confirmation|letters)$"),
+    mode: str = Query(default="name", pattern="^(name|pin|amount|confirmation|letters)$"),
     speech_request_id: UUID | None = Header(default=None, alias="X-Speech-Request-ID"),
     browser_speech_supported: bool | None = Header(default=None, alias="X-Browser-Speech-Supported"),
     current_user: User | GuestSession = Depends(get_speech_actor),

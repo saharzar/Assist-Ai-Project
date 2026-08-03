@@ -13,6 +13,12 @@ import {
 } from "../../components/atm/AtmNameScreen";
 import { AtmPinScreen } from "../../components/atm/AtmPinScreen";
 import { AtmSuccessScreen } from "../../components/atm/AtmSuccessScreen";
+import {
+  AtmInsufficientFundsScreen,
+  AtmWithdrawalConfirmScreen,
+  AtmWithdrawalResultScreen,
+  AtmWithdrawalScreen,
+} from "../../components/atm/AtmWithdrawalScreen";
 import { AtmWelcomeScreen } from "../../components/atm/AtmWelcomeScreen";
 import { SoundToggle } from "../../components/atm/SoundToggle";
 import { useAuth } from "../../context/AuthContext";
@@ -219,6 +225,17 @@ export function AtmScenarioPage() {
     if (state.status === "success") {
       return text.successAssistant;
     }
+    if (state.status === "withdrawal") {
+      return state.errorMessage === ATM_ERROR.insufficientFunds
+        ? text.insufficientFundsAssistant(state.accountBalance)
+        : text.withdrawalAssistant(state.accountBalance);
+    }
+    if (state.status === "withdrawal_confirm") {
+      return text.withdrawalConfirmAssistant(state.withdrawnAmount);
+    }
+    if (state.status === "withdrawal_result") {
+      return text.withdrawalResultAssistant(state.withdrawnAmount, state.remainingBalance);
+    }
     if (state.status === "security_message") return text.securityMessage;
     if (state.status === "security_terminated") return text.securityTerminatedAssistant;
     if (state.status === "pin_attempt") {
@@ -253,12 +270,15 @@ export function AtmScenarioPage() {
     return text.welcomeAssistant;
   }, [
     state.demoPin,
+    state.accountBalance,
     state.errorMessage,
     state.fullName,
     state.identityVerified,
     state.pinAttemptCount,
     state.postVerificationPinFailureCount,
     state.status,
+    state.withdrawnAmount,
+    state.remainingBalance,
     lastConfirmationDecision,
     text,
   ]);
@@ -289,6 +309,11 @@ export function AtmScenarioPage() {
         return text.letterMismatchError(getRemainingAttempts(state.errorMessage));
       }
       return text.letterIncompleteError;
+    }
+    if (state.status === "withdrawal") {
+      return state.errorMessage === ATM_ERROR.insufficientFunds
+        ? text.insufficientFundsError
+        : text.invalidAmountError;
     }
     return state.errorMessage;
   }, [state.currentPinInput.length, state.errorMessage, state.identityVerified, state.postVerificationPinFailureCount, state.status, text]);
@@ -393,6 +418,12 @@ export function AtmScenarioPage() {
     stopSpeech,
   ]);
 
+  const completeWithdrawalConfirmation = useCallback((confirmed: boolean) => {
+    setSpeechError("");
+    stopSpeech();
+    dispatch({ type: confirmed ? "WITHDRAWAL_CONFIRM" : "WITHDRAWAL_REJECT" });
+  }, [stopSpeech]);
+
   useEffect(() => {
     latestStatusRef.current = state.status;
     if (state.status === "welcome" || !analyticsStartRef.current) {
@@ -429,6 +460,15 @@ export function AtmScenarioPage() {
     );
     return () => window.clearTimeout(timer);
   }, [soundEnabled, state.status]);
+
+  useEffect(() => {
+    if (state.status !== "withdrawal" || state.errorMessage !== ATM_ERROR.insufficientFunds) return;
+    const timer = window.setTimeout(
+      () => dispatch({ type: "WITHDRAWAL_WARNING_COMPLETE" }),
+      soundEnabled ? 5000 : 3000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [soundEnabled, state.errorMessage, state.status]);
 
   useEffect(() => {
     if (state.status !== "confirm_name") {
@@ -721,6 +761,55 @@ export function AtmScenarioPage() {
     }
   }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
 
+  const startAmountListening = useCallback(async () => {
+    stopSpeech();
+    setSpeechError("");
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage || !spaceIsHeldRef.current) return;
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    const recognizer = createSpeechRecognizer(
+      {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+        },
+        onResult: (value) => dispatch({ type: "WITHDRAWAL_REPLACE", value }),
+        onError: showLocalizedSpeechError,
+        onEnd: finishListeningSession,
+      },
+      "amount",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
+      },
+    );
+    if (!recognizer) {
+      setSpeechError(text.speechPinUnsupported);
+      return;
+    }
+    recognizerRef.current = recognizer;
+    try {
+      setIsPreparingVoice(true);
+      recognizer.start();
+      recordInputMode("voice");
+    } catch {
+      setIsPreparingVoice(false);
+      setSpeechError(text.speechPinStartError);
+      finishListeningSession();
+    }
+  }, [finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
+
   const startConfirmationListening = useCallback(async () => {
     if (confirmationSecondsRemaining > 0 || confirmationDecisionPending) {
       return;
@@ -800,6 +889,56 @@ export function AtmScenarioPage() {
     text,
   ]);
 
+  const startWithdrawalConfirmationListening = useCallback(async () => {
+    stopSpeech();
+    setSpeechError("");
+    const usage = await refreshSttUsage().catch(() => {
+      setSpeechError(text.speechProblem);
+      return null;
+    });
+    if (!usage || !spaceIsHeldRef.current) return;
+    if (usage.remaining <= 0) {
+      setSpeechError(text.speechLimitReached);
+      return;
+    }
+    const recognizer = createSpeechRecognizer(
+      {
+        onReady: () => {
+          setIsPreparingVoice(false);
+          listeningStartedAtRef.current = Date.now();
+          setIsListening(true);
+        },
+        onResult: (value) => {
+          const decision = parseSpokenConfirmation(value, language);
+          if (!decision) {
+            setSpeechError(text.withdrawalConfirmUnclear);
+            return;
+          }
+          completeWithdrawalConfirmation(decision === "confirm");
+        },
+        onError: showLocalizedSpeechError,
+        onEnd: finishListeningSession,
+      },
+      "confirmation",
+      language,
+      {
+        microphoneBlocked: text.speechMicBlocked,
+        problem: text.speechProblem,
+        browserFallback: text.speechBrowserFallback,
+        noSpeech: text.speechNoMatch,
+        limitReached: text.speechLimitReached,
+      },
+    );
+    if (!recognizer) {
+      setSpeechError(text.speechNameUnsupported);
+      return;
+    }
+    recognizerRef.current = recognizer;
+    setIsPreparingVoice(true);
+    recognizer.start();
+    recordInputMode("voice");
+  }, [completeWithdrawalConfirmation, finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, stopSpeech, text]);
+
   const startLetterListening = useCallback(async () => {
     stopSpeech();
     setSpeechError("");
@@ -877,7 +1016,7 @@ export function AtmScenarioPage() {
   }, [finishListeningSession]);
 
   useEffect(() => {
-    if (!["enter_name", "confirm_name", "pin_attempt", "letter_check"].includes(state.status) || !speechRecognitionSupported) {
+    if (!["enter_name", "confirm_name", "pin_attempt", "letter_check", "withdrawal", "withdrawal_confirm"].includes(state.status) || !speechRecognitionSupported) {
       return;
     }
 
@@ -915,6 +1054,12 @@ export function AtmScenarioPage() {
         if (state.status === "letter_check") {
           void startLetterListening();
         }
+        if (state.status === "withdrawal") {
+          void startAmountListening();
+        }
+        if (state.status === "withdrawal_confirm") {
+          void startWithdrawalConfirmationListening();
+        }
       }
     };
 
@@ -941,6 +1086,8 @@ export function AtmScenarioPage() {
     startLetterListening,
     startNameListening,
     startPinListening,
+    startAmountListening,
+    startWithdrawalConfirmationListening,
     state.status,
     stopListening,
   ]);
@@ -959,9 +1106,9 @@ export function AtmScenarioPage() {
   };
 
   const keypadMode =
-    state.status === "pin_attempt"
+    state.status === "pin_attempt" || (state.status === "withdrawal" && state.errorMessage !== ATM_ERROR.insufficientFunds)
       ? "numeric"
-      : state.status === "confirm_name"
+      : state.status === "confirm_name" || state.status === "withdrawal_confirm" || state.status === "withdrawal_result"
         ? "confirm"
       : ["enter_name", "letter_check"].includes(state.status)
         ? "letters"
@@ -1127,6 +1274,95 @@ export function AtmScenarioPage() {
           />
         );
 
+      case "withdrawal":
+        if (state.errorMessage === ATM_ERROR.insufficientFunds) {
+          return (
+            <AtmInsufficientFundsScreen
+              attemptedAmount={state.withdrawnAmount}
+              balance={state.accountBalance}
+              labels={{
+                title: text.insufficientFundsTitle,
+                body: text.insufficientFundsError,
+                attemptedAmount: text.attemptedAmount,
+                availableBalance: text.availableBalance,
+                returning: text.returningToWithdrawal,
+              }}
+            />
+          );
+        }
+        return (
+          <AtmWithdrawalScreen
+            balance={state.accountBalance}
+            amountInput={state.withdrawalInput}
+            errorMessage={displayedErrorMessage}
+            speechError={speechError}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
+            labels={{
+              title: text.withdrawalTitle,
+              availableBalance: text.availableBalance,
+              chooseAmount: text.chooseAmount,
+              customAmount: text.customAmount,
+              amountPlaceholder: text.amountPlaceholder,
+              pressEnter: text.withdrawalPressEnter,
+              voiceButton: text.amountVoiceButton,
+              voiceHint: text.amountVoiceHint,
+              listening: text.listening,
+              preparing: text.preparingVoice,
+            }}
+            onAmountChange={(value) => dispatch({ type: "WITHDRAWAL_REPLACE", value })}
+            onPresetSelect={(amount) => {
+              stopSpeech();
+              dispatch({ type: "WITHDRAWAL_SELECT", amount });
+            }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startAmountListening();
+            }}
+            onVoiceStop={stopListening}
+          />
+        );
+
+      case "withdrawal_confirm":
+        return (
+          <AtmWithdrawalConfirmScreen
+            amount={state.withdrawnAmount}
+            speechError={speechError}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
+            labels={{
+              title: text.withdrawalConfirmTitle,
+              question: text.withdrawalConfirmQuestion,
+              hint: text.withdrawalConfirmHint,
+              voiceButton: text.withdrawalConfirmVoiceButton,
+              voiceHint: text.withdrawalConfirmVoiceHint,
+              listening: text.listening,
+              preparing: text.preparingVoice,
+            }}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startWithdrawalConfirmationListening();
+            }}
+            onVoiceStop={stopListening}
+          />
+        );
+
+      case "withdrawal_result":
+        return (
+          <AtmWithdrawalResultScreen
+            withdrawnAmount={state.withdrawnAmount}
+            remainingBalance={state.remainingBalance}
+            labels={{
+              title: text.withdrawalResultTitle,
+              withdrawnAmount: text.withdrawnAmount,
+              remainingBalance: text.remainingBalance,
+              pressEnter: text.withdrawalResultPressEnter,
+            }}
+          />
+        );
+
       case "success":
         return (
           <AtmSuccessScreen
@@ -1180,7 +1416,7 @@ export function AtmScenarioPage() {
       keypadMode={keypadMode}
       onDigit={(digit) => {
         recordInputMode("keyboard");
-        dispatch({ type: "PIN_DIGIT", digit });
+        dispatch({ type: state.status === "withdrawal" ? "WITHDRAWAL_DIGIT" : "PIN_DIGIT", digit });
       }}
       onLetter={(letter) => {
         recordInputMode("keyboard");
@@ -1204,6 +1440,12 @@ export function AtmScenarioPage() {
         if (state.status === "letter_check") {
           dispatch({ type: "LETTER_CLEAR" });
         }
+        if (state.status === "withdrawal") {
+          dispatch({ type: "WITHDRAWAL_CLEAR" });
+        }
+        if (state.status === "withdrawal_confirm") {
+          completeWithdrawalConfirmation(false);
+        }
       }}
       onBackspace={() => {
         if (state.status === "enter_name") {
@@ -1218,10 +1460,20 @@ export function AtmScenarioPage() {
         if (state.status === "letter_check") {
           dispatch({ type: "LETTER_BACKSPACE" });
         }
+        if (state.status === "withdrawal") {
+          dispatch({ type: "WITHDRAWAL_BACKSPACE" });
+        }
+        if (state.status === "withdrawal_confirm") {
+          completeWithdrawalConfirmation(false);
+        }
       }}
       onEnter={() => {
         if (state.status === "confirm_name") {
           completeNameConfirmation(true);
+          return;
+        }
+        if (state.status === "withdrawal_confirm") {
+          completeWithdrawalConfirmation(true);
           return;
         }
         stopSpeech();
@@ -1239,15 +1491,21 @@ export function AtmScenarioPage() {
                 client_event_id: crypto.randomUUID(),
                 event_type: "pin_submission",
                 pin_outcome: pinOutcome,
-                final_step_reached: state.pinAttemptCount===0 ? "security_message" : !state.identityVerified ? "letter_check" : pinOutcome === "success" ? "success" : state.status,
+                final_step_reached: state.pinAttemptCount===0 ? "security_message" : !state.identityVerified ? "letter_check" : pinOutcome === "success" ? "withdrawal" : state.status,
               }),
             );
           }
           dispatch({ type: "PIN_SUBMIT" });
         }
         if (state.status === "letter_check") {
-          if(state.letterInput.length===2){const expected=`${state.expectedSecondLetter}${state.expectedLastLetter}`.normalize("NFC").toLocaleLowerCase();const correct=state.letterInput.trim().normalize("NFC").toLocaleLowerCase()===expected;enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"identity_verification",verification_outcome:correct?"success":"failed",final_step_reached:correct?(state.pinWasCorrectBeforeVerification?"success":"pin_attempt"):(state.verificationAttemptCount+1>=3?"security_terminated":"letter_check")}));if(correct&&state.pinWasCorrectBeforeVerification===false)enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"returned_to_pin",final_step_reached:"pin_attempt"}));}
+          if(state.letterInput.length===2){const expected=`${state.expectedSecondLetter}${state.expectedLastLetter}`.normalize("NFC").toLocaleLowerCase();const correct=state.letterInput.trim().normalize("NFC").toLocaleLowerCase()===expected;enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"identity_verification",verification_outcome:correct?"success":"failed",final_step_reached:correct?(state.pinWasCorrectBeforeVerification?"withdrawal":"pin_attempt"):(state.verificationAttemptCount+1>=3?"security_terminated":"letter_check")}));if(correct&&state.pinWasCorrectBeforeVerification===false)enqueueAnalytics(sessionId=>recordAtmAnalyticsEvent(sessionId,{client_event_id:crypto.randomUUID(),event_type:"returned_to_pin",final_step_reached:"pin_attempt"}));}
           dispatch({ type: "LETTER_SUBMIT" });
+        }
+        if (state.status === "withdrawal") {
+          dispatch({ type: "WITHDRAWAL_SUBMIT" });
+        }
+        if (state.status === "withdrawal_result") {
+          dispatch({ type: "WITHDRAWAL_RESULT_CONTINUE" });
         }
       }}
       onCancel={() => {
@@ -1262,6 +1520,12 @@ export function AtmScenarioPage() {
         }
         if (state.status === "letter_check") {
           dispatch({ type: "LETTER_CLEAR" });
+        }
+        if (state.status === "withdrawal") {
+          dispatch({ type: "WITHDRAWAL_CLEAR" });
+        }
+        if (state.status === "withdrawal_confirm") {
+          completeWithdrawalConfirmation(false);
         }
       }}
       assistantMessage={
