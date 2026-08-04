@@ -20,6 +20,10 @@ type SpeechRecognitionErrorMessages = {
   browserFallback: string;
   noSpeech: string;
   limitReached: string;
+  sessionExpired: string;
+  providerUnavailable: string;
+  networkError: string;
+  busy: string;
 };
 
 const BROWSER_FALLBACK_CODE = "browser-stt-fallback";
@@ -395,6 +399,7 @@ class BackendSpeechRecognizer {
   private stream: MediaStream | null = null;
   private buffers: Float32Array[] = [];
   private isStopping = false;
+  private stopRequested = false;
   private isStarted = false;
   private hasEnded = false;
 
@@ -410,7 +415,10 @@ class BackendSpeechRecognizer {
   }
 
   stop() {
-    void this.stopRecording();
+    this.stopRequested = true;
+    if (this.isStarted) {
+      void this.stopRecording();
+    }
   }
 
   private async startRecording() {
@@ -423,12 +431,6 @@ class BackendSpeechRecognizer {
       }
 
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (this.isStopping) {
-        await this.cleanup();
-        this.endOnce();
-        return;
-      }
-
       this.audioContext = new AudioContextConstructor();
       if (this.audioContext.state === "suspended") {
         await this.audioContext.resume();
@@ -445,6 +447,9 @@ class BackendSpeechRecognizer {
       this.processor.connect(this.audioContext.destination);
       this.isStarted = true;
       this.callbacks.onReady?.();
+      if (this.stopRequested) {
+        await this.stopRecording();
+      }
     } catch (error) {
       this.callbacks.onError(
         error instanceof DOMException && error.name === "NotAllowedError"
@@ -470,7 +475,7 @@ class BackendSpeechRecognizer {
 
     const sampleRate = this.audioContext.sampleRate;
     if (this.buffers.length === 0) {
-      this.callbacks.onError(this.errorMessages.problem);
+      this.callbacks.onError(this.errorMessages.noSpeech);
       await this.cleanup();
       this.endOnce();
       return;
@@ -503,6 +508,14 @@ class BackendSpeechRecognizer {
         this.callbacks.onError(this.errorMessages.noSpeech);
       } else if (error instanceof ApiError && error.status === 403) {
         this.callbacks.onError(this.errorMessages.limitReached);
+      } else if (error instanceof ApiError && error.status === 401) {
+        this.callbacks.onError(this.errorMessages.sessionExpired);
+      } else if (error instanceof ApiError && error.status === 409) {
+        this.callbacks.onError(this.errorMessages.busy);
+      } else if (error instanceof ApiError && [502, 503, 504].includes(error.status)) {
+        this.callbacks.onError(this.errorMessages.providerUnavailable);
+      } else if (error instanceof TypeError) {
+        this.callbacks.onError(this.errorMessages.networkError);
       } else {
         this.callbacks.onError(this.errorMessages.problem);
       }
@@ -686,6 +699,10 @@ export function createSpeechRecognizer(
     browserFallback: "Browser voice input is ready. Hold Space and speak again.",
     noSpeech: "No clear speech was recognized. Hold Space and try again.",
     limitReached: "Speech time limit reached. Please type or use the keypad.",
+    sessionExpired: "Your session expired. Please sign in or continue as a guest again.",
+    providerUnavailable: "Voice recognition is temporarily unavailable. Please try again or type.",
+    networkError: "The speech service could not be reached. Check your connection and try again.",
+    busy: "Voice recognition is busy. Please wait a moment and try again.",
   },
 ) {
   if (!isSpeechRecognitionSupported()) {

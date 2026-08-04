@@ -52,7 +52,8 @@ export function MySpeechUsagePage() {
       setReason("");
       setMessage(text.submitted);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : text.requestFailed);
+      console.error("Speech quota request failed", error);
+      setMessage(text.requestFailed);
     }
   };
 

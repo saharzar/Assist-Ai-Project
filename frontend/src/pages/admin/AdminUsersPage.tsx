@@ -96,7 +96,8 @@ export function AdminUsersPage() {
       if (filteredResult.status === "fulfilled") {
         setUsers(filteredResult.value);
       } else {
-        setErrorMessage(filteredResult.reason instanceof Error ? filteredResult.reason.message : t("authFormError"));
+        console.error("Admin user request failed", filteredResult.reason);
+        setErrorMessage(t("authFormError"));
       }
       if (allResult.status === "fulfilled") {
         setAllUsers(allResult.value.filter((item) => item.role !== "admin"));

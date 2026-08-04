@@ -41,7 +41,7 @@ export function LoginPage() {
         } else if (error.message.includes("suspended")) {
           setErrorMessage(t("suspendedAccountMessage"));
         } else {
-          setErrorMessage(error.message);
+          setErrorMessage(t("authFormError"));
         }
       } else {
         setErrorMessage(t("authFormError"));

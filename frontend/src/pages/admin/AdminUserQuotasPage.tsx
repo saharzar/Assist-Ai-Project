@@ -32,7 +32,10 @@ export function AdminUserQuotasPage() {
   const load = async () => {
     const [quotaResult, requestResult] = await Promise.allSettled([getAdminQuotas(), getQuotaRequests()]);
     if (quotaResult.status === "fulfilled") setRows(quotaResult.value);
-    else setMessage(quotaResult.reason instanceof Error ? quotaResult.reason.message : text.loadError);
+    else {
+      console.error("Admin quota request failed", quotaResult.reason);
+      setMessage(text.loadError);
+    }
     if (requestResult.status === "fulfilled") setRequests(requestResult.value);
     else console.error("Optional quota request history could not be loaded", requestResult.reason);
   };

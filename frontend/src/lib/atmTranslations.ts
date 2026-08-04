@@ -119,6 +119,10 @@ type AtmTranslation = {
   speechMicBlocked: string;
   speechLimitReached: string;
   speechProblem: string;
+  speechSessionExpired: string;
+  speechProviderUnavailable: string;
+  speechNetworkError: string;
+  speechBusy: string;
   speechBrowserFallback: string;
   speechNoMatch: string;
   assistantVoiceProblem: string;
@@ -244,6 +248,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Microphone access was blocked. Please type or use the keypad.",
     speechLimitReached: "Speech time limit reached. Please type or use the keypad.",
     speechProblem: "Voice input had a problem. Please try again or type.",
+    speechSessionExpired: "Your session expired. Please sign in or continue as a guest again.",
+    speechProviderUnavailable: "Voice recognition is temporarily unavailable. Please try again or type.",
+    speechNetworkError: "The speech service could not be reached. Check your connection and try again.",
+    speechBusy: "Voice recognition is busy. Please wait a moment and try again.",
     speechBrowserFallback: "Browser voice input is ready. Hold Space and speak again.",
     speechNoMatch: "No clear speech was recognized. Hold Space and try again.",
     assistantVoiceProblem: "The assistant voice could not play. Please try again.",
@@ -367,6 +375,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "El acceso al micrófono fue bloqueado. Escribe o usa el teclado.",
     speechLimitReached: "Se alcanzó el límite de voz. Escribe o usa el teclado.",
     speechProblem: "La entrada de voz tuvo un problema. Intenta de nuevo o escribe.",
+    speechSessionExpired: "Tu sesión ha caducado. Inicia sesión o continúa de nuevo como invitado.",
+    speechProviderUnavailable: "El reconocimiento de voz no está disponible temporalmente. Inténtalo de nuevo o escribe.",
+    speechNetworkError: "No se pudo conectar con el servicio de voz. Comprueba tu conexión e inténtalo de nuevo.",
+    speechBusy: "El reconocimiento de voz está ocupado. Espera un momento e inténtalo de nuevo.",
     speechBrowserFallback: "La entrada de voz del navegador está lista. Mantén pulsado Espacio y vuelve a hablar.",
     speechNoMatch: "No se reconoció una voz clara. Mantén pulsado Espacio e inténtalo de nuevo.",
     assistantVoiceProblem: "No se pudo reproducir la voz del asistente. Inténtalo de nuevo.",
@@ -490,6 +502,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Mikrofonzugriff wurde blockiert. Bitte tippe oder nutze das Tastenfeld.",
     speechLimitReached: "Das Sprachlimit ist erreicht. Bitte tippe oder nutze das Tastenfeld.",
     speechProblem: "Bei der Spracheingabe gab es ein Problem. Versuche es erneut oder tippe.",
+    speechSessionExpired: "Deine Sitzung ist abgelaufen. Melde dich an oder fahre erneut als Gast fort.",
+    speechProviderUnavailable: "Die Spracherkennung ist vorübergehend nicht verfügbar. Versuche es erneut oder tippe.",
+    speechNetworkError: "Der Sprachdienst konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.",
+    speechBusy: "Die Spracherkennung ist beschäftigt. Warte einen Moment und versuche es erneut.",
     speechBrowserFallback: "Die Spracheingabe des Browsers ist bereit. Halte die Leertaste gedrückt und sprich erneut.",
     speechNoMatch: "Es wurde keine klare Sprache erkannt. Halte die Leertaste gedrückt und versuche es erneut.",
     assistantVoiceProblem: "Die Assistentenstimme konnte nicht abgespielt werden. Versuche es erneut.",
@@ -613,6 +629,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "Mikrofon erişimi engellendi. Lütfen yaz veya tuş takımını kullan.",
     speechLimitReached: "Konuşma süresi limitine ulaşıldı. Lütfen yaz veya tuş takımını kullan.",
     speechProblem: "Ses girişinde bir problem oldu. Lütfen tekrar dene veya yaz.",
+    speechSessionExpired: "Oturumun sona erdi. Lütfen giriş yap veya yeniden misafir olarak devam et.",
+    speechProviderUnavailable: "Ses tanıma geçici olarak kullanılamıyor. Lütfen tekrar dene veya yaz.",
+    speechNetworkError: "Ses hizmetine ulaşılamadı. Bağlantını kontrol edip tekrar dene.",
+    speechBusy: "Ses tanıma şu anda meşgul. Biraz bekleyip tekrar dene.",
     speechBrowserFallback: "Tarayıcı ses girişi hazır. Boşluk tuşunu basılı tut ve tekrar konuş.",
     speechNoMatch: "Net bir konuşma algılanamadı. Boşluk tuşunu basılı tutup tekrar dene.",
     assistantVoiceProblem: "Asistanın sesi oynatılamadı. Lütfen tekrar dene.",
@@ -736,6 +756,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "O acesso ao microfone foi bloqueado. Digite ou use o teclado.",
     speechLimitReached: "O limite de fala foi atingido. Digite ou use o teclado.",
     speechProblem: "A entrada de voz teve um problema. Tente novamente ou digite.",
+    speechSessionExpired: "A tua sessão expirou. Inicia sessão ou continua novamente como convidado.",
+    speechProviderUnavailable: "O reconhecimento de voz está temporariamente indisponível. Tenta novamente ou escreve.",
+    speechNetworkError: "Não foi possível contactar o serviço de voz. Verifica a ligação e tenta novamente.",
+    speechBusy: "O reconhecimento de voz está ocupado. Aguarda um momento e tenta novamente.",
     speechBrowserFallback: "A entrada de voz do navegador está pronta. Mantenha Espaço premido e fale novamente.",
     speechNoMatch: "Não foi reconhecida uma fala clara. Mantenha Espaço premido e tente novamente.",
     assistantVoiceProblem: "Não foi possível reproduzir a voz do assistente. Tente novamente.",
@@ -859,6 +883,10 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     speechMicBlocked: "L'accès au microphone a été bloqué. Écris ou utilise le clavier.",
     speechLimitReached: "La limite de parole est atteinte. Écris ou utilise le clavier.",
     speechProblem: "Un problème est survenu avec la saisie vocale. Réessaie ou écris.",
+    speechSessionExpired: "Ta session a expiré. Connecte-toi ou continue de nouveau en tant qu'invité.",
+    speechProviderUnavailable: "La reconnaissance vocale est temporairement indisponible. Réessaie ou écris.",
+    speechNetworkError: "Le service vocal est inaccessible. Vérifie ta connexion et réessaie.",
+    speechBusy: "La reconnaissance vocale est occupée. Attends un instant et réessaie.",
     speechBrowserFallback: "La saisie vocale du navigateur est prête. Maintiens la barre d'espace et parle à nouveau.",
     speechNoMatch: "Aucune parole claire n'a été reconnue. Maintiens la barre d'espace et réessaie.",
     assistantVoiceProblem: "La voix de l'assistant n'a pas pu être lue. Réessaie.",

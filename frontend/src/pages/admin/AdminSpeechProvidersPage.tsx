@@ -59,7 +59,8 @@ export function AdminSpeechProvidersPage() {
         setDashboard(value); setDraft(value); notifySpeechProviderUpdated(value);
       })
       .catch((reason) => {
-        if (isMounted) setError(reason instanceof Error ? reason.message : text.loadError);
+        console.error("Speech provider dashboard request failed", reason);
+        if (isMounted) setError(text.loadError);
       })
       .finally(() => { if (isMounted) setIsLoading(false); });
     return () => { isMounted = false; };
@@ -93,7 +94,10 @@ export function AdminSpeechProvidersPage() {
         capabilities: draft.capabilities.map(({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day }) => ({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day })),
       });
       setDashboard(updated); setDraft(updated); setSuccess(labels.saved); notifySpeechProviderUpdated(updated);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : text.saveError); }
+    } catch (reason) {
+      console.error("Speech provider settings update failed", reason);
+      setError(text.saveError);
+    }
     finally { setSaving(false); }
   };
 

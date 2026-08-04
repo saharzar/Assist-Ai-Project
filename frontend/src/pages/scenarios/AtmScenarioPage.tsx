@@ -367,9 +367,14 @@ export function AtmScenarioPage() {
   };
 
   const refreshSttUsage = useCallback(async () => {
-    const usage = await getSttUsage();
-    sttUsageRef.current = usage;
-    return usage;
+    try {
+      const usage = await getSttUsage();
+      sttUsageRef.current = usage;
+      return usage;
+    } catch (error) {
+      console.warn("STT usage preflight failed; the transcription endpoint will enforce quota.", error);
+      return sttUsageRef.current ?? { limit: 3600, used: 0, remaining: 3600, resetDate: "" };
+    }
   }, []);
 
   const finishListeningSession = useCallback(() => {
@@ -388,6 +393,10 @@ export function AtmScenarioPage() {
     const translatedMessages = new Set([
       text.speechMicBlocked,
       text.speechProblem,
+      text.speechSessionExpired,
+      text.speechProviderUnavailable,
+      text.speechNetworkError,
+      text.speechBusy,
       text.speechBrowserFallback,
       text.speechNoMatch,
       text.speechLimitReached,
@@ -674,6 +683,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
 
@@ -740,6 +753,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
 
@@ -792,6 +809,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
     if (!recognizer) {
@@ -859,6 +880,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
     if (!recognizer) {
@@ -927,6 +952,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
     if (!recognizer) {
@@ -985,6 +1014,10 @@ export function AtmScenarioPage() {
         browserFallback: text.speechBrowserFallback,
         noSpeech: text.speechNoMatch,
         limitReached: text.speechLimitReached,
+        sessionExpired: text.speechSessionExpired,
+        providerUnavailable: text.speechProviderUnavailable,
+        networkError: text.speechNetworkError,
+        busy: text.speechBusy,
       },
     );
     if (!recognizer) {
