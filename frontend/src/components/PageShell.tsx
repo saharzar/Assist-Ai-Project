@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Globe2 } from "lucide-react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation, type LanguageCode } from "../i18n";
@@ -27,7 +27,6 @@ import {
 
 export function PageShell() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { language, setLanguage, t } = useTranslation();
   const { user, isAuthenticated, isGuest, logout } = useAuth();
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
@@ -52,7 +51,7 @@ export function PageShell() {
 
   const handleLogout = () => {
     logout();
-    navigate("/", { replace: true });
+    window.location.replace("/login");
   };
 
   useEffect(() => {

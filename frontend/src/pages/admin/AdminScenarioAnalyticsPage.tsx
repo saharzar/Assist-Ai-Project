@@ -90,7 +90,7 @@ export function AdminScenarioAnalyticsPage() {
             >
               <span className={`pointer-events-none absolute right-5 top-1 font-display text-[5.6rem] font-extrabold leading-none transition-colors duration-300 ${isAvailable ? "text-cyan-200/65 group-hover:text-cyan-200" : "text-white/80 group-hover:text-cyan-100/90"}`} aria-hidden="true">{scenarioNumber}</span>
               <div className="relative z-10">
-                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl border ${isAvailable ? "border-cyan-300 bg-[#302992] text-white shadow-md" : "border-white/80 bg-white/65 text-[#302992] transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-md motion-reduce:transform-none"}`}>
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl border transition duration-300 motion-reduce:transform-none ${isAvailable ? "border-white/90 bg-white text-[#302992] shadow-md group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-lg" : "border-white/80 bg-white/65 text-[#302992] group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-md"}`}>
                   <Icon className="h-7 w-7" aria-hidden="true" />
                 </div>
                 <h2 className={`max-w-[85%] font-display text-lg font-bold leading-[1.35] ${isAvailable ? "text-[#1d1a5e]" : "text-[#555478]"}`}>{translatedScenario.title}</h2>

@@ -71,7 +71,7 @@ export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
           <div
             className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-display ${
               isAvailable
-                ? "border-cyan-300 bg-[#302992] text-white shadow-md transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#2dd8d8] group-hover:text-[#1d1a5e] group-hover:shadow-lg motion-reduce:transform-none"
+                ? "border-white/90 bg-white text-[#302992] shadow-md transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-lg motion-reduce:transform-none"
                 : "border-white/80 bg-white/65 text-[#302992] transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-md motion-reduce:transform-none"
             }`}
           >

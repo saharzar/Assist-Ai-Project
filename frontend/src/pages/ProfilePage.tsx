@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation, type LanguageCode } from "../i18n";
@@ -34,7 +34,6 @@ const roleNames: Record<LanguageCode, Record<string, string>> = {
 };
 
 export function ProfilePage() {
-  const navigate = useNavigate();
   const { user, isAuthenticated, isGuest, guestSession, setPreferredLanguage, logout } = useAuth();
   const { language, setLanguage, t } = useTranslation();
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
@@ -46,7 +45,7 @@ export function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    navigate("/", { replace: true });
+    window.location.replace("/login");
   };
 
   const handleLanguageChange = async (preferredLanguage: LanguageCode) => {

@@ -28,7 +28,7 @@ export function GuestConsentPage() {
 
   return (
     <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center px-5 py-8 sm:py-12">
-      <div className="auth-surface w-full max-w-[620px] border border-white/80 bg-white/88 p-6 text-center shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] backdrop-blur-xl sm:p-11">
+      <div className="auth-surface w-full max-w-[620px] border border-white bg-white p-6 text-center shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] sm:p-11">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-cyan-100 text-[#302992] ring-4 ring-white" aria-hidden="true">
           <UserRound className="h-8 w-8" strokeWidth={2.25} />
         </div>

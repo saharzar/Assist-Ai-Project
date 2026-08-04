@@ -57,7 +57,7 @@ export function LoginPage() {
 
   return (
     <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center px-5 py-8 sm:py-12">
-      <div className="auth-surface w-full max-w-[550px] border border-white/80 bg-white/88 p-6 shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] backdrop-blur-xl sm:p-11">
+      <div className="auth-surface w-full max-w-[550px] border border-white bg-white p-6 shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] sm:p-11">
       <div className="flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true">
         <span className="w-2/3 bg-[#3730a3]" />
         <span className="w-1/3 bg-cyan-400" />

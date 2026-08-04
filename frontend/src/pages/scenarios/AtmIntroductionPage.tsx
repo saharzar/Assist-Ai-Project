@@ -6,13 +6,14 @@ import { useTranslation } from "../../i18n";
 import { atmIntroductionTranslations } from "../../lib/atmIntroductionTranslations";
 
 const stepIcons = [UserRound, KeyRound, ShieldCheck, Banknote, CheckCircle2];
-const stepStyles = [
-  { accent: "bg-[#2dd8d8]", icon: "bg-cyan-100 text-[#087f8c]", panel: "bg-cyan-50/80", number: "text-cyan-200/70" },
-  { accent: "bg-[#5147d9]", icon: "bg-indigo-100 text-[#302992]", panel: "bg-indigo-50/80", number: "text-indigo-200/70" },
-  { accent: "bg-[#8b5cf6]", icon: "bg-violet-100 text-violet-700", panel: "bg-violet-50/80", number: "text-violet-200/70" },
-  { accent: "bg-[#f4b740]", icon: "bg-amber-100 text-amber-800", panel: "bg-amber-50/80", number: "text-amber-200/70" },
-  { accent: "bg-[#20b486]", icon: "bg-emerald-100 text-emerald-700", panel: "bg-emerald-50/80", number: "text-emerald-200/70" },
+const stepColors = [
+  "bg-cyan-50/80 hover:bg-cyan-100/75",
+  "bg-indigo-50/75 hover:bg-indigo-100/70",
+  "bg-violet-50/70 hover:bg-violet-100/65",
+  "bg-sky-50/80 hover:bg-sky-100/70",
+  "bg-teal-50/75 hover:bg-teal-100/70",
 ];
+const stepIconColors = ["bg-[#159fb5]", "bg-[#3d36ad]", "bg-[#6651c7]", "bg-[#287ec1]", "bg-[#138f8f]"];
 
 export function AtmIntroductionPage() {
   const { language } = useTranslation();
@@ -34,53 +35,72 @@ export function AtmIntroductionPage() {
           <p className="mx-auto mt-3 max-w-3xl text-base leading-7 text-[#5b5a78]">{text.subtitle}</p>
         </header>
 
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <div className="min-w-0">
-            <h2 className="text-center font-display text-xl font-bold text-[#1d1a5e] lg:text-left">{text.whatWillHappen}</h2>
-            <ol className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mx-auto mt-8 max-w-6xl">
+          <div className="overflow-hidden rounded-3xl border border-cyan-200/80 bg-white/90 shadow-[0_22px_48px_-32px_rgba(48,41,146,0.42)] backdrop-blur-sm">
+            <div className="grid items-center gap-0 lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.1fr)]">
+              <div className="bg-[#111936] p-4 sm:p-6">
+                <img src={atmImageUrl} alt={text.atmPreviewAlt} className="mx-auto aspect-[3/2] w-full max-w-xl object-contain" />
+              </div>
+              <div className="border-t-4 border-[#2dd8d8] p-6 text-center lg:border-l-4 lg:border-t-0 lg:p-8 lg:text-left">
+                <p className="font-display text-xl font-bold leading-8 text-[#1d1a5e]">{text.reassurance}</p>
+                <div className="mt-5 flex gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left shadow-[0_12px_28px_-22px_rgba(180,83,9,0.55)]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm" aria-hidden="true">
+                    <ShieldCheck className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-amber-950">{text.safetyTitle}</h3>
+                    <p className="mt-1 text-sm leading-6 text-amber-900">{text.safetyBody}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section className="mt-8 rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50/70 via-white/80 to-indigo-50/75 px-4 py-7 shadow-[0_22px_48px_-38px_rgba(48,41,146,0.5)] sm:px-6" aria-labelledby="atm-introduction-steps">
+            <span className="mx-auto mb-4 flex h-1.5 w-20 overflow-hidden rounded-full" aria-hidden="true">
+              <i className="w-1/2 bg-[#3730a3]" />
+              <i className="w-1/2 bg-[#2dd8d8]" />
+            </span>
+            <h2 id="atm-introduction-steps" className="text-center font-display text-2xl font-bold text-[#1d1a5e]">{text.whatWillHappen}</h2>
+            <ol className="mx-auto mt-6 grid max-w-6xl overflow-hidden rounded-3xl border border-indigo-950/10 bg-white shadow-[0_22px_48px_-34px_rgba(48,41,146,0.42)] sm:grid-cols-2 xl:grid-cols-5">
               {text.steps.map((step, index) => {
                 const Icon = stepIcons[index];
-                const style = stepStyles[index];
                 return (
-                  <li key={step.title} className={`group relative min-h-48 overflow-hidden rounded-2xl border border-indigo-950/10 p-5 shadow-[0_14px_34px_-28px_rgba(48,41,146,0.45)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:bg-white hover:shadow-[0_22px_42px_-25px_rgba(45,216,216,0.55)] ${style.panel} ${index === text.steps.length - 1 ? "sm:col-span-2" : ""}`}>
-                    <span className={`pointer-events-none absolute right-4 top-0 text-7xl font-extrabold leading-none transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 ${style.number}`} aria-hidden="true">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-xl ring-4 ring-white/70 transition duration-300 group-hover:-rotate-3 group-hover:scale-105 ${style.icon}`}>
-                      <Icon className="h-5 w-5" aria-hidden="true" />
+                  <li
+                    key={step.title}
+                    className={`group relative flex min-h-32 gap-4 border-indigo-950/10 p-5 transition-all duration-200 hover:-translate-y-0.5 ${stepColors[index]} sm:min-h-40 sm:flex-col sm:border-b sm:border-r xl:border-b-0 ${
+                      index === text.steps.length - 1 ? "sm:col-span-2 sm:border-b-0 xl:col-span-1 xl:border-r-0" : ""
+                    }`}
+                  >
+                    <div className="flex shrink-0 items-center gap-3 sm:w-full">
+                      <span className={`flex h-11 w-11 items-center justify-center rounded-full text-white shadow-[0_7px_18px_-8px_rgba(48,41,146,0.75)] ${stepIconColors[index]}`} aria-hidden="true">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-xs font-bold text-[#8f8da8]">{String(index + 1).padStart(2, "0")}</span>
                     </div>
-                    <span className={`mt-5 block h-1 w-10 rounded-full transition-all duration-300 group-hover:w-16 ${style.accent}`} aria-hidden="true" />
-                    <h3 className="relative z-10 mt-3 font-display text-base font-bold text-[#1d1a5e] sm:text-lg">{step.title}</h3>
-                    <p className="relative z-10 mt-1 text-sm leading-6 text-[#5b5a78]">{step.body}</p>
+                    <div>
+                      <h3 className="font-display text-base font-bold leading-6 text-[#1d1a5e]">{step.title}</h3>
+                      <p className="mt-1 text-sm leading-5 text-[#5b5a78]">{step.body}</p>
+                    </div>
                   </li>
                 );
               })}
             </ol>
-          </div>
+          </section>
 
-          <aside className="overflow-hidden rounded-2xl border border-cyan-200/80 bg-white/90 shadow-[0_22px_48px_-30px_rgba(48,41,146,0.42)] backdrop-blur-sm lg:sticky lg:top-6">
-            <div className="border-b-4 border-[#2dd8d8] bg-[#111936] p-3">
-              <img src={atmImageUrl} alt={text.atmPreviewAlt} className="aspect-[3/2] w-full object-contain" />
-            </div>
-            <div className="p-5 sm:p-6">
-              <h2 className="font-display text-xl font-bold text-[#1d1a5e]">{text.waysToRespond}</h2>
-              <div className="mt-4 grid gap-3">
-                <div className="group flex gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-indigo-100/80">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-[#302992]"><Keyboard className="h-5 w-5" aria-hidden="true" /></span>
-                  <div><h3 className="font-bold text-[#1d1a5e]">{text.keypadTitle}</h3><p className="mt-1 text-sm leading-6 text-[#5b5a78]">{text.keypadBody}</p></div>
+          <section className="mt-8 overflow-hidden rounded-3xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50/80 via-white/90 to-cyan-50/80 p-5 shadow-[0_20px_44px_-34px_rgba(48,41,146,0.45)] backdrop-blur-sm sm:p-7" aria-labelledby="atm-response-methods">
+              <h2 id="atm-response-methods" className="text-center font-display text-2xl font-bold text-[#1d1a5e]">{text.waysToRespond}</h2>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="group flex items-center gap-4 rounded-2xl border border-indigo-200/70 bg-indigo-50/85 p-5 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-indigo-100/75">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#3d36ad] text-white shadow-md shadow-indigo-900/10"><Keyboard className="h-6 w-6" aria-hidden="true" /></span>
+                  <div><h3 className="font-display text-lg font-bold text-[#1d1a5e]">{text.keypadTitle}</h3><p className="mt-1 text-sm leading-6 text-[#5b5a78]">{text.keypadBody}</p></div>
                 </div>
-                <div className="group flex gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-100/80">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-[#087f8c]"><Mic className="h-5 w-5" aria-hidden="true" /></span>
-                  <div><h3 className="font-bold text-[#1d1a5e]">{text.voiceTitle}</h3><p className="mt-1 text-sm leading-6 text-[#5b5a78]">{text.voiceBody}</p></div>
+                <div className="group flex items-center gap-4 rounded-2xl border border-cyan-200/80 bg-cyan-50/85 p-5 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-100/75">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#159fb5] text-white shadow-md shadow-cyan-900/10"><Mic className="h-6 w-6" aria-hidden="true" /></span>
+                  <div><h3 className="font-display text-lg font-bold text-[#1d1a5e]">{text.voiceTitle}</h3><p className="mt-1 text-sm leading-6 text-[#5b5a78]">{text.voiceBody}</p></div>
                 </div>
               </div>
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <h3 className="font-bold text-amber-950">{text.safetyTitle}</h3>
-                <p className="mt-1 text-sm leading-6 text-amber-900">{text.safetyBody}</p>
-              </div>
-              <p className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm font-semibold leading-6 text-violet-900">{text.reassurance}</p>
-            </div>
-          </aside>
+          </section>
         </div>
 
         <div className="mt-8 flex flex-col-reverse gap-3 border-t border-indigo-950/10 pt-6 sm:flex-row sm:justify-between">
