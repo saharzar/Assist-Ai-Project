@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Globe2 } from "lucide-react";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { languages, useTranslation } from "../i18n";
+import { languages, useTranslation, type LanguageCode } from "../i18n";
 import { speechUsageTranslations } from "../lib/speechUsageTranslations";
 import {
   getSttUsage,
@@ -26,7 +27,6 @@ import {
 
 export function PageShell() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { language, setLanguage, t } = useTranslation();
   const { user, isAuthenticated, isGuest, logout } = useAuth();
   const [ttsUsage, setTtsUsage] = useState<TtsUsage | null>(null);
@@ -35,7 +35,7 @@ export function PageShell() {
   const [isAtmNavigationVisible, setIsAtmNavigationVisible] = useState(false);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
-  const isAtmScenario = location.pathname === "/scenario/atm-withdrawal";
+  const isAtmScenario = location.pathname === "/scenario/atm-withdrawal/practice";
   const isLandingPage = location.pathname === "/";
   const isAuthPage =
     location.pathname === "/login" ||
@@ -51,7 +51,7 @@ export function PageShell() {
 
   const handleLogout = () => {
     logout();
-    navigate("/", { replace: true });
+    window.location.replace("/login");
   };
 
   useEffect(() => {
@@ -147,8 +147,8 @@ export function PageShell() {
         isAtmScenario
           ? "bg-slate-950 text-slate-100"
           : isBrandedPublicPage
-            ? "bg-[#fafbff] text-indigo-950"
-            : "bg-slate-50 text-slate-800"
+            ? "brand-atmosphere text-indigo-950"
+            : "brand-atmosphere text-slate-800"
       }`}
       style={
         isAtmScenario
@@ -176,8 +176,10 @@ export function PageShell() {
       )}
       {isBrandedPublicPage && (
         <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-          <div className="absolute right-0 top-0 h-[58vh] max-h-[500px] min-h-[340px] w-[34vw] min-w-[390px] rounded-bl-[100%] bg-cyan-200/75 sm:min-w-[480px]" />
-          <div className="absolute bottom-0 left-0 h-[38vh] max-h-[330px] min-h-[210px] w-[21vw] min-w-[250px] rounded-tr-[100%] bg-indigo-200/45 sm:min-w-[330px]" />
+          <div className="absolute inset-x-0 top-[16%] h-[52%] bg-cyan-100/30 [clip-path:polygon(0_18%,38%_0,100%_24%,100%_86%,55%_100%,0_72%)]" />
+          <div className="absolute right-0 top-0 h-[60vh] max-h-[540px] min-h-[360px] w-[36vw] min-w-[410px] rounded-bl-[100%] bg-cyan-200/70 sm:min-w-[500px]" />
+          <div className="absolute bottom-0 left-0 h-[40vh] max-h-[350px] min-h-[220px] w-[23vw] min-w-[270px] rounded-tr-[100%] bg-indigo-200/40 sm:min-w-[350px]" />
+          <div className="absolute bottom-[4%] right-[12%] h-[25%] w-[34%] bg-indigo-100/35 [clip-path:polygon(20%_0,100%_35%,76%_100%,0_70%)]" />
         </div>
       )}
       {showHeader && (
@@ -190,7 +192,7 @@ export function PageShell() {
         }`}
       >
         <nav className={`mx-auto flex items-center justify-between ${
-          isBrandedPublicPage ? "h-20 max-w-none px-6 lg:px-12" : "h-[70px] max-w-7xl px-5 lg:px-10"
+          isBrandedPublicPage ? "mt-4 min-h-[72px] w-[calc(100%-2rem)] max-w-7xl rounded-[28px] border border-white/80 bg-white/85 px-5 shadow-[0_16px_45px_-28px_rgba(29,26,94,0.4)] backdrop-blur-xl sm:w-[calc(100%-3rem)] lg:px-8" : "h-[70px] max-w-7xl px-5 lg:px-10"
         }`}>
           <Link
             to={homeTarget}
@@ -238,21 +240,7 @@ export function PageShell() {
             {isAuthenticated && !isAdmin && (
               <Link to="/speech-usage" className="hidden min-h-[42px] items-center rounded-full border border-indigo-950/10 bg-white px-4 py-2 text-sm font-semibold text-[#5b5a78] transition hover:border-cyan-300 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-cyan-400 xl:inline-flex">{speechUsageTranslations[language].title}</Link>
             )}
-            <label className="sr-only" htmlFor="language-select">
-              {t("language")}
-            </label>
-            <select
-              id="language-select"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as typeof language)}
-              className="min-h-[42px] rounded-full border border-indigo-950/10 bg-white px-4 py-2 text-sm font-medium text-[#5b5a78] outline-none transition hover:border-cyan-300 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
-            >
-              {languages.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            <LanguageMenu language={language} onChange={setLanguage} label={t("language")} compact={isBrandedPublicPage} />
             {hasSession ? (
               <>
                 <Link
@@ -269,14 +257,7 @@ export function PageShell() {
                   {t("logout")}
                 </button>
               </>
-            ) : (
-              <Link
-                to="/login"
-                className="inline-flex min-h-[52px] items-center rounded-full bg-indigo-800 px-7 py-3 text-base font-bold text-white shadow-soft transition hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
-              >
-                {t("login")}
-              </Link>
-            )}
+            ) : null}
           </div>
         </nav>
         {isAdmin && (
@@ -310,6 +291,61 @@ export function PageShell() {
       >
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+function LanguageMenu({ language, onChange, label, compact }: { language: LanguageCode; onChange: (language: LanguageCode) => void; label: string; compact: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeMenu = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    return () => document.removeEventListener("mousedown", closeMenu);
+  }, []);
+
+  return (
+    <div ref={menuRef} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className={`group inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-bold uppercase transition duration-200 ease-out hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 ${
+          compact
+            ? "bg-[#302992] text-white shadow-[0_8px_20px_-10px_rgba(48,41,146,0.8)] hover:bg-[#28cbd1] hover:text-[#211c72] hover:shadow-[0_12px_24px_-12px_rgba(40,203,209,0.9)]"
+            : "border border-indigo-950/10 bg-white text-[#5b5a78] hover:border-cyan-300 hover:bg-cyan-50 hover:text-[#302992] hover:shadow-[0_10px_24px_-16px_rgba(48,41,146,0.65)]"
+        }`}
+      >
+        <Globe2 className="h-4 w-4 transition-transform duration-200 group-hover:rotate-12" aria-hidden="true" />
+        {language.toUpperCase()}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div role="listbox" aria-label={label} className="absolute right-0 top-[calc(100%+0.4rem)] z-50 w-[4.75rem] overflow-hidden rounded-xl border border-indigo-950/10 bg-white py-1 shadow-[0_18px_38px_-18px_rgba(29,26,94,0.55)]">
+          {languages.map((item) => (
+            <button
+              key={item.code}
+              type="button"
+              role="option"
+              aria-selected={language === item.code}
+              title={item.label}
+              onClick={() => { onChange(item.code); setIsOpen(false); }}
+              className={`relative flex h-9 w-full items-center justify-center overflow-hidden px-2 text-sm font-bold transition duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-400 ${
+                language === item.code
+                  ? "bg-[#302992] text-white"
+                  : "text-[#302992] hover:scale-[1.04] hover:bg-[#dffbfc] hover:text-[#079aa3]"
+              }`}
+            >
+              {item.code.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

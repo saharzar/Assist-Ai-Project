@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  cleanSpokenAmountTranscript,
   cleanSpokenLetterTranscript,
   parseSpokenConfirmation,
 } from "./speechRecognitionService";
@@ -17,6 +18,21 @@ describe("cleanSpokenLetterTranscript", () => {
 
   it("does not guess when more than two letters are spoken", () => {
     expect(cleanSpokenLetterTranscript("A B C")).toBe("");
+  });
+});
+
+describe("cleanSpokenAmountTranscript", () => {
+  it.each([
+    ["500", "500"],
+    ["five hundred", "500"],
+    ["quinientos", "500"],
+    ["fünfhundert", "500"],
+    ["beş yüz", "500"],
+    ["quinhentos", "500"],
+    ["cinq cents", "500"],
+    ["seven hundred fifty", "750"],
+  ])("recognizes the spoken amount %s", (transcript, expected) => {
+    expect(cleanSpokenAmountTranscript(transcript)).toBe(expected);
   });
 });
 

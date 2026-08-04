@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PageShell } from "./components/PageShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -17,11 +18,13 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ScenarioCataloguePage } from "./pages/ScenarioCataloguePage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
+import { AtmScenarioPage } from "./pages/scenarios/AtmScenarioPage";
 
 export function App() {
   return (
     <TranslationProvider>
       <AuthProvider>
+        <ScrollToTop />
         <Routes>
           <Route element={<PageShell />}>
             <Route index element={<LandingPage />} />
@@ -31,6 +34,7 @@ export function App() {
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute allowGuest />}>
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="scenario/atm-withdrawal/practice" element={<AtmScenarioPage />} />
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
@@ -49,4 +53,14 @@ export function App() {
       </AuthProvider>
     </TranslationProvider>
   );
+}
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
 }

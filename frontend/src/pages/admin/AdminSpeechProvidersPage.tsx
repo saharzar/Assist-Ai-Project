@@ -59,7 +59,8 @@ export function AdminSpeechProvidersPage() {
         setDashboard(value); setDraft(value); notifySpeechProviderUpdated(value);
       })
       .catch((reason) => {
-        if (isMounted) setError(reason instanceof Error ? reason.message : text.loadError);
+        console.error("Speech provider dashboard request failed", reason);
+        if (isMounted) setError(text.loadError);
       })
       .finally(() => { if (isMounted) setIsLoading(false); });
     return () => { isMounted = false; };
@@ -93,12 +94,15 @@ export function AdminSpeechProvidersPage() {
         capabilities: draft.capabilities.map(({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day }) => ({ provider_key, service_type, enabled, priority, quota_limit, warning_threshold_value, switch_threshold_value, billing_period_type, reset_day })),
       });
       setDashboard(updated); setDraft(updated); setSuccess(labels.saved); notifySpeechProviderUpdated(updated);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : text.saveError); }
+    } catch (reason) {
+      console.error("Speech provider settings update failed", reason);
+      setError(text.saveError);
+    }
     finally { setSaving(false); }
   };
 
-  return <section className="flex flex-1 flex-col text-[#1d1a3d]">
-    <div className="border-b border-indigo-950/10 pb-7"><span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span><h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1></div>
+  return <section className="standard-page flex flex-1 flex-col text-[#1d1a3d]">
+    <div className="catalogue-style-heading"><h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
     {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>

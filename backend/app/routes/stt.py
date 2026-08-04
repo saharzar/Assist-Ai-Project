@@ -34,9 +34,16 @@ router = APIRouter(prefix="/api/stt", tags=["stt"])
 
 @router.get("/usage", response_model=SttUsageResponse)
 def get_stt_usage(
-    current_user: User = Depends(get_current_user),
+    current_user: User | GuestSession = Depends(get_speech_actor),
     db: Session = Depends(get_db),
 ) -> SttUsageResponse:
+    if isinstance(current_user, GuestSession):
+        return SttUsageResponse(
+            stt_limit_seconds=3600,
+            stt_used_seconds=0,
+            stt_remaining_seconds=3600,
+            stt_reset_date=date.today(),
+        )
     usage = get_or_create_stt_usage(db, current_user.id)
     db.commit()
     return SttUsageResponse(
@@ -67,7 +74,7 @@ async def create_stt_transcript(
     request: Request,
     response: Response,
     language: str = Query(default="en", pattern="^(en|es|de|tr|pt|fr)$"),
-    mode: str = Query(default="name", pattern="^(name|pin|confirmation|letters)$"),
+    mode: str = Query(default="name", pattern="^(name|pin|amount|confirmation|letters)$"),
     speech_request_id: UUID | None = Header(default=None, alias="X-Speech-Request-ID"),
     browser_speech_supported: bool | None = Header(default=None, alias="X-Browser-Speech-Supported"),
     current_user: User | GuestSession = Depends(get_speech_actor),

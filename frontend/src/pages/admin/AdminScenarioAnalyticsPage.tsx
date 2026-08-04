@@ -1,4 +1,19 @@
 import { Link, Navigate } from "react-router-dom";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Bus,
+  Clock3,
+  HeartHandshake,
+  Landmark,
+  MessagesSquare,
+  ReceiptText,
+  ShoppingBag,
+  Ticket,
+  UsersRound,
+  Utensils,
+  WalletCards,
+} from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import { scenarios } from "../../data/scenarios";
@@ -6,6 +21,30 @@ import { useTranslation } from "../../i18n";
 import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
 
 const ACTIVE_ANALYTICS_SCENARIO = "atm-withdrawal";
+
+const scenarioIcons = {
+  shopping: ShoppingBag,
+  "cinema-theatre-tickets": Ticket,
+  "restaurant-ordering": Utensils,
+  "public-transport": Bus,
+  "atm-withdrawal": Landmark,
+  "time-off-overwhelmed": BriefcaseBusiness,
+  "online-bill-payment": ReceiptText,
+  "weekly-spending-plan": WalletCards,
+  "consoling-a-friend": HeartHandshake,
+  "managing-delay-calmly": Clock3,
+  "conflict-perspective-taking": MessagesSquare,
+  "short-team-discussion": UsersRound,
+};
+
+const cardThemes = [
+  "border-cyan-200 bg-cyan-50/75",
+  "border-indigo-100 bg-indigo-50/65",
+  "border-violet-100 bg-violet-50/65",
+  "border-sky-200 bg-sky-50/70",
+  "border-cyan-200 bg-cyan-50/75",
+  "border-indigo-100 bg-indigo-50/65",
+];
 
 export function AdminScenarioAnalyticsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -26,36 +65,38 @@ export function AdminScenarioAnalyticsPage() {
   }
 
   return (
-    <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="border-b border-indigo-950/10 pb-7">
-        <div className="max-w-3xl">
-          <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
-          <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.scenarioAnalytics}</h1>
+    <section className="standard-page flex flex-1 flex-col text-[#1d1a3d]">
+      <div className="catalogue-style-heading">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold sm:text-4xl">{text.scenarioAnalytics}</h1>
           <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">
             {text.selectorDescription}
           </p>
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
         {scenarios.map((scenario) => {
           const translatedScenario = translateScenario(scenario);
           const scenarioNumber = Number(scenario.id).toString().padStart(2, "0");
           const isAvailable = scenario.slug === ACTIVE_ANALYTICS_SCENARIO;
+          const Icon = scenarioIcons[scenario.slug as keyof typeof scenarioIcons] ?? MessagesSquare;
+          const theme = cardThemes[(Number(scenario.id) - 1) % cardThemes.length];
 
           return (
             <article
               key={scenario.id}
-              className={`flex min-h-[168px] flex-col rounded-lg border p-5 transition ${isAvailable ? "border-cyan-300 bg-cyan-50/35 shadow-[0_10px_26px_rgba(29,26,94,0.06)]" : "border-indigo-950/10 bg-white/70 hover:border-indigo-200 hover:bg-white"}`}
+              className={`group relative flex min-h-[300px] flex-col overflow-hidden rounded-[22px] border p-6 transition duration-300 motion-reduce:transform-none motion-reduce:transition-none ${theme} ${isAvailable ? "border-cyan-400 bg-cyan-50/95 shadow-[0_18px_38px_-22px_rgba(45,216,216,0.55)] hover:-translate-y-1 hover:border-indigo-300 hover:bg-white hover:shadow-[0_26px_52px_-22px_rgba(48,41,146,0.38)]" : "opacity-[0.88] hover:-translate-y-1 hover:border-indigo-200 hover:bg-white/95 hover:opacity-100 hover:shadow-[0_24px_48px_-22px_rgba(48,41,146,0.3)]"}`}
             >
-              <div className="flex items-start gap-4">
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold ${isAvailable ? "bg-[#2a2586] text-white" : "bg-[#f1f0fa] text-[#777493]"}`}>{scenarioNumber}</span>
-                <div className="min-w-0">
-                  <h2 className={`font-bold leading-5 ${isAvailable ? "text-[#1d1a5e]" : "text-slate-500"}`}>{translatedScenario.title}</h2>
-                  <p className={`mt-2 text-xs font-semibold uppercase tracking-wide ${isAvailable ? "text-teal-700" : "text-slate-400"}`}>{isAvailable ? "ATM" : text.comingSoon}</p>
+              <span className={`pointer-events-none absolute right-5 top-1 font-display text-[5.6rem] font-extrabold leading-none transition-colors duration-300 ${isAvailable ? "text-cyan-200/65 group-hover:text-cyan-200" : "text-white/80 group-hover:text-cyan-100/90"}`} aria-hidden="true">{scenarioNumber}</span>
+              <div className="relative z-10">
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl border transition duration-300 motion-reduce:transform-none ${isAvailable ? "border-white/90 bg-white text-[#302992] shadow-md group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-lg" : "border-white/80 bg-white/65 text-[#302992] group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-md"}`}>
+                  <Icon className="h-7 w-7" aria-hidden="true" />
                 </div>
+                <h2 className={`max-w-[85%] font-display text-lg font-bold leading-[1.35] ${isAvailable ? "text-[#1d1a5e]" : "text-[#555478]"}`}>{translatedScenario.title}</h2>
+                <p className={`mt-3 text-sm leading-[1.65] ${isAvailable ? "text-[#4f4e70]" : "text-[#77758f]"}`}>{translatedScenario.description}</p>
               </div>
-              {isAvailable ? <Link to="/admin/atm-analytics" className="mt-auto inline-flex min-h-[42px] items-center justify-center rounded-lg bg-[#2a2586] px-4 text-sm font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400" aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}>{text.viewAnalytics}</Link> : <span className="mt-auto min-h-[42px]" aria-hidden="true" />}
+              {isAvailable ? <Link to="/admin/atm-analytics" className="landing-primary-action group/action mt-auto inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2" aria-label={`${text.viewAnalytics}: ${translatedScenario.title}`}>{text.viewAnalytics}<ArrowRight className="h-4 w-4 transition-transform group-hover/action:translate-x-1" aria-hidden="true" /></Link> : <span className="mt-auto inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/90 bg-white/55 px-5 py-3 text-sm font-bold text-[#85839c]">{text.comingSoon}</span>}
             </article>
           );
         })}

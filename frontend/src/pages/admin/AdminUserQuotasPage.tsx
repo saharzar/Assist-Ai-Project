@@ -32,7 +32,10 @@ export function AdminUserQuotasPage() {
   const load = async () => {
     const [quotaResult, requestResult] = await Promise.allSettled([getAdminQuotas(), getQuotaRequests()]);
     if (quotaResult.status === "fulfilled") setRows(quotaResult.value);
-    else setMessage(quotaResult.reason instanceof Error ? quotaResult.reason.message : text.loadError);
+    else {
+      console.error("Admin quota request failed", quotaResult.reason);
+      setMessage(text.loadError);
+    }
     if (requestResult.status === "fulfilled") setRequests(requestResult.value);
     else console.error("Optional quota request history could not be loaded", requestResult.reason);
   };
@@ -76,9 +79,8 @@ export function AdminUserQuotasPage() {
   };
 
   return (
-    <section className="text-[#1d1a3d]">
-      <div className="border-b border-indigo-950/10 pb-6">
-        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+    <section className="standard-page text-[#1d1a3d]">
+      <div className="catalogue-style-heading">
         <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1>
         <p className="mt-2 text-[15px] leading-6 text-[#5b5a78]">{text.intro}</p>
       </div>

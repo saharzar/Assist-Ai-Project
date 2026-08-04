@@ -52,7 +52,8 @@ export function MySpeechUsagePage() {
       setReason("");
       setMessage(text.submitted);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : text.requestFailed);
+      console.error("Speech quota request failed", error);
+      setMessage(text.requestFailed);
     }
   };
 
@@ -60,11 +61,10 @@ export function MySpeechUsagePage() {
   const pending = requests.filter((request) => request.status === "pending").length;
 
   return (
-    <section className="speech-usage-page relative isolate flex w-full flex-1 flex-col overflow-hidden">
+    <section className="speech-usage-page standard-page relative isolate flex w-full flex-1 flex-col overflow-hidden">
       <div className="speech-usage-grid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-5 pb-14 pt-9">
-      <header className="border-b border-[#deddeb] pb-8">
-        <span className="mb-4 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true"><i className="w-2/3 bg-[#3730a3]" /><i className="w-1/3 bg-[#2dd8d8]" /></span>
+      <header className="catalogue-style-heading">
         <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-6 text-[#5b5a78]">{text.intro}</p>
       </header>

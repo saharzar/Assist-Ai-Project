@@ -67,15 +67,13 @@ export function AdminAtmAnalyticsPage() {
   };
 
   return (
-    <section className="flex flex-1 flex-col text-[#1d1a3d]">
-      <div className="relative flex flex-col justify-between gap-5 overflow-hidden border-b border-indigo-950/10 pb-7 sm:flex-row sm:items-end">
-        <span className="absolute left-0 top-0 h-full w-1 rounded-full bg-cyan-400" aria-hidden="true" />
-        <div className="pl-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">{text.adminDashboard}</p>
+    <section className="standard-page flex flex-1 flex-col text-[#1d1a3d]">
+      <div className="catalogue-style-heading">
+        <div>
           <h1 className="mt-2 text-3xl font-extrabold text-[#1d1a5e]">{text.atmAnalytics}</h1>
           <p className="mt-2 text-slate-600">{text.atmDescription}</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link to="/admin/scenario-analytics" className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-indigo-950/10 bg-white px-5 font-bold text-[#2a2586] hover:bg-[#f3f3fb] focus:outline-none focus:ring-2 focus:ring-cyan-400">
             {text.allScenarioAnalytics}
           </Link>

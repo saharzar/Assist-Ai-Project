@@ -4,7 +4,7 @@ import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
-type SpeechRecognitionMode = "name" | "pin" | "confirmation" | "letters";
+type SpeechRecognitionMode = "name" | "pin" | "amount" | "confirmation" | "letters";
 type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 
 type SpeechRecognitionCallbacks = {
@@ -20,6 +20,10 @@ type SpeechRecognitionErrorMessages = {
   browserFallback: string;
   noSpeech: string;
   limitReached: string;
+  sessionExpired: string;
+  providerUnavailable: string;
+  networkError: string;
+  busy: string;
 };
 
 const BROWSER_FALLBACK_CODE = "browser-stt-fallback";
@@ -177,6 +181,34 @@ export function cleanSpokenPinTranscript(transcript: string) {
   });
 
   return digits.join("").slice(0, 4);
+}
+
+const spokenAmountMap: Record<string, string> = {
+  "one hundred": "100", "two hundred": "200", "three hundred": "300", "four hundred": "400",
+  "five hundred": "500", "six hundred": "600", "seven hundred": "700", "seven hundred fifty": "750",
+  "eight hundred": "800", "nine hundred": "900", "one thousand": "1000", "two thousand": "2000",
+  "three thousand": "3000", "four thousand": "4000", "five thousand": "5000",
+  "cien": "100", "doscientos": "200", "trescientos": "300", "cuatrocientos": "400", "quinientos": "500",
+  "seiscientos": "600", "setecientos": "700", "setecientos cincuenta": "750", "ochocientos": "800",
+  "novecientos": "900", "mil": "1000", "dos mil": "2000", "tres mil": "3000", "cuatro mil": "4000", "cinco mil": "5000",
+  "einhundert": "100", "zweihundert": "200", "dreihundert": "300", "vierhundert": "400", "funfhundert": "500",
+  "sechshundert": "600", "siebenhundert": "700", "siebenhundertfunfzig": "750", "achthundert": "800",
+  "neunhundert": "900", "eintausend": "1000", "zweitausend": "2000", "dreitausend": "3000", "viertausend": "4000", "funftausend": "5000",
+  "yuz": "100", "iki yuz": "200", "uc yuz": "300", "dort yuz": "400", "bes yuz": "500", "alti yuz": "600",
+  "yedi yuz": "700", "yedi yuz elli": "750", "sekiz yuz": "800", "dokuz yuz": "900", "bin": "1000",
+  "iki bin": "2000", "uc bin": "3000", "dort bin": "4000", "bes bin": "5000",
+  "cem": "100", "duzentos": "200", "trezentos": "300", "quatrocentos": "400", "quinhentos": "500",
+  "seiscentos": "600", "setecentos": "700", "setecentos e cinquenta": "750", "oitocentos": "800",
+  "novecentos": "900", "dois mil": "2000",
+  "cent": "100", "deux cents": "200", "trois cents": "300", "quatre cents": "400", "cinq cents": "500",
+  "six cents": "600", "sept cents": "700", "sept cent cinquante": "750", "huit cents": "800",
+  "neuf cents": "900", "mille": "1000", "deux mille": "2000", "trois mille": "3000", "quatre mille": "4000", "cinq mille": "5000",
+};
+
+export function cleanSpokenAmountTranscript(transcript: string) {
+  const directAmount = transcript.replace(/[^0-9]/g, "");
+  if (directAmount) return directAmount.slice(0, 5);
+  return spokenAmountMap[normalizeConfirmationText(transcript)] ?? "";
 }
 
 const spokenLetterNames: Record<string, string> = {
@@ -367,6 +399,7 @@ class BackendSpeechRecognizer {
   private stream: MediaStream | null = null;
   private buffers: Float32Array[] = [];
   private isStopping = false;
+  private stopRequested = false;
   private isStarted = false;
   private hasEnded = false;
 
@@ -382,7 +415,10 @@ class BackendSpeechRecognizer {
   }
 
   stop() {
-    void this.stopRecording();
+    this.stopRequested = true;
+    if (this.isStarted) {
+      void this.stopRecording();
+    }
   }
 
   private async startRecording() {
@@ -395,12 +431,6 @@ class BackendSpeechRecognizer {
       }
 
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (this.isStopping) {
-        await this.cleanup();
-        this.endOnce();
-        return;
-      }
-
       this.audioContext = new AudioContextConstructor();
       if (this.audioContext.state === "suspended") {
         await this.audioContext.resume();
@@ -417,6 +447,9 @@ class BackendSpeechRecognizer {
       this.processor.connect(this.audioContext.destination);
       this.isStarted = true;
       this.callbacks.onReady?.();
+      if (this.stopRequested) {
+        await this.stopRecording();
+      }
     } catch (error) {
       this.callbacks.onError(
         error instanceof DOMException && error.name === "NotAllowedError"
@@ -442,7 +475,7 @@ class BackendSpeechRecognizer {
 
     const sampleRate = this.audioContext.sampleRate;
     if (this.buffers.length === 0) {
-      this.callbacks.onError(this.errorMessages.problem);
+      this.callbacks.onError(this.errorMessages.noSpeech);
       await this.cleanup();
       this.endOnce();
       return;
@@ -454,7 +487,9 @@ class BackendSpeechRecognizer {
     try {
       const transcript = await transcribeAzureSpeech(audio, this.language, this.mode);
       const cleanedTranscript =
-        this.mode === "pin"
+        this.mode === "amount"
+          ? cleanSpokenAmountTranscript(transcript)
+          : this.mode === "pin"
           ? cleanSpokenPinTranscript(transcript)
           : this.mode === "letters"
             ? cleanSpokenLetterTranscript(transcript)
@@ -473,6 +508,14 @@ class BackendSpeechRecognizer {
         this.callbacks.onError(this.errorMessages.noSpeech);
       } else if (error instanceof ApiError && error.status === 403) {
         this.callbacks.onError(this.errorMessages.limitReached);
+      } else if (error instanceof ApiError && error.status === 401) {
+        this.callbacks.onError(this.errorMessages.sessionExpired);
+      } else if (error instanceof ApiError && error.status === 409) {
+        this.callbacks.onError(this.errorMessages.busy);
+      } else if (error instanceof ApiError && [502, 503, 504].includes(error.status)) {
+        this.callbacks.onError(this.errorMessages.providerUnavailable);
+      } else if (error instanceof TypeError) {
+        this.callbacks.onError(this.errorMessages.networkError);
       } else {
         this.callbacks.onError(this.errorMessages.problem);
       }
@@ -538,7 +581,9 @@ class BrowserSpeechRecognizer {
     recognition.onstart = () => this.callbacks.onReady?.();
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
-      const cleaned = this.mode === "pin"
+      const cleaned = this.mode === "amount"
+        ? cleanSpokenAmountTranscript(transcript)
+        : this.mode === "pin"
         ? cleanSpokenPinTranscript(transcript)
         : this.mode === "letters"
           ? cleanSpokenLetterTranscript(transcript)
@@ -654,6 +699,10 @@ export function createSpeechRecognizer(
     browserFallback: "Browser voice input is ready. Hold Space and speak again.",
     noSpeech: "No clear speech was recognized. Hold Space and try again.",
     limitReached: "Speech time limit reached. Please type or use the keypad.",
+    sessionExpired: "Your session expired. Please sign in or continue as a guest again.",
+    providerUnavailable: "Voice recognition is temporarily unavailable. Please try again or type.",
+    networkError: "The speech service could not be reached. Check your connection and try again.",
+    busy: "Voice recognition is busy. Please wait a moment and try again.",
   },
 ) {
   if (!isSpeechRecognitionSupported()) {

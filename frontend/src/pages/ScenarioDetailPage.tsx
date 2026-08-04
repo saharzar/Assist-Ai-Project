@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { scenarios } from "../data/scenarios";
 import { useTranslation } from "../i18n";
-import { AtmScenarioPage } from "./scenarios/AtmScenarioPage";
+import { AtmIntroductionPage } from "./scenarios/AtmIntroductionPage";
 
 export function ScenarioDetailPage() {
   const { t, translateScenario } = useTranslation();
@@ -11,7 +11,7 @@ export function ScenarioDetailPage() {
   const translatedScenario = scenario ? translateScenario(scenario) : null;
 
   if (slug === "atm-withdrawal") {
-    return <AtmScenarioPage />;
+    return <AtmIntroductionPage />;
   }
 
   if (!translatedScenario || scenario) {
