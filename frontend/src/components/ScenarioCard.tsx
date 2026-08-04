@@ -1,4 +1,19 @@
 import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Bus,
+  Clock3,
+  HeartHandshake,
+  Landmark,
+  MessagesSquare,
+  ReceiptText,
+  ShoppingBag,
+  Ticket,
+  UsersRound,
+  Utensils,
+  WalletCards,
+} from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
@@ -9,40 +24,64 @@ type ScenarioCardProps = {
   isAvailable: boolean;
 };
 
+const scenarioIcons = {
+  shopping: ShoppingBag,
+  "cinema-theatre-tickets": Ticket,
+  "restaurant-ordering": Utensils,
+  "public-transport": Bus,
+  "atm-withdrawal": Landmark,
+  "time-off-overwhelmed": BriefcaseBusiness,
+  "online-bill-payment": ReceiptText,
+  "weekly-spending-plan": WalletCards,
+  "consoling-a-friend": HeartHandshake,
+  "managing-delay-calmly": Clock3,
+  "conflict-perspective-taking": MessagesSquare,
+  "short-team-discussion": UsersRound,
+};
+
+const cardThemes = [
+  "border-cyan-200 bg-cyan-50/75",
+  "border-indigo-100 bg-indigo-50/65",
+  "border-violet-100 bg-violet-50/65",
+  "border-sky-200 bg-sky-50/70",
+  "border-cyan-200 bg-cyan-50/75",
+  "border-indigo-100 bg-indigo-50/65",
+];
+
 export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
   const { isAuthenticated, isGuest } = useAuth();
   const { t } = useTranslation();
   const formattedId = Number(scenario.id).toString().padStart(2, "0");
+  const Icon = scenarioIcons[scenario.slug as keyof typeof scenarioIcons] ?? MessagesSquare;
+  const theme = cardThemes[(Number(scenario.id) - 1) % cardThemes.length];
 
   return (
     <article
-      className={`group flex min-h-[290px] flex-col rounded-lg border bg-white p-6 transition ${
+      className={`group relative flex min-h-[300px] flex-col overflow-hidden rounded-[22px] border p-6 transition duration-300 motion-reduce:transform-none motion-reduce:transition-none ${theme} ${
         isAvailable
-          ? "border-cyan-400 shadow-[0_16px_34px_-22px_rgba(45,216,216,0.5)] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-20px_rgba(45,216,216,0.6)]"
-          : "border-indigo-950/10"
+          ? "border-cyan-400 bg-cyan-50/95 shadow-[0_18px_38px_-22px_rgba(45,216,216,0.55)] hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/90 hover:shadow-[0_26px_52px_-22px_rgba(48,41,146,0.38)]"
+          : "opacity-[0.88] hover:-translate-y-1 hover:border-indigo-200 hover:bg-white/95 hover:opacity-100 hover:shadow-[0_24px_48px_-22px_rgba(48,41,146,0.3)]"
       }`}
     >
-      <div>
-        <div className="mb-4 flex items-start justify-between gap-4">
+      <span className={`pointer-events-none absolute right-5 top-1 font-display text-[5.6rem] font-extrabold leading-none transition-colors duration-300 ${isAvailable ? "text-cyan-200/65 group-hover:text-indigo-200/80" : "text-white/80 group-hover:text-cyan-100/90"}`} aria-hidden="true">
+        {formattedId}
+      </span>
+      <div className="relative z-10">
+        <div className="mb-4 flex items-start gap-4">
           <div
-            className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg font-display text-xs font-bold ${
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-display ${
               isAvailable
-                ? "bg-cyan-50 text-indigo-700"
-                : "bg-[#f3f3fb] text-[#9997ac]"
+                ? "border-cyan-300 bg-[#302992] text-white shadow-md transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#2dd8d8] group-hover:text-[#1d1a5e] group-hover:shadow-lg motion-reduce:transform-none"
+                : "border-white/80 bg-white/65 text-[#302992] transition duration-300 group-hover:-rotate-3 group-hover:border-[#302992] group-hover:bg-[#302992] group-hover:text-white group-hover:shadow-md motion-reduce:transform-none"
             }`}
           >
-            {formattedId}
+            <Icon className="h-7 w-7" aria-hidden="true" />
           </div>
-          {isAvailable && (
-            <span className="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase text-teal-700">
-              {t("available")}
-            </span>
-          )}
         </div>
-        <h2 className={`font-display text-[17px] font-semibold leading-[1.35] ${isAvailable ? "text-[#1d1a5e]" : "text-[#9997ac]"}`}>
+        <h2 className={`max-w-[85%] font-display text-lg font-bold leading-[1.35] transition-colors duration-300 ${isAvailable ? "text-[#1d1a5e] group-hover:text-[#3730a3]" : "text-[#555478]"}`}>
           {scenario.title}
         </h2>
-        <p className={`mt-2.5 text-sm leading-[1.6] ${isAvailable ? "text-[#5b5a78]" : "text-[#9997ac]"}`}>
+        <p className={`mt-3 text-sm leading-[1.65] ${isAvailable ? "text-[#4f4e70]" : "text-[#77758f]"}`}>
           {scenario.description}
         </p>
       </div>
@@ -50,15 +89,15 @@ export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
         <Link
           to={isAuthenticated || isGuest ? `/scenario/${scenario.slug}` : "/login"}
           state={isAuthenticated || isGuest ? undefined : { from: `/scenario/${scenario.slug}` }}
-          className="mt-auto inline-flex min-h-[48px] items-center justify-center rounded-lg bg-[#2a2586] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
+          className="landing-primary-action group/action mt-auto inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
         >
-          {t("openScenario")}
+          {t("openScenario")} <ArrowRight className="h-4 w-4 transition-transform group-hover/action:translate-x-1" aria-hidden="true" />
         </Link>
       ) : (
         <button
           type="button"
           disabled
-          className="mt-auto inline-flex min-h-[48px] cursor-not-allowed items-center justify-center rounded-lg border border-indigo-950/10 bg-[#f3f3fb] px-5 py-3 text-sm font-semibold text-[#9997ac]"
+          className="mt-auto inline-flex min-h-[50px] cursor-not-allowed items-center justify-center rounded-full border border-white/90 bg-white/55 px-5 py-3 text-sm font-bold text-[#85839c]"
         >
           {t("comingSoon")}
         </button>

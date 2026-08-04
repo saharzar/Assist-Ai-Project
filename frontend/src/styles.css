@@ -17,21 +17,77 @@ body {
   background: #f8f9ff;
 }
 
+.brand-atmosphere {
+  background-color: #f7fbff;
+  background-image:
+    radial-gradient(circle at 5% 36%, rgba(45, 216, 216, 0.3), transparent 30%),
+    radial-gradient(circle at 95% 46%, rgba(45, 216, 216, 0.24), transparent 31%),
+    radial-gradient(circle at 52% 105%, rgba(55, 48, 163, 0.14), transparent 39%);
+  background-attachment: fixed;
+}
+
 .font-display {
   font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 .landing-title-accent {
-  background: linear-gradient(100deg, #3730a3 0%, #2dd8d8 100%);
+  background: linear-gradient(100deg, #3730a3 0%, #3977c9 28%, #2dd8d8 52%, #3977c9 76%, #3730a3 100%);
+  background-size: 240% 100%;
   background-clip: text;
   color: transparent;
   -webkit-background-clip: text;
+  animation: landing-accent-shift 7s ease-in-out infinite;
+}
+
+.landing-primary-action {
+  background: linear-gradient(105deg, #302992 0%, #356fc1 52%, #29c8cf 100%);
+  background-size: 140% 100%;
+  background-position: 0% 50%;
+}
+
+.landing-primary-action:hover {
+  background-position: 100% 50%;
+}
+
+@keyframes landing-accent-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-title-accent {
+    animation: none;
+    background-position: 45% 50%;
+  }
 }
 
 .catalogue-page {
-  background-color: #f9faff;
+  background-color: transparent;
   border-top: 1px solid rgba(29, 26, 94, 0.07);
   border-bottom: 1px solid rgba(29, 26, 94, 0.07);
+}
+
+.scenario-catalogue-page {
+  background-color: transparent;
+}
+
+.scenario-catalogue-page .catalogue-grid {
+  display: none;
+}
+
+.scenario-catalogue-page::before,
+.scenario-catalogue-page::after,
+.speech-usage-page::before,
+.speech-usage-page::after,
+.profile-page::before,
+.profile-page::after,
+.admin-dashboard-main::before,
+.admin-dashboard-main::after {
+  display: none;
 }
 
 .catalogue-page::before,
@@ -68,7 +124,7 @@ body {
 }
 
 .speech-usage-page {
-  background-color: #fafbff;
+  background-color: transparent;
   border-top: 1px solid rgba(29, 26, 94, 0.07);
   border-bottom: 1px solid rgba(29, 26, 94, 0.07);
 }
@@ -105,7 +161,7 @@ body {
 }
 
 .profile-page {
-  background-color: #fafbff;
+  background-color: transparent;
   border-top: 1px solid rgba(29, 26, 94, 0.07);
   border-bottom: 1px solid rgba(29, 26, 94, 0.07);
 }
@@ -168,9 +224,7 @@ body {
 }
 
 body:has(.admin-dashboard-main) {
-  background-color: #f8f9ff;
-  background-image: linear-gradient(115deg, rgba(55, 48, 163, 0.018) 0 16%, transparent 16% 100%);
-  background-attachment: fixed;
+  background-color: #f7fbff;
 }
 
 button,
@@ -188,4 +242,85 @@ a {
   box-shadow:
     0 10px 25px -3px rgba(13, 148, 136, 0.15),
     0 4px 10px -2px rgba(15, 23, 42, 0.05);
+}
+
+/* Shared visual language for application pages, based on the scenario catalogue. */
+.standard-page {
+  color: #1d1a3d;
+}
+
+.catalogue-style-heading {
+  position: relative;
+  width: min(100%, 52rem);
+  margin-inline: auto;
+  padding-bottom: 2rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(29, 26, 94, 0.1);
+}
+
+.catalogue-style-heading::before {
+  content: "";
+  display: block;
+  width: 6rem;
+  height: 0.375rem;
+  margin: 0 auto 1rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3730a3 0 66%, #2dd8d8 66% 100%);
+}
+
+.catalogue-style-heading h1 {
+  font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: #1d1a5e;
+}
+
+.catalogue-style-heading h1.landing-title-accent {
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.catalogue-style-heading p {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+.standard-page article.rounded-lg,
+.standard-page article.rounded-xl,
+.standard-page section.rounded-lg,
+.standard-page section.rounded-xl,
+.standard-page form.rounded-lg,
+.standard-page form.rounded-xl,
+.standard-page div.rounded-lg.border,
+.standard-page div.rounded-xl.border,
+.auth-surface,
+.profile-surface {
+  border-radius: 22px;
+}
+
+.standard-page article,
+.standard-page section.rounded-lg,
+.standard-page section.rounded-xl,
+.standard-page form.rounded-lg,
+.standard-page form.rounded-xl,
+.auth-surface,
+.profile-surface {
+  box-shadow: 0 18px 45px rgba(29, 26, 94, 0.055);
+}
+
+@media (max-width: 640px) {
+  .catalogue-style-heading {
+    text-align: left;
+  }
+
+  .catalogue-style-heading::before {
+    margin-left: 0;
+  }
+
+  .catalogue-style-heading h1 {
+    font-size: 1.875rem;
+  }
 }

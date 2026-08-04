@@ -1,4 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation, type LanguageCode } from "../i18n";
@@ -26,28 +27,28 @@ export function LandingPage() {
   }
 
   return (
-    <section className="relative z-10 flex min-h-[calc(100vh-7rem)] flex-1 items-center justify-center py-12 text-center sm:py-16">
-      <div className="mx-auto w-full max-w-[720px]">
-        <div className="inline-flex min-h-8 items-center gap-2 rounded-full border border-cyan-300 bg-cyan-50 px-4 py-1.5 text-xs font-semibold uppercase text-indigo-700">
+    <section className="relative z-10 flex min-h-[calc(100vh-7rem)] flex-1 items-center py-10 sm:py-14">
+      <div className="mx-auto w-full max-w-[820px] px-6 text-center lg:px-10">
+        <div className="inline-flex min-h-8 items-center gap-2 rounded-full border border-cyan-300 bg-white/75 px-4 py-1.5 text-xs font-semibold uppercase text-indigo-700 shadow-sm backdrop-blur">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" aria-hidden="true" />
           {content.eyebrow}
         </div>
 
-        <h1 className="mt-7 font-sans text-[2.15rem] font-bold leading-[1.14] text-[#1d1a5e] sm:text-5xl lg:text-[3.5rem]">
+        <h1 className="mt-7 font-display text-[2.15rem] font-extrabold leading-[1.14] text-[#1d1a5e] sm:text-5xl lg:text-[3.65rem]">
           <span className="block">{content.title}</span>
           <span className="landing-title-accent mt-1 block pb-2">{content.accent}</span>
         </h1>
 
-        <div className="mx-auto mt-11 flex w-full max-w-[340px] flex-col gap-3.5">
+        <div className="mx-auto mt-10 flex w-full max-w-[520px] flex-col gap-3 sm:flex-row">
           <Link
             to="/register"
-            className="inline-flex min-h-[64px] items-center justify-center rounded-lg bg-[#2a2586] px-7 py-4 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(42,37,134,0.5)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
+            className="landing-primary-action group inline-flex min-h-[60px] flex-1 items-center justify-center gap-3 rounded-full px-7 py-4 text-[15px] font-bold text-white shadow-[0_14px_30px_-13px_rgba(45,100,190,0.72)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
           >
-            {t("createAccount")}
+            {t("createAccount")} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </Link>
           <Link
             to="/login"
-            className="inline-flex min-h-[64px] items-center justify-center rounded-lg border-2 border-indigo-950/10 bg-white px-7 py-4 text-[15px] font-semibold text-[#2a2586] transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="inline-flex min-h-[60px] flex-1 items-center justify-center rounded-full border border-white/90 bg-white/75 px-7 py-4 text-[15px] font-bold text-[#302992] shadow-[0_12px_28px_-18px_rgba(29,26,94,0.45)] backdrop-blur-md transition hover:border-cyan-300 hover:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
           >
             {t("login")}
           </Link>
@@ -55,7 +56,7 @@ export function LandingPage() {
 
         <Link
           to="/guest"
-          className="group mt-5 inline-flex min-h-[44px] items-center text-sm font-semibold text-indigo-700 transition hover:text-indigo-950 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="font-display group mt-5 inline-flex min-h-[44px] items-center text-[15px] font-bold text-indigo-700 transition hover:text-indigo-950 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           <span className="border-b-2 border-cyan-400 pb-0.5 transition-colors group-hover:border-indigo-700">
             {t("continueAsGuest")}

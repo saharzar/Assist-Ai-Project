@@ -46,7 +46,7 @@ export function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const handleLanguageChange = async (preferredLanguage: LanguageCode) => {
@@ -64,7 +64,7 @@ export function ProfilePage() {
 
   return (
     <section className="profile-page relative isolate flex w-full flex-1 items-start justify-center overflow-hidden px-5 py-8 sm:px-8 sm:py-12">
-      <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-lg border border-indigo-950/10 bg-white shadow-[0_24px_60px_rgba(42,37,134,0.12)]">
+      <div className="profile-surface relative z-10 w-full max-w-4xl overflow-hidden border border-indigo-950/10 bg-white shadow-[0_24px_60px_rgba(42,37,134,0.12)]">
         <header className="border-b border-indigo-950/10 bg-[#f8f8ff] px-6 py-7 sm:px-10 sm:py-9">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">

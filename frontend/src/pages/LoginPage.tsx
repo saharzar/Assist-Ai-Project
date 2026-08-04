@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
@@ -55,9 +56,13 @@ export function LoginPage() {
   }
 
   return (
-    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center py-8 sm:py-12">
-      <div className="w-full max-w-[550px] rounded-lg border border-indigo-950/10 bg-white p-6 shadow-[0_24px_60px_rgba(42,37,134,0.12)] sm:p-11">
-      <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("loginTitle")}</h1>
+    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center px-5 py-8 sm:py-12">
+      <div className="auth-surface w-full max-w-[550px] border border-white/80 bg-white/88 p-6 shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] backdrop-blur-xl sm:p-11">
+      <div className="flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true">
+        <span className="w-2/3 bg-[#3730a3]" />
+        <span className="w-1/3 bg-cyan-400" />
+      </div>
+      <h1 className="mt-6 font-display text-3xl font-extrabold text-[#1d1a5e] sm:text-4xl">{t("loginTitle")}</h1>
       <p className="mt-3 text-base leading-7 text-[#5b5a78]">{t("loginSubtitle")}</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -69,7 +74,7 @@ export function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             required
             placeholder="name@example.com"
-            className="mt-2 min-h-[58px] w-full rounded-lg border border-indigo-950/15 px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+            className="mt-2 min-h-[58px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -81,7 +86,7 @@ export function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
             required
             placeholder={t("password")}
-            className="mt-2 min-h-[58px] w-full rounded-lg border border-indigo-950/15 px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+            className="mt-2 min-h-[58px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -94,16 +99,16 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="min-h-[62px] w-full rounded-lg bg-[#2a2586] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="landing-primary-action min-h-[62px] w-full rounded-full px-6 py-3 text-base font-bold text-white shadow-[0_14px_30px_-13px_rgba(45,100,190,0.72)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {t("login")}
         </button>
 
         <Link
           to="/register"
-          className="flex min-h-[62px] items-center justify-center rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 font-semibold text-[#2a2586] transition hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="group flex min-h-[62px] items-center justify-center gap-3 rounded-full border border-white/90 bg-white px-4 py-3 font-bold text-[#302992] shadow-[0_12px_28px_-18px_rgba(29,26,94,0.45)] transition hover:-translate-y-0.5 hover:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
-          {t("createAccount")}
+          {t("createAccount")} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
         </Link>
       </form>
       </div>

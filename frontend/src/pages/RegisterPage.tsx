@@ -62,9 +62,13 @@ export function RegisterPage() {
   };
 
   return (
-    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center py-8 sm:py-12">
-      <div className="w-full max-w-[620px] rounded-lg border border-indigo-950/10 bg-white p-6 shadow-[0_24px_60px_rgba(42,37,134,0.12)] sm:p-10">
-      <h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{t("registerTitle")}</h1>
+    <section className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-1 items-center justify-center px-5 py-8 sm:py-12">
+      <div className="auth-surface w-full max-w-[620px] border border-white/80 bg-white/88 p-6 shadow-[0_28px_70px_-24px_rgba(42,37,134,0.32)] backdrop-blur-xl sm:p-10">
+      <div className="flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true">
+        <span className="w-2/3 bg-[#3730a3]" />
+        <span className="w-1/3 bg-cyan-400" />
+      </div>
+      <h1 className="mt-6 font-display text-3xl font-extrabold text-[#1d1a5e] sm:text-4xl">{t("registerTitle")}</h1>
       <p className="mt-3 text-base leading-7 text-[#5b5a78]">{t("registerSubtitle")}</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -74,7 +78,7 @@ export function RegisterPage() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             required
-            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+            className="mt-2 min-h-[56px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 text-base outline-none transition hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -86,7 +90,7 @@ export function RegisterPage() {
             onChange={(event) => setEmail(event.target.value)}
             required
             placeholder="name@example.com"
-            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 text-base outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+            className="mt-2 min-h-[56px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 text-base outline-none transition placeholder:text-slate-400 hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
           />
         </label>
 
@@ -118,7 +122,7 @@ export function RegisterPage() {
           <select
             value={userCategory}
             onChange={(event) => setUserCategory(event.target.value as UserCategory)}
-            className="mt-2 min-h-[56px] w-full rounded-lg border border-indigo-950/15 bg-white px-5 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+            className="mt-2 min-h-[56px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 text-base outline-none transition hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
           >
             {categoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -143,7 +147,7 @@ export function RegisterPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="min-h-[62px] w-full rounded-lg bg-[#2a2586] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,37,134,0.6)] transition hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="landing-primary-action min-h-[62px] w-full rounded-full px-6 py-3 text-base font-bold text-white shadow-[0_14px_30px_-13px_rgba(45,100,190,0.72)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {t("createAccount")}
         </button>
@@ -184,7 +188,7 @@ function PasswordField({
           onChange={(event) => onChange(event.target.value)}
           minLength={minLength}
           required
-          className="min-h-[56px] w-full rounded-lg border border-indigo-950/15 px-5 pr-14 text-base outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+          className="min-h-[56px] w-full rounded-xl border border-indigo-950/10 bg-[#f8faff] px-5 pr-14 text-base outline-none transition hover:border-indigo-200 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200"
         />
         <button
           type="button"
