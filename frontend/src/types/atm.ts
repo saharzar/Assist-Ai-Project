@@ -13,6 +13,7 @@ export type AtmScenarioStatus =
   | "cash_dispensing"
   | "cash_collect"
   | "withdrawal_result"
+  | "card_return"
   | "success";
 
 export type AtmState = {
@@ -70,6 +71,9 @@ export type AtmAction =
   | { type: "CASH_DISPENSE_COMPLETE" }
   | { type: "CASH_COLLECTED" }
   | { type: "WITHDRAWAL_RESULT_CONTINUE" }
+  | { type: "ANOTHER_TRANSACTION" }
+  | { type: "FINISH_TRANSACTION" }
+  | { type: "CARD_COLLECTED" }
   | { type: "LOCKOUT_TICK" }
   | { type: "SECURITY_TICK" }
   | { type: "TRY_AGAIN" }

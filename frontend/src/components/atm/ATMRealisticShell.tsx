@@ -76,6 +76,9 @@ type ATMRealisticShellProps = {
   cashAnimationDurationMs: number;
   cashCollectible: boolean;
   onCashCollect: () => void;
+  cardEjecting: boolean;
+  cardCollectible: boolean;
+  onCardCollect: () => void;
   onCardInsert: () => void;
 };
 
@@ -156,6 +159,9 @@ export function ATMRealisticShell({
   cashAnimationDurationMs,
   cashCollectible,
   onCashCollect,
+  cardEjecting,
+  cardCollectible,
+  onCardCollect,
   onCardInsert,
 }: ATMRealisticShellProps) {
   const commandOverlays = (
@@ -225,6 +231,17 @@ export function ATMRealisticShell({
               >
                 <div className="relative right-[5%] top-[30%] h-[82%] w-[52%] rounded-md border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]" />
               </div>
+            )}
+            {cardEjecting && (
+              <button
+                type="button"
+                aria-label="Collect credit card"
+                disabled={!cardCollectible}
+                onClick={onCardCollect}
+                className={`absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-[card-out_1400ms_ease-out_forwards] rounded-md border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl ${cardCollectible ? "pointer-events-auto cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "pointer-events-none"}`}
+              >
+                <span className="sr-only">Collect credit card</span>
+              </button>
             )}
           </div>
         )}

@@ -249,7 +249,16 @@ export function AtmCashDispensingScreen({ title, message }: { title: string; mes
 export function AtmCashCollectScreen({ title, message, hint }: { title: string; message: string; hint: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="mb-5 rounded-xl bg-emerald-100 px-6 py-3 text-3xl" aria-hidden="true">💶</div>
+      <div aria-hidden="true" className="mb-5 flex h-28 w-32 items-center justify-center rounded-2xl bg-gradient-to-br from-[#197dab] via-[#249aca] to-[#56c7e3] shadow-lg ring-1 ring-cyan-700/15">
+        <svg viewBox="0 0 160 144" className="h-full w-full" fill="none">
+          <rect x="25" y="18" width="110" height="13" rx="4" fill="#103652" opacity="0.9" />
+          <rect x="42" y="39" width="76" height="39" rx="6" fill="white" />
+          <rect x="49" y="46" width="62" height="7" rx="2" fill="#197dab" />
+          <circle cx="80" cy="64" r="8" stroke="#197dab" strokeWidth="4" />
+          <path transform="translate(31 31) scale(.58 .7)" d="M80 129c-19 0-31-9-39-22L28 88c-3-5-1-11 4-14 5-3 10-1 13 3l7 10V65c0-6 4-10 10-10s10 4 10 10v18-25c0-6 4-10 10-10s10 4 10 10v25-19c0-6 4-10 10-10s10 4 10 10v22-13c0-6 4-10 10-10s10 4 10 10v24c0 20-15 32-32 32H80Z" fill="#197dab" stroke="white" strokeWidth="6" strokeLinejoin="round" />
+          <path d="M139 53v37m0 0-10-11m10 11 10-11" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
       <p className="text-xs font-bold uppercase tracking-wide text-[#3730a3]">{title}</p>
       <h1 className="mt-2 max-w-lg text-2xl font-bold text-slate-950">{message}</h1>
       <p className="mt-4 text-sm font-semibold text-slate-600">{hint}</p>
@@ -305,6 +314,14 @@ export function AtmWithdrawalResultScreen({
   remainingBalance,
   labels,
   formatAmount,
+  isListening,
+  isPreparingVoice,
+  isVoiceSupported,
+  speechError,
+  onAnotherTransaction,
+  onFinish,
+  onVoiceStart,
+  onVoiceStop,
 }: {
   withdrawnAmount: number;
   remainingBalance: number;
@@ -314,7 +331,21 @@ export function AtmWithdrawalResultScreen({
     withdrawnAmount: string;
     remainingBalance: string;
     pressEnter: string;
+    question: string;
+    anotherTransaction: string;
+    finish: string;
+    voiceButton: string;
+    listening: string;
+    preparing: string;
   };
+  isListening: boolean;
+  isPreparingVoice: boolean;
+  isVoiceSupported: boolean;
+  speechError: string;
+  onAnotherTransaction: () => void;
+  onFinish: () => void;
+  onVoiceStart: () => void;
+  onVoiceStop: () => void;
 }) {
   return (
     <div className="flex h-full flex-col justify-center">
@@ -329,7 +360,40 @@ export function AtmWithdrawalResultScreen({
           <p className="mt-1 text-2xl font-bold text-[#087f8c]">{formatAmount(remainingBalance)}</p>
         </div>
       </div>
-      <p className="mt-4 text-sm font-semibold text-slate-700">{labels.pressEnter}</p>
+      <p className="mt-4 text-base font-bold text-slate-800">{labels.question}</p>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <button type="button" onClick={onAnotherTransaction} className="min-h-11 rounded-lg bg-[#302992] px-4 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.anotherTransaction}</button>
+        <button type="button" onClick={onFinish} className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-4 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.finish}</button>
+      </div>
+      <button
+        type="button"
+        disabled={!isVoiceSupported}
+        onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); onVoiceStart(); }}
+        onPointerUp={onVoiceStop}
+        onPointerCancel={onVoiceStop}
+        className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white disabled:bg-slate-300"
+      >
+        <Mic className="h-4 w-4" aria-hidden="true" />
+        {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+      </button>
+      {speechError && <div role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
+    </div>
+  );
+}
+
+export function AtmCardReturnScreen({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-center">
+      <div aria-hidden="true" className="mb-5 flex h-28 w-32 items-center justify-center rounded-2xl bg-gradient-to-br from-[#197dab] via-[#249aca] to-[#56c7e3] shadow-lg">
+        <svg viewBox="0 0 160 144" className="h-full w-full" fill="none">
+          <rect x="25" y="18" width="110" height="13" rx="4" fill="#103652" opacity="0.9" />
+          <rect x="42" y="39" width="76" height="42" rx="6" fill="white" />
+          <rect x="49" y="46" width="62" height="8" rx="2" fill="#197dab" />
+          <path d="M80 124V89m0 35-11-12m11 12 11-12" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <p className="text-xs font-bold uppercase tracking-wide text-[#3730a3]">{title}</p>
+      <h1 className="mt-2 max-w-lg text-2xl font-bold text-slate-950">{message}</h1>
     </div>
   );
 }

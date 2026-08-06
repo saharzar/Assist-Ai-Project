@@ -79,6 +79,11 @@ body {
   100% { clip-path: inset(0 0 0 0 round 0.375rem); opacity: 1; }
 }
 
+@keyframes card-out {
+  0% { clip-path: inset(0 0 94% 0 round 0.375rem); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0 round 0.375rem); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-title-accent {
     animation: none;

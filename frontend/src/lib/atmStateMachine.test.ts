@@ -66,7 +66,18 @@ describe("ATM withdrawal flow", () => {
     const dispensing = atmReducer(receiptPrompt, { type: "RECEIPT_DECLINE" });
     const collect = atmReducer(dispensing, { type: "CASH_DISPENSE_COMPLETE" });
     const result = atmReducer(collect, { type: "CASH_COLLECTED" });
-    const completed = atmReducer(result, { type: "WITHDRAWAL_RESULT_CONTINUE" });
+    const cardReturn = atmReducer(result, { type: "FINISH_TRANSACTION" });
+    const completed = atmReducer(cardReturn, { type: "CARD_COLLECTED" });
     expect(completed.status).toBe("success");
+  });
+
+  it("returns to the menu with the updated balance for another transaction", () => {
+    const confirmation = atmReducer(withdrawalState(1200), { type: "WITHDRAWAL_SELECT", amount: 500 });
+    const receipt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
+    const dispensing = atmReducer(receipt, { type: "RECEIPT_DECLINE" });
+    const collect = atmReducer(dispensing, { type: "CASH_DISPENSE_COMPLETE" });
+    const result = atmReducer(atmReducer(collect, { type: "CASH_COLLECTED" }), { type: "ANOTHER_TRANSACTION" });
+    expect(result.status).toBe("welcome");
+    expect(result.accountBalance).toBe(700);
   });
 });

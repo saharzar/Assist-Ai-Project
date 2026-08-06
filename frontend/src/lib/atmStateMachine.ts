@@ -400,8 +400,25 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       return { ...state, status: "withdrawal_result", errorMessage: "" };
 
     case "WITHDRAWAL_RESULT_CONTINUE":
+    case "FINISH_TRANSACTION":
       if (state.status !== "withdrawal_result") return state;
-      return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal practice successfully." };
+      return { ...state, status: "card_return", accountBalance: state.remainingBalance, errorMessage: "" };
+
+    case "ANOTHER_TRANSACTION":
+      if (state.status !== "withdrawal_result") return state;
+      return {
+        ...state,
+        status: "welcome",
+        accountBalance: state.remainingBalance,
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+      };
+
+    case "CARD_COLLECTED":
+      if (state.status !== "card_return") return state;
+      return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal successfully." };
 
     case "LOCKOUT_TICK":
       return {

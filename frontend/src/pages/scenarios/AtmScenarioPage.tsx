@@ -21,6 +21,7 @@ import {
   AtmInsufficientFundsScreen,
   AtmCashDispensingScreen,
   AtmCashCollectScreen,
+  AtmCardReturnScreen,
   AtmReceiptPromptScreen,
   AtmWithdrawalConfirmScreen,
   AtmWithdrawalResultScreen,
@@ -187,6 +188,8 @@ export function AtmScenarioPage() {
   const [receiptAnimationDurationMs, setReceiptAnimationDurationMs] = useState(4000);
   const [cashAnimating, setCashAnimating] = useState(false);
   const [cashAnimationDurationMs, setCashAnimationDurationMs] = useState(5000);
+  const [cardEjecting, setCardEjecting] = useState(false);
+  const [cardCollectible, setCardCollectible] = useState(false);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -197,6 +200,7 @@ export function AtmScenarioPage() {
   const sttAutoStopTimerRef = useRef<number | null>(null);
   const insufficientFundsFadeTimerRef = useRef<number | null>(null);
   const cashDispenseStartedRef = useRef(false);
+  const cardEjectionStartedRef = useRef(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -368,6 +372,7 @@ export function AtmScenarioPage() {
     if (state.status === "receipt_prompt") return text.receiptAssistant;
     if (state.status === "cash_dispensing") return text.cashDispensingAssistant;
     if (state.status === "cash_collect") return text.cashCollectAssistant;
+    if (state.status === "card_return") return text.cardReturnAssistant;
     if (state.status === "withdrawal_result") {
       return text.withdrawalResultAssistant(
         formatCurrencyAmount(state.withdrawnAmount),
@@ -487,6 +492,13 @@ export function AtmScenarioPage() {
     });
   }, [soundEnabled]);
 
+  const startCardEjection = useCallback(() => {
+    if (cardEjectionStartedRef.current) return;
+    cardEjectionStartedRef.current = true;
+    setCardEjecting(true);
+    window.setTimeout(() => setCardCollectible(true), 1400);
+  }, []);
+
   const speakCurrentMessage = useCallback(() => {
     if (!soundEnabled) {
       return;
@@ -495,7 +507,8 @@ export function AtmScenarioPage() {
     speakAssistantMessage(spokenAssistantMessage, {
       onStart: () => {
         setIsSpeaking(true);
-        if (latestStatusRef.current === "cash_dispensing") startCashDispensing();
+        if (state.status === "cash_dispensing") startCashDispensing();
+        if (state.status === "card_return") startCardEjection();
       },
       onEnd: () => {
         setIsSpeaking(false);
@@ -510,9 +523,10 @@ export function AtmScenarioPage() {
         setIsSpeaking(false);
         setTtsError(text.assistantVoiceProblem);
         if (latestStatusRef.current === "cash_dispensing") startCashDispensing();
+        if (latestStatusRef.current === "card_return") startCardEjection();
       },
     }, language);
-  }, [finishInsufficientFundsWarning, language, soundEnabled, spokenAssistantMessage, startCashDispensing, state.errorMessage, state.status, text.assistantVoiceProblem]);
+  }, [finishInsufficientFundsWarning, language, soundEnabled, spokenAssistantMessage, startCardEjection, startCashDispensing, state.errorMessage, state.status, text.assistantVoiceProblem]);
 
   const stopSpeech = useCallback(() => {
     stopAssistantSpeech();
@@ -598,6 +612,13 @@ export function AtmScenarioPage() {
     dispatch({ type: confirmed ? "WITHDRAWAL_CONFIRM" : "WITHDRAWAL_REJECT" });
   }, [stopSpeech]);
 
+  const completeTransactionChoice = useCallback((anotherTransaction: boolean) => {
+    setSpeechError("");
+    stopSpeech();
+    setShowAccountInformation(false);
+    dispatch({ type: anotherTransaction ? "ANOTHER_TRANSACTION" : "FINISH_TRANSACTION" });
+  }, [stopSpeech]);
+
   const completeReceiptChoice = useCallback((wantsReceipt: boolean) => {
     if (receiptAnimating) return;
     setSpeechError("");
@@ -626,6 +647,16 @@ export function AtmScenarioPage() {
     }
     if (!soundEnabled) startCashDispensing();
   }, [soundEnabled, startCashDispensing, state.status]);
+
+  useEffect(() => {
+    if (state.status !== "card_return") {
+      cardEjectionStartedRef.current = false;
+      setCardEjecting(false);
+      setCardCollectible(false);
+      return;
+    }
+    if (!soundEnabled) startCardEjection();
+  }, [soundEnabled, startCardEjection, state.status]);
 
   useEffect(() => {
     latestStatusRef.current = state.status;
@@ -1151,7 +1182,9 @@ export function AtmScenarioPage() {
             setSpeechError(text.withdrawalConfirmUnclear);
             return;
           }
-          if (state.status === "receipt_prompt") {
+          if (state.status === "withdrawal_result") {
+            completeTransactionChoice(decision === "confirm");
+          } else if (state.status === "receipt_prompt") {
             completeReceiptChoice(decision === "confirm");
           } else {
             completeWithdrawalConfirmation(decision === "confirm");
@@ -1182,7 +1215,7 @@ export function AtmScenarioPage() {
     setIsPreparingVoice(true);
     recognizer.start();
     recordInputMode("voice");
-  }, [completeReceiptChoice, completeWithdrawalConfirmation, finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, state.status, stopSpeech, text]);
+  }, [completeReceiptChoice, completeTransactionChoice, completeWithdrawalConfirmation, finishListeningSession, language, recordInputMode, refreshSttUsage, showLocalizedSpeechError, state.status, stopSpeech, text]);
 
   const startLetterListening = useCallback(async () => {
     stopSpeech();
@@ -1306,7 +1339,7 @@ export function AtmScenarioPage() {
         if (state.status === "withdrawal") {
           void startAmountListening();
         }
-        if (state.status === "withdrawal_confirm" || state.status === "receipt_prompt") {
+        if (state.status === "withdrawal_confirm" || state.status === "receipt_prompt" || state.status === "withdrawal_result") {
           void startWithdrawalConfirmationListening();
         }
       }
@@ -1691,14 +1724,34 @@ export function AtmScenarioPage() {
             withdrawnAmount={state.withdrawnAmount}
             remainingBalance={state.remainingBalance}
             formatAmount={formatCurrencyAmount}
+            speechError={speechError}
+            isListening={isListening}
+            isPreparingVoice={isPreparingVoice}
+            isVoiceSupported={speechRecognitionSupported}
             labels={{
               title: text.withdrawalResultTitle,
               withdrawnAmount: text.withdrawnAmount,
               remainingBalance: text.remainingBalance,
               pressEnter: text.withdrawalResultPressEnter,
+              question: text.anotherTransactionQuestion,
+              anotherTransaction: text.anotherTransactionButton,
+              finish: text.finishTransactionButton,
+              voiceButton: text.anotherTransactionVoiceButton,
+              listening: text.listening,
+              preparing: text.preparingVoice,
             }}
+            onAnotherTransaction={() => completeTransactionChoice(true)}
+            onFinish={() => completeTransactionChoice(false)}
+            onVoiceStart={() => {
+              spaceIsHeldRef.current = true;
+              void startWithdrawalConfirmationListening();
+            }}
+            onVoiceStop={stopListening}
           />
         );
+
+      case "card_return":
+        return <AtmCardReturnScreen title={text.cardReturnTitle} message={text.cardReturnMessage} />;
 
       case "receipt_prompt":
         return (
@@ -1772,9 +1825,9 @@ export function AtmScenarioPage() {
             onTryAgain={() => {
               stopSpeech();
               stopSuccessSound();
-              setTranscript("");
-              setSpeechError("");
-              dispatch({ type: "RESET" });
+              sessionStorage.removeItem("assist_ai_atm_name");
+              sessionStorage.removeItem("assist_ai_atm_pin");
+              navigate("/scenario/atm-withdrawal/setup");
             }}
           />
         );
@@ -1817,6 +1870,15 @@ export function AtmScenarioPage() {
         stopSpeech();
         setCashAnimating(false);
         dispatch({ type: "CASH_COLLECTED" });
+      }}
+      cardEjecting={cardEjecting}
+      cardCollectible={cardCollectible}
+      onCardCollect={() => {
+        if (state.status !== "card_return" || !cardCollectible) return;
+        stopSpeech();
+        setCardEjecting(false);
+        setCardCollectible(false);
+        dispatch({ type: "CARD_COLLECTED" });
       }}
       onCardInsert={() => {
         setEntryPin("");
