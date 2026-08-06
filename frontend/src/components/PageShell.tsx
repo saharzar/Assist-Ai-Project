@@ -35,7 +35,10 @@ export function PageShell() {
   const [isAtmNavigationVisible, setIsAtmNavigationVisible] = useState(false);
   const hasSession = isAuthenticated || isGuest;
   const isAdmin = isAuthenticated && user?.role === "admin";
-  const isAtmScenario = location.pathname === "/scenario/atm-withdrawal/practice";
+  const isAtmScenario = [
+    "/scenario/atm-withdrawal/setup",
+    "/scenario/atm-withdrawal/practice",
+  ].includes(location.pathname);
   const isLandingPage = location.pathname === "/";
   const isAuthPage =
     location.pathname === "/login" ||

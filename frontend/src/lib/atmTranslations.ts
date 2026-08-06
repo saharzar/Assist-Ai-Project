@@ -87,6 +87,7 @@ type AtmTranslation = {
   finish: string;
   finishAria: string;
   welcomeAssistant: string;
+  cardInsertPrompt: string;
   enterNameAssistant: string;
   invalidNameAssistant: string;
   invalidNameError: string;
@@ -216,6 +217,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Finish scenario",
     finishAria: "Finish ATM scenario",
     welcomeAssistant: "Welcome to the ATM practice. Click start when you are ready.",
+    cardInsertPrompt: "Please insert your card into the card slot to begin.",
     enterNameAssistant: "Please say or type your full name clearly.",
     invalidNameAssistant: "Please enter your first and last name so we can continue.",
     invalidNameError: "Please write your first and last name.",
@@ -343,6 +345,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Finalizar escenario",
     finishAria: "Finalizar escenario de cajero",
     welcomeAssistant: "Bienvenido a la practica del cajero. Pulsa iniciar cuando estes listo.",
+    cardInsertPrompt: "Por favor, inserta tu tarjeta en la ranura para comenzar.",
     enterNameAssistant: "Di o escribe tu nombre completo con claridad.",
     invalidNameAssistant: "Ingresa tu nombre y apellido para continuar.",
     invalidNameError: "Escribe tu nombre y apellido.",
@@ -470,6 +473,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Szenario beenden",
     finishAria: "Geldautomaten-Szenario beenden",
     welcomeAssistant: "Willkommen zur Geldautomat-Uebung. Druecke Start, wenn du bereit bist.",
+    cardInsertPrompt: "Bitte führe deine Karte in den Kartenschlitz ein, um zu beginnen.",
     enterNameAssistant: "Sage oder tippe deinen vollstaendigen Namen deutlich.",
     invalidNameAssistant: "Bitte gib deinen Vor- und Nachnamen ein, damit wir fortfahren koennen.",
     invalidNameError: "Bitte schreibe deinen Vor- und Nachnamen.",
@@ -597,6 +601,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Senaryoyu bitir",
     finishAria: "ATM senaryosunu bitir",
     welcomeAssistant: "ATM pratiğine hoş geldin. Hazır olduğunda başlata bas.",
+    cardInsertPrompt: "Başlamak için lütfen kartını kart yuvasına yerleştir.",
     enterNameAssistant: "Lütfen adını ve soyadını net şekilde söyle ya da yaz.",
     invalidNameAssistant: "Devam etmek için lütfen adını ve soyadını gir.",
     invalidNameError: "Lütfen adını ve soyadını yaz.",
@@ -724,6 +729,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Finalizar cenário",
     finishAria: "Finalizar cenário de ATM",
     welcomeAssistant: "Bem-vindo a pratica de ATM. Pressione iniciar quando estiver pronto.",
+    cardInsertPrompt: "Insira o seu cartão na ranhura para começar.",
     enterNameAssistant: "Diga ou digite seu nome completo com clareza.",
     invalidNameAssistant: "Informe seu nome e sobrenome para continuar.",
     invalidNameError: "Digite seu nome e sobrenome.",
@@ -851,6 +857,7 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     finish: "Terminer le scénario",
     finishAria: "Terminer le scénario DAB",
     welcomeAssistant: "Bienvenue dans l'entraînement DAB. Appuie sur démarrer quand tu es prêt.",
+    cardInsertPrompt: "Veuillez insérer votre carte dans la fente pour commencer.",
     enterNameAssistant: "Dis ou écris clairement ton nom complet.",
     invalidNameAssistant: "Donne ton prénom et ton nom pour continuer.",
     invalidNameError: "Écris ton prénom et ton nom.",

@@ -107,7 +107,7 @@ export function AtmIntroductionPage() {
           <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-indigo-950/15 bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">
             <ArrowLeft className="h-5 w-5" aria-hidden="true" /> {text.back}
           </Link>
-          <Link to="/scenario/atm-withdrawal/practice" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#302992] px-6 py-3 font-bold text-white shadow-lg shadow-indigo-950/15 hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">
+          <Link to="/scenario/atm-withdrawal/setup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#302992] px-6 py-3 font-bold text-white shadow-lg shadow-indigo-950/15 hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">
             {text.start} <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Link>
         </div>

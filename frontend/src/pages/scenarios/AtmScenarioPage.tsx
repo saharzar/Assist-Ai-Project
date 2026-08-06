@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
 
 import { AtmAssistantMessage } from "../../components/atm/AtmAssistantMessage";
 import { AtmConfirmNameScreen } from "../../components/atm/AtmConfirmNameScreen";
@@ -55,6 +56,12 @@ import {
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
+function playCardInsertSound() {
+  const audio = new Audio(atmCardInsertSound);
+  audio.volume = 0.7;
+  void audio.play().catch(() => undefined);
+}
+
 function getRemainingAttempts(errorMessage: string) {
   const attempts = Number(errorMessage.split(":")[1]);
   return Number.isFinite(attempts) ? Math.max(0, attempts) : 0;
@@ -70,6 +77,7 @@ export function AtmScenarioPage() {
     const storedValue = localStorage.getItem(SOUND_STORAGE_KEY);
     return storedValue === null ? true : storedValue === "true";
   });
+  const [cardInserted, setCardInserted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isPreparingVoice, setIsPreparingVoice] = useState(false);
@@ -213,6 +221,9 @@ export function AtmScenarioPage() {
   }, [abandonCurrentAnalyticsSession]);
 
   const assistantMessage = useMemo(() => {
+    if (state.status === "welcome" && !cardInserted) {
+      return text.cardInsertPrompt;
+    }
     if (state.status === "confirm_name" && state.fullName) {
       return text.confirmNameAssistant(state.fullName);
     }
@@ -280,6 +291,7 @@ export function AtmScenarioPage() {
     state.withdrawnAmount,
     state.remainingBalance,
     lastConfirmationDecision,
+    cardInserted,
     text,
   ]);
 
@@ -1158,7 +1170,9 @@ export function AtmScenarioPage() {
               body: text.welcomeBody,
               start: text.start,
               startAria: text.startAria,
+              cardPrompt: text.cardInsertPrompt,
             }}
+            cardInserted={cardInserted}
             onStart={() => {
               stopSpeech();
               beginAnalyticsSession();
@@ -1447,6 +1461,11 @@ export function AtmScenarioPage() {
         />
       }
       keypadMode={keypadMode}
+      cardInserted={cardInserted}
+      onCardInsert={() => {
+        if (soundEnabled) playCardInsertSound();
+        setCardInserted(true);
+      }}
       onDigit={(digit) => {
         recordInputMode("keyboard");
         dispatch({ type: state.status === "withdrawal" ? "WITHDRAWAL_DIGIT" : "PIN_DIGIT", digit });

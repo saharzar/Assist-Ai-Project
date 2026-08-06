@@ -13,6 +13,8 @@ type ATMRealisticShellProps = {
   onBackspace?: () => void;
   onEnter?: () => void;
   onCancel?: () => void;
+  cardInserted: boolean;
+  onCardInsert: () => void;
 };
 
 const numericKeys = [
@@ -28,7 +30,13 @@ const numericKeys = [
   { label: "0", value: "0", x: 19, y: 87.7 },
 ];
 
-const cancelKey = { label: "Cancel", x: 33.3, y: 73.3, width: 9.2, height: 4.1 };
+const cancelKey = {
+  label: "Cancel",
+  x: 33.3,
+  y: 73.3,
+  width: 9.2,
+  height: 4.1,
+};
 
 const commandKeys = [
   { label: "Clear", x: 33.4, y: 78, action: "clear" },
@@ -37,10 +45,22 @@ const commandKeys = [
 ] as const;
 
 const spaceKey = { label: "Space", x: 51.5, y: 90.3, width: 32, height: 4.2 };
-const letterBackKey = { label: "Back", x: 81.5, y: 84.5, width: 6, height: 4.3 };
+const letterBackKey = {
+  label: "Back",
+  x: 81.5,
+  y: 84.5,
+  width: 6,
+  height: 4.3,
+};
 
 const letterRows = [
-  { letters: "QWERTYUIOP".split(""), startX: 47.2, y: 74.1, gap: 4.05, offsets: [] },
+  {
+    letters: "QWERTYUIOP".split(""),
+    startX: 47.2,
+    y: 74.1,
+    gap: 4.05,
+    offsets: [],
+  },
   {
     letters: "ASDFGHJKL".split(""),
     startX: 48.5,
@@ -66,6 +86,8 @@ export function ATMRealisticShell({
   onBackspace,
   onEnter,
   onCancel,
+  cardInserted,
+  onCardInsert,
 }: ATMRealisticShellProps) {
   const commandOverlays = (
     <>
@@ -115,6 +137,29 @@ export function ATMRealisticShell({
           {children}
         </div>
 
+        {keypadMode === "none" && (
+          <div className="absolute left-[76%] top-[16%] h-[18%] w-[16%]">
+            {!cardInserted && (
+              <button
+                type="button"
+                aria-label="Insert credit card"
+                onClick={onCardInsert}
+                className="absolute inset-0 rounded-lg border-2 border-cyan-300/0 bg-cyan-300/0 transition hover:border-cyan-300/70 hover:bg-cyan-300/20 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+              >
+                <span className="sr-only">Insert credit card</span>
+              </button>
+            )}
+            {cardInserted && (
+              <div
+                className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
+                aria-hidden="true"
+              >
+                <div className="relative right-[5%] top-[10%] h-[17%] w-[75%] rounded-sm border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]" />
+              </div>
+            )}
+          </div>
+        )}
+
         {keypadMode === "numeric" && (
           <>
             {numericKeys.map((key) => (
@@ -141,7 +186,11 @@ export function ATMRealisticShell({
                     <OverlayButton
                       key={letter}
                       label={`Letter ${letter}`}
-                      x={row.startX + index * row.gap + (row.offsets?.[index] ?? 0)}
+                      x={
+                        row.startX +
+                        index * row.gap +
+                        (row.offsets?.[index] ?? 0)
+                      }
                       y={row.y}
                       width={3.25}
                       height={4}

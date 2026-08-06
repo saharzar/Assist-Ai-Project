@@ -13,6 +13,8 @@ export function AtmFrame({
   onBackspace,
   onEnter,
   onCancel,
+  cardInserted,
+  onCardInsert,
   children,
 }: {
   assistantMessage: ReactNode;
@@ -29,6 +31,8 @@ export function AtmFrame({
   onBackspace?: () => void;
   onEnter?: () => void;
   onCancel?: () => void;
+  cardInserted: boolean;
+  onCardInsert: () => void;
   children: ReactNode;
 }) {
   return (
@@ -42,6 +46,8 @@ export function AtmFrame({
           onBackspace={onBackspace}
           onEnter={onEnter}
           onCancel={onCancel}
+          cardInserted={cardInserted}
+          onCardInsert={onCardInsert}
         >
           {children}
         </ATMRealisticShell>
