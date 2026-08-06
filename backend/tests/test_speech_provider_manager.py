@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
-from app.models import SpeechProviderEvent, SpeechUsage, User
+from app.models import SpeechProviderEvent, SpeechUsage, User, UserTtsUsage
 from app.routes import stt as stt_routes
 from app.schemas.speech_provider import GlobalSpeechRoutingUpdate, SpeechProviderSettingsUpdate
 from app.services import speech_provider_manager as manager
@@ -225,7 +225,7 @@ def test_tts_threshold_falls_back_from_azure_to_soniox_then_browser(monkeypatch)
         assert manager.get_provider_chain(db, "tts")[0].provider == "browser"
 
 
-def test_absolute_warning_emails_once_and_switches_to_next_priority(monkeypatch):
+def test_absolute_warning_emails_once_and_switches_from_soniox_to_azure(monkeypatch):
     monkeypatch.setattr(manager, "get_settings", fake_config)
     sent_emails = []
     monkeypatch.setattr(
@@ -234,39 +234,39 @@ def test_absolute_warning_emails_once_and_switches_to_next_priority(monkeypatch)
         lambda *args: sent_emails.append(args),
     )
     with SpeechTestContext() as (_, db):
-        azure = next(
+        soniox = next(
             item
             for item in manager.ensure_capability_configs(db)
-            if item.provider_key == "azure" and item.service_type == "tts"
+            if item.provider_key == "soniox" and item.service_type == "tts"
         )
-        azure.quota_limit = 100
-        azure.warning_threshold_value = 10
-        azure.switch_threshold_value = 20
+        soniox.quota_limit = 100
+        soniox.warning_threshold_value = 10
+        soniox.switch_threshold_value = 20
         db.commit()
 
         assert manager.record_request_result(
-            db, "00000000-0000-4000-8000-000000000101", "tts", "azure", "success", characters_used=12
+            db, "00000000-0000-4000-8000-000000000101", "tts", "soniox", "success", characters_used=12
         )
         assert len(sent_emails) == 1
-        assert manager.get_provider_chain(db, "tts")[0].provider == "azure"
-
-        assert manager.record_request_result(
-            db, "00000000-0000-4000-8000-000000000102", "tts", "azure", "success", characters_used=5
-        )
-        assert len(sent_emails) == 1
-
-        assert manager.record_request_result(
-            db, "00000000-0000-4000-8000-000000000103", "tts", "azure", "success", characters_used=3
-        )
         assert manager.get_provider_chain(db, "tts")[0].provider == "soniox"
+
+        assert manager.record_request_result(
+            db, "00000000-0000-4000-8000-000000000102", "tts", "soniox", "success", characters_used=5
+        )
+        assert len(sent_emails) == 1
+
+        assert manager.record_request_result(
+            db, "00000000-0000-4000-8000-000000000103", "tts", "soniox", "success", characters_used=3
+        )
+        assert manager.get_provider_chain(db, "tts")[0].provider == "azure"
         switch_event = db.scalar(
             select(SpeechProviderEvent).where(
                 SpeechProviderEvent.event_type == "switch_threshold_reached",
-                SpeechProviderEvent.provider_key == "azure",
+                SpeechProviderEvent.provider_key == "soniox",
             )
         )
         assert switch_event is not None
-        assert switch_event.new_provider == "soniox"
+        assert switch_event.new_provider == "azure"
         assert switch_event.threshold_at_event == 20
 
 
@@ -275,18 +275,23 @@ def test_missing_soniox_tts_rebalances_legacy_priorities(monkeypatch):
     with SpeechTestContext() as (_, db):
         configs = manager.ensure_capability_configs(db)
         soniox = next(item for item in configs if item.provider_key == "soniox" and item.service_type == "tts")
+        azure = next(item for item in configs if item.provider_key == "azure" and item.service_type == "tts")
         browser = next(item for item in configs if item.provider_key == "browser" and item.service_type == "tts")
         db.delete(soniox)
         db.flush()
+        azure.priority = 100
+        db.flush()
         browser.priority = 2
+        db.flush()
+        azure.priority = 1
         db.commit()
 
         restored = [item for item in manager.ensure_capability_configs(db) if item.service_type == "tts"]
         db.commit()
 
         assert [(item.provider_key, item.priority) for item in restored] == [
-            ("azure", 1),
-            ("soniox", 2),
+            ("soniox", 1),
+            ("azure", 2),
             ("browser", 3),
         ]
 
@@ -318,7 +323,7 @@ def test_duplicate_priority_is_rejected_and_soniox_tts_is_supported(monkeypatch)
         except ValueError:
             pass
         tts = [item for item in manager.ensure_capability_configs(db) if item.service_type == "tts"]
-        assert [item.provider_key for item in tts] == ["azure", "soniox", "browser"]
+        assert [item.provider_key for item in tts] == ["soniox", "azure", "browser"]
 
 
 def test_global_admin_api_is_protected_and_does_not_return_secrets(monkeypatch):
@@ -383,6 +388,31 @@ def test_global_browser_routing_applies_to_guest_speech(monkeypatch):
         assert tts.status_code == 204
         assert stt.status_code == 204
         assert tts.headers["X-Speech-Provider"] == stt.headers["X-Speech-Provider"] == "browser"
+
+
+def test_exhausted_user_tts_quota_falls_back_to_browser(monkeypatch):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    with SpeechTestContext() as (client, db):
+        user = make_user(db, "tts-quota-fallback@example.com")
+        db.add(UserTtsUsage(
+            user_id=user.id,
+            tts_limit_characters=10,
+            tts_used_characters=10,
+        ))
+        db.commit()
+
+        response = client.post(
+            "/api/tts",
+            headers={
+                **headers(user),
+                "X-Browser-Speech-Supported": "true",
+            },
+            json={"text": "This message is not cached.", "language": "en"},
+        )
+
+        assert response.status_code == 204
+        assert response.headers["X-Speech-Provider"] == "browser"
+        assert response.headers["X-Speech-Status"] == "quota_fallback"
 
 
 def test_empty_provider_transcript_falls_back_to_next_stt_provider(monkeypatch):

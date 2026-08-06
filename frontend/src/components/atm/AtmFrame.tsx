@@ -14,6 +14,13 @@ export function AtmFrame({
   onEnter,
   onCancel,
   cardInserted,
+  cardAnimating,
+  receiptAnimating,
+  receiptAnimationDurationMs,
+  cashAnimating,
+  cashAnimationDurationMs,
+  cashCollectible,
+  onCashCollect,
   onCardInsert,
   children,
 }: {
@@ -32,6 +39,13 @@ export function AtmFrame({
   onEnter?: () => void;
   onCancel?: () => void;
   cardInserted: boolean;
+  cardAnimating: boolean;
+  receiptAnimating: boolean;
+  receiptAnimationDurationMs: number;
+  cashAnimating: boolean;
+  cashAnimationDurationMs: number;
+  cashCollectible: boolean;
+  onCashCollect: () => void;
   onCardInsert: () => void;
   children: ReactNode;
 }) {
@@ -47,6 +61,13 @@ export function AtmFrame({
           onEnter={onEnter}
           onCancel={onCancel}
           cardInserted={cardInserted}
+          cardAnimating={cardAnimating}
+          receiptAnimating={receiptAnimating}
+          receiptAnimationDurationMs={receiptAnimationDurationMs}
+          cashAnimating={cashAnimating}
+          cashAnimationDurationMs={cashAnimationDurationMs}
+          cashCollectible={cashCollectible}
+          onCashCollect={onCashCollect}
           onCardInsert={onCardInsert}
         >
           {children}

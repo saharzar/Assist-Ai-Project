@@ -10,6 +10,7 @@ type SpeechCallbacks = {
   onError?: (message: string) => void;
   onCreditsRemaining?: (characters: number) => void;
   onUsageUpdate?: (usage: TtsUsage) => void;
+  allowBrowserFallback?: boolean;
 };
 
 type PreparedSpeech = {
@@ -23,18 +24,40 @@ const preparedSpeechCache = new Map<string, PreparedSpeech>();
 const pendingSpeechRequests = new Map<string, Promise<PreparedSpeech>>();
 const MAX_PREPARED_SPEECH_ITEMS = 8;
 
-let currentAssistantAudio: HTMLAudioElement | null = null;
-let currentAssistantAudioUrl: string | null = null;
+let reusableSonioxAudio: HTMLAudioElement | null = null;
+let currentSonioxAudioUrl: string | null = null;
+let assistantAudioUnlocked = false;
+let assistantAudioUnlockPromise: Promise<void> | null = null;
 let currentAssistantAbortController: AbortController | null = null;
 let currentSuccessAudio: HTMLAudioElement | null = null;
 let currentSuccessToneContext: AudioContext | null = null;
 let activeSpeechId = 0;
 let currentBrowserUtterance: SpeechSynthesisUtterance | null = null;
 
-export function isSpeechSynthesisSupported() {
-  return typeof window !== "undefined" && (
-    typeof Audio !== "undefined" || "speechSynthesis" in window
+export function unlockAssistantAudioPlayback() {
+  if (assistantAudioUnlocked || assistantAudioUnlockPromise) return;
+
+  // Use a separate one-shot element. Reusing the Soniox player here creates a
+  // race where the unlock cleanup pauses a fast cached message that has just
+  // started playing on the withdrawal or account-information screen.
+  const unlockAudio = new Audio(
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=",
   );
+  unlockAudio.volume = 0.01;
+  assistantAudioUnlockPromise = unlockAudio.play()
+    .then(() => {
+      assistantAudioUnlocked = true;
+      unlockAudio.pause();
+      unlockAudio.removeAttribute("src");
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      assistantAudioUnlockPromise = null;
+    });
+}
+
+export function isSpeechSynthesisSupported() {
+  return typeof window !== "undefined" && typeof Audio !== "undefined";
 }
 
 export function stopAssistantSpeech() {
@@ -50,16 +73,20 @@ export function stopAssistantSpeech() {
     currentAssistantAbortController = null;
   }
 
-  if (currentAssistantAudio) {
-    currentAssistantAudio.pause();
-    currentAssistantAudio.currentTime = 0;
-    currentAssistantAudio = null;
+  if (reusableSonioxAudio) {
+    reusableSonioxAudio.onplay = null;
+    reusableSonioxAudio.onended = null;
+    reusableSonioxAudio.onerror = null;
+    reusableSonioxAudio.pause();
+    reusableSonioxAudio.currentTime = 0;
+    reusableSonioxAudio.removeAttribute("src");
+    reusableSonioxAudio.load();
+  }
+  if (currentSonioxAudioUrl) {
+    URL.revokeObjectURL(currentSonioxAudioUrl);
+    currentSonioxAudioUrl = null;
   }
 
-  if (currentAssistantAudioUrl) {
-    URL.revokeObjectURL(currentAssistantAudioUrl);
-    currentAssistantAudioUrl = null;
-  }
 }
 
 export function speakAssistantMessage(
@@ -102,7 +129,12 @@ async function playBackendTts(
   try {
     const prepared = await getPreparedSpeech(message, language, abortController.signal);
     if (prepared.provider === "browser" && !prepared.audioBlob) {
-      playBrowserTts(message, language, callbacks, speechId);
+      if (callbacks.allowBrowserFallback === false) {
+        callbacks.onError?.("Soniox voice is currently unavailable.");
+        callbacks.onEnd?.();
+      } else {
+        playBrowserTts(message, language, callbacks, speechId);
+      }
       return;
     }
 
@@ -125,36 +157,110 @@ async function playBackendTts(
       return;
     }
 
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    currentAssistantAudioUrl = audioUrl;
-    currentAssistantAudio = audio;
-
-    audio.onplay = () => {
-      if (activeSpeechId === speechId) {
-        callbacks.onStart?.();
-      }
-    };
-    audio.onended = () => finishAssistantAudio(audio, audioUrl, callbacks, speechId);
-    audio.onerror = () => {
-      finishAssistantAudio(audio, audioUrl, callbacks, speechId);
-      callbacks.onError?.("Assistant voice could not play.");
-    };
-
-    await audio.play();
+    await playSonioxAudio(audioBlob, callbacks, speechId);
   } catch (error) {
     if (abortController.signal.aborted || activeSpeechId !== speechId) {
       return;
     }
-    callbacks.onError?.(
-      error instanceof Error ? error.message : "Assistant voice had a problem.",
-    );
-    callbacks.onEnd?.();
+    if (callbacks.allowBrowserFallback !== false && "speechSynthesis" in window) {
+      playBrowserTts(message, language, callbacks, speechId);
+    } else {
+      callbacks.onError?.(
+        error instanceof Error ? error.message : "Assistant voice had a problem.",
+      );
+      callbacks.onEnd?.();
+    }
   } finally {
     if (currentAssistantAbortController === abortController) {
       currentAssistantAbortController = null;
     }
   }
+}
+
+async function playSonioxAudio(
+  audioBlob: Blob,
+  callbacks: SpeechCallbacks,
+  speechId: number,
+) {
+  await playSonioxHtmlAudio(audioBlob, callbacks, speechId);
+}
+
+function getReusableSonioxAudio() {
+  if (!reusableSonioxAudio) {
+    reusableSonioxAudio = new Audio();
+    reusableSonioxAudio.preload = "auto";
+  }
+  return reusableSonioxAudio;
+}
+
+async function playSonioxHtmlAudio(
+  audioBlob: Blob,
+  callbacks: SpeechCallbacks,
+  speechId: number,
+) {
+  const audio = getReusableSonioxAudio();
+  const audioUrl = URL.createObjectURL(audioBlob);
+  currentSonioxAudioUrl = audioUrl;
+  audio.src = audioUrl;
+  audio.currentTime = 0;
+  audio.volume = 1;
+  audio.onplay = () => {
+    if (activeSpeechId === speechId) callbacks.onStart?.();
+  };
+  audio.onended = () => {
+    audio.onplay = null;
+    audio.onended = null;
+    audio.onerror = null;
+    if (currentSonioxAudioUrl === audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      currentSonioxAudioUrl = null;
+    }
+    if (activeSpeechId === speechId) callbacks.onEnd?.();
+  };
+  await audio.play();
+}
+
+function playBrowserTts(
+  message: string,
+  language: LanguageCode,
+  callbacks: SpeechCallbacks,
+  speechId: number,
+) {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    callbacks.onError?.("Browser speech is not supported on this device.");
+    callbacks.onEnd?.();
+    return;
+  }
+  const localeByLanguage: Record<LanguageCode, string> = {
+    en: "en-US",
+    es: "es-ES",
+    de: "de-DE",
+    tr: "tr-TR",
+    pt: "pt-PT",
+    fr: "fr-FR",
+  };
+  const utterance = new SpeechSynthesisUtterance(message);
+  utterance.lang = localeByLanguage[language];
+  const voices = window.speechSynthesis.getVoices();
+  utterance.voice = voices.find((voice) => voice.lang === utterance.lang)
+    ?? voices.find((voice) => voice.lang.startsWith(language))
+    ?? null;
+  currentBrowserUtterance = utterance;
+  utterance.onstart = () => {
+    if (activeSpeechId === speechId) callbacks.onStart?.();
+  };
+  utterance.onend = () => {
+    if (activeSpeechId !== speechId) return;
+    currentBrowserUtterance = null;
+    callbacks.onEnd?.();
+  };
+  utterance.onerror = () => {
+    if (activeSpeechId !== speechId) return;
+    currentBrowserUtterance = null;
+    callbacks.onError?.("Browser speech could not play.");
+    callbacks.onEnd?.();
+  };
+  window.speechSynthesis.speak(utterance);
 }
 
 function getSpeechCacheKey(message: string, language: LanguageCode) {
@@ -175,10 +281,15 @@ async function getPreparedSpeech(
 
   const request = fetchPreparedSpeech(message, language, signal)
     .then((prepared) => {
-      preparedSpeechCache.set(cacheKey, prepared);
-      while (preparedSpeechCache.size > MAX_PREPARED_SPEECH_ITEMS) {
-        const oldestKey = preparedSpeechCache.keys().next().value;
-        if (oldestKey) preparedSpeechCache.delete(oldestKey);
+      // Cache generated provider audio, but never remember a browser fallback.
+      // Otherwise one temporary Soniox failure makes this message use the
+      // browser voice for the rest of the session even after Soniox recovers.
+      if (prepared.audioBlob && prepared.provider !== "browser") {
+        preparedSpeechCache.set(cacheKey, prepared);
+        while (preparedSpeechCache.size > MAX_PREPARED_SPEECH_ITEMS) {
+          const oldestKey = preparedSpeechCache.keys().next().value;
+          if (oldestKey) preparedSpeechCache.delete(oldestKey);
+        }
       }
       return prepared;
     })
@@ -238,49 +349,6 @@ async function fetchPreparedSpeech(
   };
 }
 
-function playBrowserTts(
-  message: string,
-  language: LanguageCode,
-  callbacks: SpeechCallbacks,
-  speechId: number,
-) {
-  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
-    callbacks.onError?.("Browser speech is not supported on this device.");
-    callbacks.onEnd?.();
-    return;
-  }
-  const localeByLanguage: Record<LanguageCode, string> = {
-    en: "en-US",
-    es: "es-ES",
-    de: "de-DE",
-    tr: "tr-TR",
-    pt: "pt-PT",
-    fr: "fr-FR",
-  };
-  const utterance = new SpeechSynthesisUtterance(message);
-  utterance.lang = localeByLanguage[language];
-  const voices = window.speechSynthesis.getVoices();
-  utterance.voice = voices.find((voice) => voice.lang === utterance.lang)
-    ?? voices.find((voice) => voice.lang.startsWith(language))
-    ?? null;
-  currentBrowserUtterance = utterance;
-  utterance.onstart = () => {
-    if (activeSpeechId === speechId) callbacks.onStart?.();
-  };
-  utterance.onend = () => {
-    if (activeSpeechId !== speechId) return;
-    currentBrowserUtterance = null;
-    callbacks.onEnd?.();
-  };
-  utterance.onerror = () => {
-    if (activeSpeechId !== speechId) return;
-    currentBrowserUtterance = null;
-    callbacks.onError?.("Browser speech could not play.");
-    callbacks.onEnd?.();
-  };
-  window.speechSynthesis.speak(utterance);
-}
-
 async function readTtsError(response: Response) {
   try {
     const data = (await response.json()) as { detail?: string };
@@ -288,25 +356,6 @@ async function readTtsError(response: Response) {
   } catch {
     return "Assistant voice had a problem.";
   }
-}
-
-function finishAssistantAudio(
-  audio: HTMLAudioElement,
-  audioUrl: string,
-  callbacks: SpeechCallbacks,
-  speechId: number,
-) {
-  if (activeSpeechId !== speechId) {
-    return;
-  }
-  if (currentAssistantAudio === audio) {
-    currentAssistantAudio = null;
-  }
-  if (currentAssistantAudioUrl === audioUrl) {
-    URL.revokeObjectURL(audioUrl);
-    currentAssistantAudioUrl = null;
-  }
-  callbacks.onEnd?.();
 }
 
 export function playSuccessSound() {

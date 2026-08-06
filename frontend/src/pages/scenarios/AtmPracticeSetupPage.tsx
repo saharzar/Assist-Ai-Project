@@ -1,8 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Mic } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
+import { atmTranslations } from "../../lib/atmTranslations";
 import { createSpeechRecognizer, isSpeechRecognitionSupported } from "../../services/speechRecognitionService";
+import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 export function AtmPracticeSetupPage() {
   const navigate = useNavigate();
@@ -14,6 +16,10 @@ export function AtmPracticeSetupPage() {
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const { language } = useTranslation();
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    void preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language);
+  }, [language]);
 
   const nameIsValid = /^[A-Za-z]+(?: [A-Za-z]+)*$/.test(fullName.trim());
   const pinIsValid = /^\d{4}$/.test(pin);
@@ -46,6 +52,9 @@ export function AtmPracticeSetupPage() {
     event.preventDefault();
     setSubmitted(true);
     if (canStart) {
+      unlockAssistantAudioPlayback();
+      sessionStorage.setItem("assist_ai_atm_name", fullName.trim());
+      sessionStorage.setItem("assist_ai_atm_pin", pin);
       navigate("/scenario/atm-withdrawal/practice");
     }
   };

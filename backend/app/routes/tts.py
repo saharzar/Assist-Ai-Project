@@ -67,7 +67,13 @@ def create_tts_audio(
         )
 
     request_id = str(speech_request_id or uuid4())
-    user_id = current_user.id if isinstance(current_user, User) else None
+    # Administrators need to test every scenario/language and populate the
+    # shared TTS cache without being blocked by an end-user allowance.
+    user_id = (
+        current_user.id
+        if isinstance(current_user, User) and current_user.role != "admin"
+        else None
+    )
     decisions = get_provider_chain(db, "tts", browser_supported=browser_speech_supported)
     db.commit()
     last_error: HTTPException | None = None
@@ -103,6 +109,20 @@ def create_tts_audio(
                 cache_voice=voice,
             )
         except HTTPException as exc:
+            if exc.status_code == status.HTTP_403_FORBIDDEN and browser_speech_supported:
+                browser_decision = next(
+                    (item for item in decisions if item.provider == "browser"),
+                    None,
+                )
+                if browser_decision is not None:
+                    record_request_result(db, request_id, "tts", "browser", "success")
+                    return Response(
+                        status_code=204,
+                        headers={
+                            "X-Speech-Provider": "browser",
+                            "X-Speech-Status": "quota_fallback",
+                        },
+                    )
             if exc.status_code not in {502, 503, 504}:
                 raise
             last_error = exc

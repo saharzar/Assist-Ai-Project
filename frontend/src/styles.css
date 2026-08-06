@@ -64,9 +64,19 @@ body {
 }
 
 @keyframes card-in-out {
-  0% { transform: translateY(0); opacity: 1; }
-  55% { transform: translateY(-45%); opacity: 1; }
-  100% { transform: translateY(-80%); opacity: 0; }
+  0% { clip-path: inset(0 0 0 0 round 0.375rem); opacity: 1; }
+  85% { clip-path: inset(0 0 85% 0 round 0.375rem); opacity: 1; }
+  100% { clip-path: inset(0 0 100% 0 round 0.375rem); opacity: 0; }
+}
+
+@keyframes receipt-out {
+  0% { clip-path: inset(0 0 92% 0 round 0 0 0.125rem 0.125rem); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0 round 0 0 0.125rem 0.125rem); opacity: 1; }
+}
+
+@keyframes cash-out {
+  0% { clip-path: inset(0 0 94% 0 round 0.375rem); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0 round 0.375rem); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

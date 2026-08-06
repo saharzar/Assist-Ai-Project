@@ -468,8 +468,8 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
         for item in db.scalars(select(SpeechProviderCapabilityConfig)).all()
     }
     defaults = {
-        ("azure", "tts"): (1, settings.azure_tts_monthly_limit),
-        ("soniox", "tts"): (2, config.soniox_tts_monthly_limit_characters),
+        ("soniox", "tts"): (1, config.soniox_tts_monthly_limit_characters),
+        ("azure", "tts"): (2, settings.azure_tts_monthly_limit),
         ("browser", "tts"): (3, None),
         ("azure", "stt"): (1, settings.azure_stt_monthly_limit_seconds),
         ("soniox", "stt"): (2, config.soniox_stt_monthly_limit_seconds),

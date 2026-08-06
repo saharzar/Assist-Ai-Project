@@ -1,6 +1,61 @@
 import type { ReactNode } from "react";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
+import atmButtonBeepUrl from "../../assets/atm-button-beep.mp3";
+
+const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
+const AudioContextConstructor =
+  window.AudioContext || window.webkitAudioContext;
+const atmButtonAudioContext = AudioContextConstructor
+  ? new AudioContextConstructor()
+  : null;
+let activeButtonBeep: AudioBufferSourceNode | null = null;
+const atmButtonBeepBuffer = atmButtonAudioContext
+  ? fetch(atmButtonBeepUrl)
+      .then((response) => response.arrayBuffer())
+      .then((data) => atmButtonAudioContext.decodeAudioData(data))
+  : Promise.resolve(null);
+
+function findFirstAudibleSecond(buffer: AudioBuffer) {
+  const threshold = 0.008;
+  for (let sample = 0; sample < buffer.length; sample += 1) {
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      if (Math.abs(buffer.getChannelData(channel)[sample]) >= threshold) {
+        return sample / buffer.sampleRate;
+      }
+    }
+  }
+  return 0;
+}
+
+function playAtmButtonBeep() {
+  if (
+    localStorage.getItem(SOUND_STORAGE_KEY) === "false" ||
+    !atmButtonAudioContext
+  )
+    return;
+  void Promise.all([atmButtonAudioContext.resume(), atmButtonBeepBuffer])
+    .then(([, buffer]) => {
+      if (!buffer) return;
+      activeButtonBeep?.stop();
+      const source = atmButtonAudioContext.createBufferSource();
+      const gain = atmButtonAudioContext.createGain();
+      source.buffer = buffer;
+      gain.gain.value = 0.45;
+      source.connect(gain);
+      gain.connect(atmButtonAudioContext.destination);
+      source.start(0, findFirstAudibleSecond(buffer), 0.35);
+      activeButtonBeep = source;
+      source.addEventListener(
+        "ended",
+        () => {
+          if (activeButtonBeep === source) activeButtonBeep = null;
+        },
+        { once: true },
+      );
+    })
+    .catch(() => undefined);
+}
 
 type KeypadMode = "none" | "numeric" | "letters" | "confirm";
 
@@ -14,6 +69,13 @@ type ATMRealisticShellProps = {
   onEnter?: () => void;
   onCancel?: () => void;
   cardInserted: boolean;
+  cardAnimating: boolean;
+  receiptAnimating: boolean;
+  receiptAnimationDurationMs: number;
+  cashAnimating: boolean;
+  cashAnimationDurationMs: number;
+  cashCollectible: boolean;
+  onCashCollect: () => void;
   onCardInsert: () => void;
 };
 
@@ -87,6 +149,13 @@ export function ATMRealisticShell({
   onEnter,
   onCancel,
   cardInserted,
+  cardAnimating,
+  receiptAnimating,
+  receiptAnimationDurationMs,
+  cashAnimating,
+  cashAnimationDurationMs,
+  cashCollectible,
+  onCashCollect,
   onCardInsert,
 }: ATMRealisticShellProps) {
   const commandOverlays = (
@@ -138,7 +207,7 @@ export function ATMRealisticShell({
         </div>
 
         {keypadMode === "none" && (
-          <div className="absolute left-[76%] top-[16%] h-[18%] w-[16%]">
+          <div className="absolute left-[76%] top-[16%] h-[24%] w-[16%]">
             {!cardInserted && (
               <button
                 type="button"
@@ -149,14 +218,44 @@ export function ATMRealisticShell({
                 <span className="sr-only">Insert credit card</span>
               </button>
             )}
-            {cardInserted && (
+            {cardAnimating && (
               <div
                 className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
                 aria-hidden="true"
               >
-                <div className="relative right-[5%] top-[10%] h-[17%] w-[75%] rounded-sm border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]" />
+                <div className="relative right-[5%] top-[30%] h-[82%] w-[52%] rounded-md border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]" />
               </div>
             )}
+          </div>
+        )}
+
+        {receiptAnimating && (
+          <div className="pointer-events-none absolute left-[76%] top-[65%] h-[18%] w-[16%] overflow-hidden" aria-hidden="true">
+            <div
+              className="absolute left-[20%] top-[24%] h-[62%] w-[58%] rounded-b-sm border border-slate-300 bg-gradient-to-b from-white to-slate-100 shadow-lg animate-[receipt-out_ease-out_forwards]"
+              style={{ animationDuration: `${receiptAnimationDurationMs}ms` }}
+            >
+              <div className="mx-auto mt-[15%] h-px w-2/3 bg-slate-300" />
+              <div className="mx-auto mt-[10%] h-px w-1/2 bg-slate-300" />
+            </div>
+          </div>
+        )}
+
+        {cashAnimating && (
+          <div className={`absolute left-[13%] top-[69%] h-[18%] w-[43%] overflow-hidden ${cashCollectible ? "pointer-events-auto" : "pointer-events-none"}`}>
+            <button
+              type="button"
+              aria-label="Collect cash"
+              disabled={!cashCollectible}
+              onClick={onCashCollect}
+              className={`absolute left-[10%] top-0 h-[82%] w-[80%] animate-[cash-out_ease-out_forwards] border-0 bg-transparent p-0 ${cashCollectible ? "cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "cursor-default"}`}
+              style={{ animationDuration: `${cashAnimationDurationMs}ms` }}
+            >
+              <div className="absolute inset-x-[4%] top-0 h-[76%] rounded-md border-2 border-emerald-700 bg-gradient-to-br from-emerald-100 via-green-50 to-emerald-200 shadow-xl" />
+              <div className="absolute inset-x-0 top-[12%] h-[76%] rounded-md border-2 border-emerald-800 bg-gradient-to-br from-green-100 via-white to-emerald-200 shadow-xl">
+                <div className="absolute inset-[16%] rounded-full border-2 border-emerald-500" />
+              </div>
+            </button>
           </div>
         )}
 
@@ -243,7 +342,10 @@ function OverlayButton({
     <button
       type="button"
       aria-label={label}
-      onClick={onClick}
+      onClick={() => {
+        playAtmButtonBeep();
+        onClick();
+      }}
       style={{
         left: `${x}%`,
         top: `${y}%`,

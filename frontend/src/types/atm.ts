@@ -9,6 +9,9 @@ export type AtmScenarioStatus =
   | "lockout"
   | "withdrawal"
   | "withdrawal_confirm"
+  | "receipt_prompt"
+  | "cash_dispensing"
+  | "cash_collect"
   | "withdrawal_result"
   | "success";
 
@@ -39,6 +42,7 @@ export type AtmState = {
 
 export type AtmAction =
   | { type: "START" }
+  | { type: "START_WITHDRAWAL" }
   | { type: "NAME_SUBMITTED"; fullName: string }
   | { type: "NAME_CONFIRMED" }
   | { type: "NAME_RETRY" }
@@ -61,6 +65,10 @@ export type AtmAction =
   | { type: "WITHDRAWAL_WARNING_COMPLETE" }
   | { type: "WITHDRAWAL_CONFIRM" }
   | { type: "WITHDRAWAL_REJECT" }
+  | { type: "RECEIPT_ACCEPT" }
+  | { type: "RECEIPT_DECLINE" }
+  | { type: "CASH_DISPENSE_COMPLETE" }
+  | { type: "CASH_COLLECTED" }
   | { type: "WITHDRAWAL_RESULT_CONTINUE" }
   | { type: "LOCKOUT_TICK" }
   | { type: "SECURITY_TICK" }

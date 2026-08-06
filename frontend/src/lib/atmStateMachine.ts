@@ -109,6 +109,17 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         assistantMessage: "Please say or type your full name clearly.",
       };
 
+    case "START_WITHDRAWAL":
+      return {
+        ...state,
+        status: "withdrawal",
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+        assistantMessage: "Choose how much money to withdraw.",
+      };
+
     case "NAME_SUBMITTED": {
       const parsedName = parseAtmName(action.fullName);
       if (!parsedName) {
@@ -359,7 +370,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.status !== "withdrawal_confirm") return state;
       return {
         ...state,
-        status: "withdrawal_result",
+        status: "receipt_prompt",
         remainingBalance: state.accountBalance - state.withdrawnAmount,
         errorMessage: "",
       };
@@ -374,6 +385,19 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         remainingBalance: 0,
         errorMessage: "",
       };
+
+    case "RECEIPT_ACCEPT":
+    case "RECEIPT_DECLINE":
+      if (state.status !== "receipt_prompt") return state;
+      return { ...state, status: "cash_dispensing", errorMessage: "" };
+
+    case "CASH_DISPENSE_COMPLETE":
+      if (state.status !== "cash_dispensing") return state;
+      return { ...state, status: "cash_collect", errorMessage: "" };
+
+    case "CASH_COLLECTED":
+      if (state.status !== "cash_collect") return state;
+      return { ...state, status: "withdrawal_result", errorMessage: "" };
 
     case "WITHDRAWAL_RESULT_CONTINUE":
       if (state.status !== "withdrawal_result") return state;
