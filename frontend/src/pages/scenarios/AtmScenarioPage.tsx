@@ -221,6 +221,9 @@ export function AtmScenarioPage() {
   const [cardEjecting, setCardEjecting] = useState(false);
   const [cardCollectible, setCardCollectible] = useState(false);
   const [leaveFromMenu, setLeaveFromMenu] = useState(false);
+  const [, setInactivitySeconds] = useState(0);
+  const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
+  const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -366,6 +369,8 @@ export function AtmScenarioPage() {
   }, [abandonCurrentAnalyticsSession]);
 
   const assistantMessage = useMemo(() => {
+    if (inactivityTimedOut) return text.inactivityTimeoutAssistant;
+    if (inactivityWarningRemaining !== null) return text.inactivityWarning(inactivityWarningRemaining);
     if (pinSessionEnded) return securityCardCollected ? text.pinSecurityCardTaken : text.pinSecurityEndedAssistant;
     if (state.status === "welcome" && !cardInsertionComplete) {
       return text.cardInsertPrompt;
@@ -465,6 +470,8 @@ export function AtmScenarioPage() {
     showAccountInformation,
     pinSessionEnded,
     securityCardCollected,
+    inactivityTimedOut,
+    inactivityWarningRemaining,
     text,
   ]);
 
@@ -546,9 +553,11 @@ export function AtmScenarioPage() {
         if (state.status === "cash_dispensing") startCashDispensing();
         if (state.status === "card_return") startCardEjection();
         if (pinSessionEnded && !securityCardCollected) startCardEjection();
+        if (inactivityTimedOut) startCardEjection();
       },
       onEnd: () => {
         setIsSpeaking(false);
+        if (inactivityWarningRemaining !== null) setInactivityWarningRemaining(null);
         if (state.status === "withdrawal" && state.errorMessage === ATM_ERROR.insufficientFunds) {
           finishInsufficientFundsWarning();
         }
@@ -559,12 +568,14 @@ export function AtmScenarioPage() {
       onError: () => {
         setIsSpeaking(false);
         setTtsError(text.assistantVoiceProblem);
+        if (inactivityWarningRemaining !== null) setInactivityWarningRemaining(null);
         if (latestStatusRef.current === "cash_dispensing") startCashDispensing();
         if (latestStatusRef.current === "card_return") startCardEjection();
         if (pinSessionEnded && !securityCardCollected) startCardEjection();
+        if (inactivityTimedOut) startCardEjection();
       },
     }, language);
-  }, [finishInsufficientFundsWarning, language, pinSessionEnded, securityCardCollected, soundEnabled, spokenAssistantMessage, startCardEjection, startCashDispensing, state.errorMessage, state.status, text.assistantVoiceProblem]);
+  }, [finishInsufficientFundsWarning, inactivityTimedOut, inactivityWarningRemaining, language, pinSessionEnded, securityCardCollected, soundEnabled, spokenAssistantMessage, startCardEjection, startCashDispensing, state.errorMessage, state.status, text.assistantVoiceProblem]);
 
   const stopSpeech = useCallback(() => {
     stopAssistantSpeech();
@@ -687,7 +698,7 @@ export function AtmScenarioPage() {
   }, [soundEnabled, startCashDispensing, state.status]);
 
   useEffect(() => {
-    const cardReturnActive = state.status === "card_return" || (pinSessionEnded && !securityCardCollected);
+    const cardReturnActive = state.status === "card_return" || (pinSessionEnded && !securityCardCollected) || inactivityTimedOut;
     if (!cardReturnActive) {
       cardEjectionStartedRef.current = false;
       setCardEjecting(false);
@@ -695,7 +706,54 @@ export function AtmScenarioPage() {
       return;
     }
     if (!soundEnabled) startCardEjection();
-  }, [pinSessionEnded, securityCardCollected, soundEnabled, startCardEjection, state.status]);
+  }, [inactivityTimedOut, pinSessionEnded, securityCardCollected, soundEnabled, startCardEjection, state.status]);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimedOut) return;
+    if (inactivityWarningRemaining !== null) stopSpeech();
+    setInactivitySeconds(0);
+    setInactivityWarningRemaining(null);
+  }, [inactivityTimedOut, inactivityWarningRemaining, stopSpeech]);
+
+  useEffect(() => {
+    const timerActive =
+      pinVerified &&
+      !pinSessionEnded &&
+      !inactivityTimedOut &&
+      !receiptAnimating &&
+      !["cash_dispensing", "card_return", "success", "security_terminated", "lockout"].includes(state.status);
+
+    if (!timerActive) {
+      if (!inactivityTimedOut) {
+        setInactivitySeconds(0);
+        setInactivityWarningRemaining(null);
+      }
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setInactivitySeconds((current) => {
+        const next = current + 1;
+        if (next >= 60) {
+          setInactivityWarningRemaining(null);
+          setInactivityTimedOut(true);
+          return 60;
+        }
+        if (next % 15 === 0) setInactivityWarningRemaining(60 - next);
+        return next;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [inactivityTimedOut, pinSessionEnded, pinVerified, receiptAnimating, state.status]);
+
+  useEffect(() => {
+    if (inactivityWarningRemaining === null) return;
+    if (soundEnabled) return;
+    const warningTimer = window.setTimeout(() => {
+      setInactivityWarningRemaining(null);
+    }, 5000);
+    return () => window.clearTimeout(warningTimer);
+  }, [inactivityWarningRemaining, soundEnabled]);
 
   useEffect(() => {
     latestStatusRef.current = state.status;
@@ -809,7 +867,7 @@ export function AtmScenarioPage() {
       return;
     }
     const previous = lastAutoSpeechRef.current;
-    const currentSpeechStatus = `${state.status}:${cardInsertionComplete}:${pinVerified}:${entryPinError}:${entryPinAttempts}:${showAccountInformation}:${pinSessionEnded}:${securityCardCollected}`;
+    const currentSpeechStatus = `${state.status}:${cardInsertionComplete}:${pinVerified}:${entryPinError}:${entryPinAttempts}:${showAccountInformation}:${pinSessionEnded}:${securityCardCollected}:${inactivityTimedOut}:${inactivityWarningRemaining}`;
     const screenChanged = previous.status !== currentSpeechStatus;
     const languageChanged = previous.language !== language;
     const newErrorAppeared = Boolean(state.errorMessage) && (
@@ -839,6 +897,8 @@ export function AtmScenarioPage() {
     showAccountInformation,
     pinSessionEnded,
     securityCardCollected,
+    inactivityTimedOut,
+    inactivityWarningRemaining,
     speakCurrentMessage,
     state.errorMessage,
     state.status,
@@ -1364,6 +1424,7 @@ export function AtmScenarioPage() {
         return;
       }
       event.preventDefault();
+      resetInactivityTimer();
       if (document.activeElement instanceof HTMLButtonElement) {
         document.activeElement.blur();
       }
@@ -1408,6 +1469,7 @@ export function AtmScenarioPage() {
     startLetterListening,
     startAmountListening,
     startWithdrawalConfirmationListening,
+    resetInactivityTimer,
     state.status,
     stopListening,
   ]);
@@ -1428,6 +1490,7 @@ export function AtmScenarioPage() {
       if (!isDigit && !isBackspace && !isDelete) return;
 
       event.preventDefault();
+      resetInactivityTimer();
       recordInputMode("keyboard");
       if (enteringInitialPin) {
         setEntryPin((current) => isDelete ? "" : isBackspace ? current.slice(0, -1) : `${current}${event.key}`.slice(0, 4));
@@ -1449,7 +1512,7 @@ export function AtmScenarioPage() {
 
     window.addEventListener("keydown", handleNumberKey);
     return () => window.removeEventListener("keydown", handleNumberKey);
-  }, [cardInsertionComplete, pinSessionEnded, pinVerified, recordInputMode, state.errorMessage, state.status]);
+  }, [cardInsertionComplete, pinSessionEnded, pinVerified, recordInputMode, resetInactivityTimer, state.errorMessage, state.status]);
 
   useEffect(() => {
     if (document.activeElement instanceof HTMLButtonElement) {
@@ -1465,7 +1528,9 @@ export function AtmScenarioPage() {
   };
 
   const keypadMode =
-    (!pinSessionEnded && state.status === "welcome" && cardInsertionComplete && !pinVerified) || state.status === "pin_attempt" || (state.status === "withdrawal" && state.errorMessage !== ATM_ERROR.insufficientFunds)
+    inactivityTimedOut || inactivityWarningRemaining !== null
+      ? "none"
+      : (!pinSessionEnded && state.status === "welcome" && cardInsertionComplete && !pinVerified) || state.status === "pin_attempt" || (state.status === "withdrawal" && state.errorMessage !== ATM_ERROR.insufficientFunds)
       ? "numeric"
       : state.status === "confirm_name" || state.status === "withdrawal_confirm" || state.status === "receipt_prompt" || state.status === "withdrawal_result" || (state.status === "welcome" && pinVerified && showAccountInformation)
         ? "confirm"
@@ -1474,6 +1539,26 @@ export function AtmScenarioPage() {
         : "none";
 
   const screen = (() => {
+    if (inactivityTimedOut) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center text-center">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl font-black text-amber-700" aria-hidden="true">!</div>
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{text.inactivityTimeoutTitle}</p>
+          <h1 className="mt-2 max-w-xl text-2xl font-bold text-slate-950">{text.inactivityTimeoutMessage}</h1>
+        </div>
+      );
+    }
+    if (inactivityWarningRemaining !== null) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center text-center" role="alert" aria-live="assertive">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl font-black text-amber-700" aria-hidden="true">!</div>
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{text.inactivityWarningTitle}</p>
+          <h1 className="mt-2 max-w-xl text-2xl font-bold text-slate-950">
+            {text.inactivityWarning(inactivityWarningRemaining)}
+          </h1>
+        </div>
+      );
+    }
     if (pinSessionEnded) {
       return (
         <div className="flex h-full flex-col items-center justify-center text-center">
@@ -1938,7 +2023,13 @@ export function AtmScenarioPage() {
   })();
 
   return (
-    <div onPointerDownCapture={unlockAssistantAudioPlayback}>
+    <div
+      onPointerDownCapture={() => {
+        unlockAssistantAudioPlayback();
+        resetInactivityTimer();
+      }}
+      onKeyDownCapture={resetInactivityTimer}
+    >
     <AtmFrame
       labels={{
         panelTitle: text.panelTitle,
@@ -1979,7 +2070,9 @@ export function AtmScenarioPage() {
         stopCardRemoveSound();
         setCardEjecting(false);
         setCardCollectible(false);
-        if (pinSessionEnded) {
+        if (inactivityTimedOut) {
+          navigate("/scenarios");
+        } else if (pinSessionEnded) {
           setSecurityCardCollected(true);
         } else if (state.status === "card_return") {
           if (leaveFromMenu) {
