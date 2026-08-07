@@ -88,6 +88,11 @@ async def create_stt_transcript(
         )
 
     request_id = str(speech_request_id or uuid4())
+    if isinstance(current_user, GuestSession):
+        return Response(
+            status_code=204,
+            headers={"X-Speech-Provider": "browser", "X-Speech-Status": "normal"},
+        )
     user_id = current_user.id if isinstance(current_user, User) else None
     processed = find_processed_request(db, request_id, "stt")
     if processed and processed.outcome == "success" and processed.result_payload:

@@ -83,6 +83,7 @@ type AtmTranslation = {
   withdrawalResultPressEnter: string;
   withdrawalResultAssistant: (amount: number | string, remaining: number | string) => string;
   anotherTransactionQuestion: string;
+  anotherTransactionUnclear: string;
   anotherTransactionButton: string;
   finishTransactionButton: string;
   anotherTransactionVoiceButton: string;
@@ -256,8 +257,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Amount withdrawn",
     remainingBalance: "Balance remaining",
     withdrawalResultPressEnter: "Press ENTER to finish.",
-    withdrawalResultAssistant: (_amount, remaining) => `Your remaining balance is ${remaining}. Would you like to make another transaction?`,
+    withdrawalResultAssistant: () => "Would you like to make another transaction?",
     anotherTransactionQuestion: "Would you like to make another transaction?",
+    anotherTransactionUnclear: "Please say yes for another transaction or no to finish and leave.",
     anotherTransactionButton: "Another transaction",
     finishTransactionButton: "Finish and leave",
     anotherTransactionVoiceButton: "Hold to say yes or no",
@@ -429,8 +431,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Cantidad retirada",
     remainingBalance: "Saldo restante",
     withdrawalResultPressEnter: "Pulsa ENTER para finalizar.",
-    withdrawalResultAssistant: (_amount, remaining) => `Tu saldo restante es ${remaining}. ¿Deseas realizar otra transacción?`,
+    withdrawalResultAssistant: () => "¿Deseas realizar otra transacción?",
     anotherTransactionQuestion: "¿Deseas realizar otra transacción?",
+    anotherTransactionUnclear: "Di sí para realizar otra transacción o no para finalizar y salir.",
     anotherTransactionButton: "Otra transacción",
     finishTransactionButton: "Finalizar y salir",
     anotherTransactionVoiceButton: "Mantén pulsado para decir sí o no",
@@ -602,8 +605,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Ausgezahlter Betrag",
     remainingBalance: "Verbleibendes Guthaben",
     withdrawalResultPressEnter: "Drücke ENTER, um den Vorgang abzuschließen.",
-    withdrawalResultAssistant: (_amount, remaining) => `Dein verbleibendes Guthaben beträgt ${remaining}. Möchtest du eine weitere Transaktion durchführen?`,
+    withdrawalResultAssistant: () => "Möchtest du eine weitere Transaktion durchführen?",
     anotherTransactionQuestion: "Möchtest du eine weitere Transaktion durchführen?",
+    anotherTransactionUnclear: "Sage Ja für eine weitere Transaktion oder Nein, um den Vorgang zu beenden.",
     anotherTransactionButton: "Weitere Transaktion",
     finishTransactionButton: "Beenden und gehen",
     anotherTransactionVoiceButton: "Gedrückt halten und Ja oder Nein sagen",
@@ -775,8 +779,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Çekilen tutar",
     remainingBalance: "Kalan bakiye",
     withdrawalResultPressEnter: "İşlemi tamamlamak için ENTER'a bas.",
-    withdrawalResultAssistant: (_amount, remaining) => `Kalan bakiyen ${remaining}. Başka bir işlem yapmak ister misiniz?`,
+    withdrawalResultAssistant: () => "Başka bir işlem yapmak ister misiniz?",
     anotherTransactionQuestion: "Başka bir işlem yapmak ister misiniz?",
+    anotherTransactionUnclear: "Başka bir işlem için evet, bitirip ayrılmak için hayır deyin.",
     anotherTransactionButton: "Başka işlem yap",
     finishTransactionButton: "Bitir ve ayrıl",
     anotherTransactionVoiceButton: "Evet veya hayır demek için basılı tutun",
@@ -948,8 +953,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Valor levantado",
     remainingBalance: "Saldo restante",
     withdrawalResultPressEnter: "Pressione ENTER para terminar.",
-    withdrawalResultAssistant: (_amount, remaining) => `O seu saldo restante é ${remaining}. Deseja realizar outra transação?`,
+    withdrawalResultAssistant: () => "Deseja realizar outra transação?",
     anotherTransactionQuestion: "Deseja realizar outra transação?",
+    anotherTransactionUnclear: "Diga sim para realizar outra transação ou não para terminar e sair.",
     anotherTransactionButton: "Outra transação",
     finishTransactionButton: "Terminar e sair",
     anotherTransactionVoiceButton: "Mantenha premido para dizer sim ou não",
@@ -1121,8 +1127,9 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawnAmount: "Montant retiré",
     remainingBalance: "Solde restant",
     withdrawalResultPressEnter: "Appuie sur ENTER pour terminer.",
-    withdrawalResultAssistant: (_amount, remaining) => `Votre solde restant est de ${remaining}. Souhaitez-vous effectuer une autre opération ?`,
+    withdrawalResultAssistant: () => "Souhaitez-vous effectuer une autre opération ?",
     anotherTransactionQuestion: "Souhaitez-vous effectuer une autre opération ?",
+    anotherTransactionUnclear: "Dites oui pour effectuer une autre opération ou non pour terminer et quitter.",
     anotherTransactionButton: "Autre opération",
     finishTransactionButton: "Terminer et quitter",
     anotherTransactionVoiceButton: "Maintenez pour dire oui ou non",

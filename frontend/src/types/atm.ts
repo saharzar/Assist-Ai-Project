@@ -61,6 +61,7 @@ export type AtmAction =
   | { type: "WITHDRAWAL_REPLACE"; value: string }
   | { type: "WITHDRAWAL_BACKSPACE" }
   | { type: "WITHDRAWAL_CLEAR" }
+  | { type: "WITHDRAWAL_RETURN_TO_MENU" }
   | { type: "WITHDRAWAL_SELECT"; amount: number }
   | { type: "WITHDRAWAL_SUBMIT" }
   | { type: "WITHDRAWAL_WARNING_COMPLETE" }

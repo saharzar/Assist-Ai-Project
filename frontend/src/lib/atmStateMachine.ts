@@ -349,6 +349,17 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.status !== "withdrawal") return state;
       return { ...state, withdrawalInput: "", errorMessage: "" };
 
+    case "WITHDRAWAL_RETURN_TO_MENU":
+      if (state.status !== "withdrawal") return state;
+      return {
+        ...state,
+        status: "welcome",
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+      };
+
     case "WITHDRAWAL_SELECT":
       if (state.status !== "withdrawal") return state;
       return prepareWithdrawal(state, action.amount);

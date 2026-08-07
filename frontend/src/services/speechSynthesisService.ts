@@ -128,6 +128,9 @@ async function playBackendTts(
 ) {
   try {
     const prepared = await getPreparedSpeech(message, language, abortController.signal);
+    if (abortController.signal.aborted || activeSpeechId !== speechId) {
+      return;
+    }
     if (prepared.provider === "browser" && !prepared.audioBlob) {
       if (callbacks.allowBrowserFallback === false) {
         callbacks.onError?.("Soniox voice is currently unavailable.");
@@ -272,6 +275,11 @@ async function getPreparedSpeech(
   language: LanguageCode,
   signal?: AbortSignal,
 ) {
+  const isGuest = !localStorage.getItem("assist_ai_token") && Boolean(localStorage.getItem("assist_ai_guest_session"));
+  if (isGuest) {
+    notifySpeechProviderUsed("tts", "browser");
+    return { audioBlob: null, provider: "browser", remaining: null, usage: null };
+  }
   const cacheKey = getSpeechCacheKey(message, language);
   const cached = preparedSpeechCache.get(cacheKey);
   if (cached) return cached;

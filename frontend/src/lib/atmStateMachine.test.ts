@@ -60,6 +60,13 @@ describe("ATM withdrawal flow", () => {
     expect(rejected.withdrawnAmount).toBe(0);
   });
 
+  it("returns from withdrawal entry to the menu without changing the balance", () => {
+    const withdrawal = withdrawalState(1200);
+    const menu = atmReducer(withdrawal, { type: "WITHDRAWAL_RETURN_TO_MENU" });
+    expect(menu.status).toBe("welcome");
+    expect(menu.accountBalance).toBe(1200);
+  });
+
   it("only reaches the applause success state after the receipt is confirmed", () => {
     const confirmation = atmReducer(withdrawalState(1200), { type: "WITHDRAWAL_SELECT", amount: 500 });
     const receiptPrompt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
