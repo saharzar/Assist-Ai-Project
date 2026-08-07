@@ -80,6 +80,13 @@ def get_active_speech_provider(
     current_user: User | GuestSession = Depends(get_speech_actor),
     db: Session = Depends(get_db),
 ) -> SpeechProviderResolution:
+    if isinstance(current_user, GuestSession):
+        return SpeechProviderResolution(
+            service_type=service_type,
+            provider="browser",
+            mode="browser",
+            status="normal" if browser_supported is not False else "unavailable",
+        )
     decision = get_provider_chain(db, service_type, browser_supported=browser_supported)[0]
     db.commit()
     return SpeechProviderResolution(

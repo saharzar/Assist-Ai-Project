@@ -72,6 +72,15 @@ export function resolveSpeechProvider(serviceType: "tts" | "stt") {
   const browserSupported = serviceType === "tts"
     ? "speechSynthesis" in window
     : Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const isGuest = !localStorage.getItem("assist_ai_token") && Boolean(localStorage.getItem("assist_ai_guest_session"));
+  if (isGuest) {
+    return Promise.resolve<SpeechProviderResolution>({
+      service_type: serviceType,
+      provider: "browser",
+      mode: "browser",
+      status: browserSupported ? "normal" : "unavailable",
+    });
+  }
   return apiRequest<SpeechProviderResolution>(`/api/speech/providers/${serviceType}?browser_supported=${browserSupported}`);
 }
 

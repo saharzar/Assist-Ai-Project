@@ -67,6 +67,11 @@ def create_tts_audio(
         )
 
     request_id = str(speech_request_id or uuid4())
+    if isinstance(current_user, GuestSession):
+        return Response(
+            status_code=204,
+            headers={"X-Speech-Provider": "browser", "X-Speech-Status": "normal"},
+        )
     # Administrators need to test every scenario/language and populate the
     # shared TTS cache without being blocked by an end-user allowance.
     user_id = (
