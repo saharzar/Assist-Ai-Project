@@ -111,6 +111,13 @@ type AtmTranslation = {
   cashCollectAssistant: string;
   cardPinPrompt: string;
   cardPinIncorrect: string;
+  cardPinIncorrectAttempts: (attempts: number) => string;
+  pinSecurityEndedTitle: string;
+  pinSecurityEndedMessage: string;
+  pinSecurityEndedAssistant: string;
+  pinSecurityCardTaken: string;
+  leaveAtm: string;
+  leaveAtmMenu: string;
   cardPinIncomplete: string;
   cardPinContinue: string;
   cardPinVoiceButton: string;
@@ -277,6 +284,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "Your cash is ready. Please collect your money from the cash slot.",
     cardPinPrompt: "Please enter your four-digit PIN.",
     cardPinIncorrect: "That PIN is incorrect. Please try again.",
+    cardPinIncorrectAttempts: (attempts) => `That PIN is incorrect. You have ${attempts} ${attempts === 1 ? "attempt" : "attempts"} remaining.`,
+    pinSecurityEndedTitle: "Session ended",
+    pinSecurityEndedMessage: "For security reasons, your session has ended. Please take your credit card.",
+    pinSecurityEndedAssistant: "For security reasons, your session has ended. Please do not forget to take your credit card from the card slot.",
+    pinSecurityCardTaken: "Your card has been collected. You may now leave the ATM.",
+    leaveAtm: "Leave ATM",
+    leaveAtmMenu: "Leave ATM",
     cardPinIncomplete: "Please enter all four digits of your PIN.",
     cardPinContinue: "Press ENTER to continue.",
     cardPinVoiceButton: "Hold to say your PIN",
@@ -441,6 +455,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "Tu efectivo está listo. Recoge tu dinero de la ranura de efectivo.",
     cardPinPrompt: "Introduce tu PIN de cuatro dígitos.",
     cardPinIncorrect: "El PIN es incorrecto. Inténtalo de nuevo.",
+    cardPinIncorrectAttempts: (attempts) => `El PIN es incorrecto. Te ${attempts === 1 ? "queda" : "quedan"} ${attempts} ${attempts === 1 ? "intento" : "intentos"}.`,
+    pinSecurityEndedTitle: "Sesión finalizada",
+    pinSecurityEndedMessage: "Por motivos de seguridad, tu sesión ha finalizado. Retira tu tarjeta de crédito.",
+    pinSecurityEndedAssistant: "Por motivos de seguridad, tu sesión ha finalizado. No olvides retirar tu tarjeta de crédito de la ranura.",
+    pinSecurityCardTaken: "Has retirado tu tarjeta. Ya puedes salir del cajero.",
+    leaveAtm: "Salir del cajero",
+    leaveAtmMenu: "Salir del cajero",
     cardPinIncomplete: "Introduce los cuatro dígitos de tu PIN.",
     cardPinContinue: "Pulsa ENTER para continuar.",
     cardPinVoiceButton: "Mantén pulsado para decir tu PIN",
@@ -605,6 +626,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "Dein Bargeld ist bereit. Bitte entnimm dein Geld aus dem Ausgabefach.",
     cardPinPrompt: "Bitte gib deine vierstellige PIN ein.",
     cardPinIncorrect: "Diese PIN ist nicht korrekt. Bitte versuche es erneut.",
+    cardPinIncorrectAttempts: (attempts) => `Diese PIN ist nicht korrekt. Du hast noch ${attempts} ${attempts === 1 ? "Versuch" : "Versuche"}.`,
+    pinSecurityEndedTitle: "Sitzung beendet",
+    pinSecurityEndedMessage: "Aus Sicherheitsgründen wurde deine Sitzung beendet. Bitte entnimm deine Kreditkarte.",
+    pinSecurityEndedAssistant: "Aus Sicherheitsgründen wurde deine Sitzung beendet. Bitte vergiss nicht, deine Kreditkarte aus dem Kartenschlitz zu entnehmen.",
+    pinSecurityCardTaken: "Deine Karte wurde entnommen. Du kannst den Geldautomaten jetzt verlassen.",
+    leaveAtm: "Geldautomaten verlassen",
+    leaveAtmMenu: "Geldautomaten verlassen",
     cardPinIncomplete: "Bitte gib alle vier Ziffern deiner PIN ein.",
     cardPinContinue: "Drücke ENTER, um fortzufahren.",
     cardPinVoiceButton: "Gedrückt halten und PIN sagen",
@@ -769,6 +797,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "Paranız hazır. Lütfen paranızı para çıkış haznesinden alın.",
     cardPinPrompt: "Lütfen dört haneli PIN kodunu gir.",
     cardPinIncorrect: "PIN kodu yanlış. Lütfen tekrar dene.",
+    cardPinIncorrectAttempts: (attempts) => `PIN kodu yanlış. ${attempts} deneme hakkınız kaldı.`,
+    pinSecurityEndedTitle: "Oturum sonlandırıldı",
+    pinSecurityEndedMessage: "Güvenlik nedeniyle oturumunuz sonlandırıldı. Lütfen kredi kartınızı alın.",
+    pinSecurityEndedAssistant: "Güvenlik nedeniyle oturumunuz sonlandırıldı. Lütfen kredi kartınızı kart yuvasından almayı unutmayın.",
+    pinSecurityCardTaken: "Kartınızı aldınız. Artık ATM'den ayrılabilirsiniz.",
+    leaveAtm: "ATM'den ayrıl",
+    leaveAtmMenu: "ATM'den ayrıl",
     cardPinIncomplete: "Lütfen PIN kodunun dört hanesini de gir.",
     cardPinContinue: "Devam etmek için ENTER tuşuna bas.",
     cardPinVoiceButton: "PIN kodunu söylemek için basılı tut",
@@ -933,6 +968,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "O seu dinheiro está pronto. Retire-o da ranhura de levantamento.",
     cardPinPrompt: "Introduza o seu PIN de quatro dígitos.",
     cardPinIncorrect: "O PIN está incorreto. Tente novamente.",
+    cardPinIncorrectAttempts: (attempts) => `O PIN está incorreto. Tem ${attempts} ${attempts === 1 ? "tentativa" : "tentativas"} restante${attempts === 1 ? "" : "s"}.`,
+    pinSecurityEndedTitle: "Sessão terminada",
+    pinSecurityEndedMessage: "Por motivos de segurança, a sua sessão terminou. Retire o cartão de crédito.",
+    pinSecurityEndedAssistant: "Por motivos de segurança, a sua sessão terminou. Não se esqueça de retirar o cartão de crédito da ranhura.",
+    pinSecurityCardTaken: "O cartão foi retirado. Pode agora sair do ATM.",
+    leaveAtm: "Sair do ATM",
+    leaveAtmMenu: "Sair do ATM",
     cardPinIncomplete: "Introduza os quatro dígitos do seu PIN.",
     cardPinContinue: "Pressione ENTER para continuar.",
     cardPinVoiceButton: "Mantenha premido para dizer o PIN",
@@ -1097,6 +1139,13 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     cashCollectAssistant: "Vos billets sont prêts. Veuillez les retirer de la fente de distribution.",
     cardPinPrompt: "Veuillez saisir votre code PIN à quatre chiffres.",
     cardPinIncorrect: "Ce code PIN est incorrect. Veuillez réessayer.",
+    cardPinIncorrectAttempts: (attempts) => `Ce code PIN est incorrect. Il vous reste ${attempts} ${attempts === 1 ? "tentative" : "tentatives"}.`,
+    pinSecurityEndedTitle: "Session terminée",
+    pinSecurityEndedMessage: "Pour des raisons de sécurité, votre session est terminée. Veuillez reprendre votre carte bancaire.",
+    pinSecurityEndedAssistant: "Pour des raisons de sécurité, votre session est terminée. N'oubliez pas de reprendre votre carte bancaire dans la fente.",
+    pinSecurityCardTaken: "Votre carte a été reprise. Vous pouvez maintenant quitter le distributeur.",
+    leaveAtm: "Quitter le distributeur",
+    leaveAtmMenu: "Quitter le distributeur",
     cardPinIncomplete: "Veuillez saisir les quatre chiffres de votre code PIN.",
     cardPinContinue: "Appuyez sur ENTER pour continuer.",
     cardPinVoiceButton: "Maintenez pour dicter votre code PIN",

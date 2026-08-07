@@ -74,6 +74,7 @@ export type AtmAction =
   | { type: "ANOTHER_TRANSACTION" }
   | { type: "FINISH_TRANSACTION" }
   | { type: "CARD_COLLECTED" }
+  | { type: "LEAVE_ATM" }
   | { type: "LOCKOUT_TICK" }
   | { type: "SECURITY_TICK" }
   | { type: "TRY_AGAIN" }

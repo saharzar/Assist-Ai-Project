@@ -80,4 +80,9 @@ describe("ATM withdrawal flow", () => {
     expect(result.status).toBe("welcome");
     expect(result.accountBalance).toBe(700);
   });
+
+  it("returns the card when the user leaves from the menu", () => {
+    const menu = { ...createInitialAtmState(), status: "welcome" as const };
+    expect(atmReducer(menu, { type: "LEAVE_ATM" }).status).toBe("card_return");
+  });
 });

@@ -420,6 +420,10 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.status !== "card_return") return state;
       return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal successfully." };
 
+    case "LEAVE_ATM":
+      if (state.status !== "welcome") return state;
+      return { ...state, status: "card_return", errorMessage: "" };
+
     case "LOCKOUT_TICK":
       return {
         ...state,
