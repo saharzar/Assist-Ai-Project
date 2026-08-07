@@ -121,6 +121,11 @@ type AtmTranslation = {
   pinSecurityCardTaken: string;
   leaveAtm: string;
   leaveAtmMenu: string;
+  inactivityWarning: (seconds: number) => string;
+  inactivityWarningTitle: string;
+  inactivityTimeoutTitle: string;
+  inactivityTimeoutMessage: string;
+  inactivityTimeoutAssistant: string;
   cardPinIncomplete: string;
   cardPinContinue: string;
   cardPinVoiceButton: string;
@@ -297,6 +302,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "Your card has been collected. You may now leave the ATM.",
     leaveAtm: "Leave ATM",
     leaveAtmMenu: "Leave ATM",
+    inactivityWarning: (seconds) => `Warning: Your session will end in ${seconds} seconds unless you continue using the ATM.`,
+    inactivityWarningTitle: "Inactivity warning",
+    inactivityTimeoutTitle: "Session timed out",
+    inactivityTimeoutMessage: "Your session ended because there was no activity. Please take your credit card.",
+    inactivityTimeoutAssistant: "Your session has ended due to inactivity. Please do not forget to take your credit card from the card slot.",
     cardPinIncomplete: "Please enter all four digits of your PIN.",
     cardPinContinue: "Press ENTER to continue.",
     cardPinVoiceButton: "Hold to say your PIN",
@@ -471,6 +481,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "Has retirado tu tarjeta. Ya puedes salir del cajero.",
     leaveAtm: "Salir del cajero",
     leaveAtmMenu: "Salir del cajero",
+    inactivityWarning: (seconds) => `Aviso: Tu sesión terminará en ${seconds} segundos si no continúas usando el cajero.`,
+    inactivityWarningTitle: "Aviso de inactividad",
+    inactivityTimeoutTitle: "Sesión caducada",
+    inactivityTimeoutMessage: "Tu sesión terminó por falta de actividad. Retira tu tarjeta de crédito.",
+    inactivityTimeoutAssistant: "Tu sesión terminó por inactividad. No olvides retirar tu tarjeta de crédito de la ranura.",
     cardPinIncomplete: "Introduce los cuatro dígitos de tu PIN.",
     cardPinContinue: "Pulsa ENTER para continuar.",
     cardPinVoiceButton: "Mantén pulsado para decir tu PIN",
@@ -645,6 +660,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "Deine Karte wurde entnommen. Du kannst den Geldautomaten jetzt verlassen.",
     leaveAtm: "Geldautomaten verlassen",
     leaveAtmMenu: "Geldautomaten verlassen",
+    inactivityWarning: (seconds) => `Warnung: Deine Sitzung endet in ${seconds} Sekunden, wenn du den Geldautomaten nicht weiter benutzt.`,
+    inactivityWarningTitle: "Inaktivitätswarnung",
+    inactivityTimeoutTitle: "Sitzung abgelaufen",
+    inactivityTimeoutMessage: "Deine Sitzung wurde wegen Inaktivität beendet. Bitte entnimm deine Kreditkarte.",
+    inactivityTimeoutAssistant: "Deine Sitzung wurde wegen Inaktivität beendet. Bitte vergiss nicht, deine Kreditkarte aus dem Kartenschlitz zu entnehmen.",
     cardPinIncomplete: "Bitte gib alle vier Ziffern deiner PIN ein.",
     cardPinContinue: "Drücke ENTER, um fortzufahren.",
     cardPinVoiceButton: "Gedrückt halten und PIN sagen",
@@ -819,6 +839,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "Kartınızı aldınız. Artık ATM'den ayrılabilirsiniz.",
     leaveAtm: "ATM'den ayrıl",
     leaveAtmMenu: "ATM'den ayrıl",
+    inactivityWarning: (seconds) => `UYARI: ATM'yi kullanmaya devam etmezseniz oturumunuz ${seconds} saniye içinde sonlandırılacaktır.`,
+    inactivityWarningTitle: "Hareketsizlik uyarısı",
+    inactivityTimeoutTitle: "Oturum zaman aşımına uğradı",
+    inactivityTimeoutMessage: "İşlem yapılmadığı için oturumunuz sonlandırıldı. Lütfen kredi kartınızı alın.",
+    inactivityTimeoutAssistant: "İşlem yapılmadığı için oturumunuz sonlandırıldı. Lütfen kredi kartınızı kart yuvasından almayı unutmayın.",
     cardPinIncomplete: "Lütfen PIN kodunun dört hanesini de gir.",
     cardPinContinue: "Devam etmek için ENTER tuşuna bas.",
     cardPinVoiceButton: "PIN kodunu söylemek için basılı tut",
@@ -993,6 +1018,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "O cartão foi retirado. Pode agora sair do ATM.",
     leaveAtm: "Sair do ATM",
     leaveAtmMenu: "Sair do ATM",
+    inactivityWarning: (seconds) => `Aviso: A sua sessão terminará em ${seconds} segundos se não continuar a utilizar o ATM.`,
+    inactivityWarningTitle: "Aviso de inatividade",
+    inactivityTimeoutTitle: "Sessão expirada",
+    inactivityTimeoutMessage: "A sua sessão terminou por inatividade. Retire o cartão de crédito.",
+    inactivityTimeoutAssistant: "A sua sessão terminou por inatividade. Não se esqueça de retirar o cartão de crédito da ranhura.",
     cardPinIncomplete: "Introduza os quatro dígitos do seu PIN.",
     cardPinContinue: "Pressione ENTER para continuar.",
     cardPinVoiceButton: "Mantenha premido para dizer o PIN",
@@ -1167,6 +1197,11 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     pinSecurityCardTaken: "Votre carte a été reprise. Vous pouvez maintenant quitter le distributeur.",
     leaveAtm: "Quitter le distributeur",
     leaveAtmMenu: "Quitter le distributeur",
+    inactivityWarning: (seconds) => `Attention : votre session se terminera dans ${seconds} secondes si vous ne continuez pas à utiliser le distributeur.`,
+    inactivityWarningTitle: "Avertissement d'inactivité",
+    inactivityTimeoutTitle: "Session expirée",
+    inactivityTimeoutMessage: "Votre session s'est terminée pour cause d'inactivité. Veuillez reprendre votre carte bancaire.",
+    inactivityTimeoutAssistant: "Votre session s'est terminée pour cause d'inactivité. N'oubliez pas de reprendre votre carte bancaire dans la fente.",
     cardPinIncomplete: "Veuillez saisir les quatre chiffres de votre code PIN.",
     cardPinContinue: "Appuyez sur ENTER pour continuer.",
     cardPinVoiceButton: "Maintenez pour dicter votre code PIN",
