@@ -95,6 +95,12 @@ def test_soniox_tts_uses_backend_key_and_returns_mp3(monkeypatch):
     }
 
 
+def test_soniox_tts_cache_voice_is_versioned(monkeypatch):
+    monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
+
+    assert soniox_service.get_soniox_tts_cache_voice() == "soniox:tts-rt-v1:Adrian:v2"
+
+
 @pytest.mark.parametrize("status_code", [402, 429])
 def test_soniox_tts_marks_quota_errors(monkeypatch, status_code):
     def fake_post(url, **kwargs):

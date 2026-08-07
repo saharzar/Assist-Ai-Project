@@ -13,6 +13,18 @@ export function AtmFrame({
   onBackspace,
   onEnter,
   onCancel,
+  cardInserted,
+  cardAnimating,
+  receiptAnimating,
+  receiptAnimationDurationMs,
+  cashAnimating,
+  cashAnimationDurationMs,
+  cashCollectible,
+  onCashCollect,
+  cardEjecting,
+  cardCollectible,
+  onCardCollect,
+  onCardInsert,
   children,
 }: {
   assistantMessage: ReactNode;
@@ -29,6 +41,18 @@ export function AtmFrame({
   onBackspace?: () => void;
   onEnter?: () => void;
   onCancel?: () => void;
+  cardInserted: boolean;
+  cardAnimating: boolean;
+  receiptAnimating: boolean;
+  receiptAnimationDurationMs: number;
+  cashAnimating: boolean;
+  cashAnimationDurationMs: number;
+  cashCollectible: boolean;
+  onCashCollect: () => void;
+  cardEjecting: boolean;
+  cardCollectible: boolean;
+  onCardCollect: () => void;
+  onCardInsert: () => void;
   children: ReactNode;
 }) {
   return (
@@ -42,6 +66,18 @@ export function AtmFrame({
           onBackspace={onBackspace}
           onEnter={onEnter}
           onCancel={onCancel}
+          cardInserted={cardInserted}
+          cardAnimating={cardAnimating}
+          receiptAnimating={receiptAnimating}
+          receiptAnimationDurationMs={receiptAnimationDurationMs}
+          cashAnimating={cashAnimating}
+          cashAnimationDurationMs={cashAnimationDurationMs}
+          cashCollectible={cashCollectible}
+          onCashCollect={onCashCollect}
+          cardEjecting={cardEjecting}
+          cardCollectible={cardCollectible}
+          onCardCollect={onCardCollect}
+          onCardInsert={onCardInsert}
         >
           {children}
         </ATMRealisticShell>

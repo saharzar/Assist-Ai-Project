@@ -42,9 +42,15 @@ describe("ATM withdrawal flow", () => {
     expect(confirmation.status).toBe("withdrawal_confirm");
     expect(confirmation.withdrawnAmount).toBe(500);
 
-    const receipt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
-    expect(receipt.status).toBe("withdrawal_result");
-    expect(receipt.remainingBalance).toBe(700);
+    const receiptPrompt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
+    expect(receiptPrompt.status).toBe("receipt_prompt");
+    expect(receiptPrompt.remainingBalance).toBe(700);
+
+    const dispensing = atmReducer(receiptPrompt, { type: "RECEIPT_ACCEPT" });
+    expect(dispensing.status).toBe("cash_dispensing");
+    const result = atmReducer(dispensing, { type: "CASH_DISPENSE_COMPLETE" });
+    expect(result.status).toBe("cash_collect");
+    expect(atmReducer(result, { type: "CASH_COLLECTED" }).status).toBe("withdrawal_result");
   });
 
   it("returns to amount selection when the user rejects the amount", () => {
@@ -56,8 +62,27 @@ describe("ATM withdrawal flow", () => {
 
   it("only reaches the applause success state after the receipt is confirmed", () => {
     const confirmation = atmReducer(withdrawalState(1200), { type: "WITHDRAWAL_SELECT", amount: 500 });
-    const receipt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
-    const completed = atmReducer(receipt, { type: "WITHDRAWAL_RESULT_CONTINUE" });
+    const receiptPrompt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
+    const dispensing = atmReducer(receiptPrompt, { type: "RECEIPT_DECLINE" });
+    const collect = atmReducer(dispensing, { type: "CASH_DISPENSE_COMPLETE" });
+    const result = atmReducer(collect, { type: "CASH_COLLECTED" });
+    const cardReturn = atmReducer(result, { type: "FINISH_TRANSACTION" });
+    const completed = atmReducer(cardReturn, { type: "CARD_COLLECTED" });
     expect(completed.status).toBe("success");
+  });
+
+  it("returns to the menu with the updated balance for another transaction", () => {
+    const confirmation = atmReducer(withdrawalState(1200), { type: "WITHDRAWAL_SELECT", amount: 500 });
+    const receipt = atmReducer(confirmation, { type: "WITHDRAWAL_CONFIRM" });
+    const dispensing = atmReducer(receipt, { type: "RECEIPT_DECLINE" });
+    const collect = atmReducer(dispensing, { type: "CASH_DISPENSE_COMPLETE" });
+    const result = atmReducer(atmReducer(collect, { type: "CASH_COLLECTED" }), { type: "ANOTHER_TRANSACTION" });
+    expect(result.status).toBe("welcome");
+    expect(result.accountBalance).toBe(700);
+  });
+
+  it("returns the card when the user leaves from the menu", () => {
+    const menu = { ...createInitialAtmState(), status: "welcome" as const };
+    expect(atmReducer(menu, { type: "LEAVE_ATM" }).status).toBe("card_return");
   });
 });

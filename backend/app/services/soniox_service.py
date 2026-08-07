@@ -186,4 +186,6 @@ def synthesize_soniox_tts(text: str, language: str, request_id: str) -> bytes:
 
 def get_soniox_tts_cache_voice() -> str:
     settings = get_settings()
-    return f"soniox:{settings.soniox_tts_model}:{settings.soniox_tts_voice}"
+    # Bump the cache namespace when the playback pipeline changes so older
+    # generated files cannot keep breaking only certain languages or screens.
+    return f"soniox:{settings.soniox_tts_model}:{settings.soniox_tts_voice}:v2"

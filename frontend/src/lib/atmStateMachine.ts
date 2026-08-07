@@ -109,6 +109,17 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         assistantMessage: "Please say or type your full name clearly.",
       };
 
+    case "START_WITHDRAWAL":
+      return {
+        ...state,
+        status: "withdrawal",
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+        assistantMessage: "Choose how much money to withdraw.",
+      };
+
     case "NAME_SUBMITTED": {
       const parsedName = parseAtmName(action.fullName);
       if (!parsedName) {
@@ -359,7 +370,7 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
       if (state.status !== "withdrawal_confirm") return state;
       return {
         ...state,
-        status: "withdrawal_result",
+        status: "receipt_prompt",
         remainingBalance: state.accountBalance - state.withdrawnAmount,
         errorMessage: "",
       };
@@ -375,9 +386,43 @@ export function atmReducer(state: AtmState, action: AtmAction): AtmState {
         errorMessage: "",
       };
 
+    case "RECEIPT_ACCEPT":
+    case "RECEIPT_DECLINE":
+      if (state.status !== "receipt_prompt") return state;
+      return { ...state, status: "cash_dispensing", errorMessage: "" };
+
+    case "CASH_DISPENSE_COMPLETE":
+      if (state.status !== "cash_dispensing") return state;
+      return { ...state, status: "cash_collect", errorMessage: "" };
+
+    case "CASH_COLLECTED":
+      if (state.status !== "cash_collect") return state;
+      return { ...state, status: "withdrawal_result", errorMessage: "" };
+
     case "WITHDRAWAL_RESULT_CONTINUE":
+    case "FINISH_TRANSACTION":
       if (state.status !== "withdrawal_result") return state;
-      return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal practice successfully." };
+      return { ...state, status: "card_return", accountBalance: state.remainingBalance, errorMessage: "" };
+
+    case "ANOTHER_TRANSACTION":
+      if (state.status !== "withdrawal_result") return state;
+      return {
+        ...state,
+        status: "welcome",
+        accountBalance: state.remainingBalance,
+        withdrawalInput: "",
+        withdrawnAmount: 0,
+        remainingBalance: 0,
+        errorMessage: "",
+      };
+
+    case "CARD_COLLECTED":
+      if (state.status !== "card_return") return state;
+      return { ...state, status: "success", errorMessage: "", assistantMessage: "Well done. You completed the ATM withdrawal successfully." };
+
+    case "LEAVE_ATM":
+      if (state.status !== "welcome") return state;
+      return { ...state, status: "card_return", errorMessage: "" };
 
     case "LOCKOUT_TICK":
       return {
