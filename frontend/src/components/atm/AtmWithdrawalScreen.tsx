@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const PRESET_AMOUNTS = [100, 200, 300, 500, 750, 1000];
 
 export function AtmWithdrawalScreen({
@@ -43,6 +45,8 @@ export function AtmWithdrawalScreen({
   onBackToMenu: () => void;
   formatAmount: (amount: number) => string;
 }) {
+  const [amountInputUnlocked, setAmountInputUnlocked] = useState(false);
+
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-4 border-b border-indigo-100 pb-2">
@@ -73,11 +77,18 @@ export function AtmWithdrawalScreen({
       <label className="block text-xs font-bold text-slate-700">
         {labels.customAmount}
         <input
+          name="atm-withdrawal-amount-not-password"
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
           value={amountInput}
           onChange={(event) => onAmountChange(event.target.value)}
+          onFocus={() => setAmountInputUnlocked(true)}
+          onPointerDown={() => setAmountInputUnlocked(true)}
+          autoComplete="new-password"
+          readOnly={!amountInputUnlocked}
+          data-lpignore="true"
+          data-1p-ignore="true"
           placeholder={labels.amountPlaceholder}
           className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-xl font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />

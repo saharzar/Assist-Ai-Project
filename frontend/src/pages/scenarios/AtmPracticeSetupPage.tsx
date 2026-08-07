@@ -11,6 +11,8 @@ export function AtmPracticeSetupPage() {
   const [fullName, setFullName] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
+  const [nameInputUnlocked, setNameInputUnlocked] = useState(false);
+  const [pinInputUnlocked, setPinInputUnlocked] = useState(false);
   const [listeningFor, setListeningFor] = useState<"name" | "pin" | null>(null);
   const [voiceError, setVoiceError] = useState("");
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
@@ -61,21 +63,27 @@ export function AtmPracticeSetupPage() {
 
   return (
     <section className="mx-auto w-full max-w-2xl rounded-3xl border border-cyan-200/80 bg-white/95 p-6 shadow-soft sm:p-9">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">ATM practice setup</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">Set up your practice</h1>
+      <p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">ATM setup</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">Set up your ATM session</h1>
       <p className="mt-3 leading-7 text-slate-600">
-        Enter your name and create a four-digit practice PIN. This information is used only for this practice session.
+        Enter your name and create a four-digit PIN. This information is used only for your current ATM session.
       </p>
 
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      <form className="mt-8 space-y-6" autoComplete="off" onSubmit={handleSubmit}>
         <div>
           <label htmlFor="atm-full-name" className="block text-sm font-bold text-slate-800">Full name</label>
           <input
             id="atm-full-name"
+            name="atm-session-name-not-username"
             value={fullName}
             onChange={(event) => setFullName(event.target.value.replace(/[^A-Za-z ]/g, "").replace(/\s+/g, " "))}
+            onFocus={() => setNameInputUnlocked(true)}
+            onPointerDown={() => setNameInputUnlocked(true)}
             type="text"
-            autoComplete="name"
+            autoComplete="new-password"
+            readOnly={!nameInputUnlocked}
+            data-lpignore="true"
+            data-1p-ignore="true"
             placeholder="Enter your full name"
             className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-400"
           />
@@ -88,11 +96,17 @@ export function AtmPracticeSetupPage() {
           <div className="relative mt-2">
             <input
               id="atm-practice-pin"
+              name="atm-session-pin-not-password"
               value={pin}
               onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+              onFocus={() => setPinInputUnlocked(true)}
+              onPointerDown={() => setPinInputUnlocked(true)}
               type={showPin ? "text" : "password"}
               inputMode="numeric"
-              autoComplete="off"
+              autoComplete="new-password"
+              readOnly={!pinInputUnlocked}
+              data-lpignore="true"
+              data-1p-ignore="true"
               maxLength={4}
               placeholder="••••"
               className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-12 text-2xl tracking-[0.5em] text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-400"
@@ -114,7 +128,7 @@ export function AtmPracticeSetupPage() {
         {voiceError && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{voiceError}</p>}
 
         <button type="submit" className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">
-          Start ATM practice
+          Start ATM session
         </button>
       </form>
 
