@@ -1221,7 +1221,11 @@ export function AtmScenarioPage() {
         onResult: (value) => {
           const decision = parseSpokenConfirmation(value, language);
           if (!decision) {
-            setSpeechError(text.withdrawalConfirmUnclear);
+            setSpeechError(
+              state.status === "withdrawal_result"
+                ? text.anotherTransactionUnclear
+                : text.withdrawalConfirmUnclear,
+            );
             return;
           }
           if (state.status === "withdrawal_result") {
@@ -1340,7 +1344,7 @@ export function AtmScenarioPage() {
   }, [finishListeningSession]);
 
   useEffect(() => {
-    if (!["enter_name", "confirm_name", "pin_attempt", "letter_check", "withdrawal", "withdrawal_confirm"].includes(state.status) || !speechRecognitionSupported) {
+    if (!["confirm_name", "letter_check", "withdrawal", "withdrawal_confirm", "withdrawal_result"].includes(state.status) || !speechRecognitionSupported) {
       return;
     }
 
@@ -1366,12 +1370,6 @@ export function AtmScenarioPage() {
       stopSpeech();
       spaceIsHeldRef.current = true;
       if (!isListeningRef.current && !recognizerRef.current) {
-        if (state.status === "enter_name") {
-          void startNameListening();
-        }
-        if (state.status === "pin_attempt") {
-          void startPinListening();
-        }
         if (state.status === "confirm_name" && confirmationSecondsRemaining === 0) {
           void startConfirmationListening();
         }
@@ -1408,8 +1406,6 @@ export function AtmScenarioPage() {
     speechRecognitionSupported,
     startConfirmationListening,
     startLetterListening,
-    startNameListening,
-    startPinListening,
     startAmountListening,
     startWithdrawalConfirmationListening,
     state.status,
@@ -1471,7 +1467,7 @@ export function AtmScenarioPage() {
   const keypadMode =
     (!pinSessionEnded && state.status === "welcome" && cardInsertionComplete && !pinVerified) || state.status === "pin_attempt" || (state.status === "withdrawal" && state.errorMessage !== ATM_ERROR.insufficientFunds)
       ? "numeric"
-      : state.status === "confirm_name" || state.status === "withdrawal_confirm" || state.status === "receipt_prompt" || state.status === "withdrawal_result"
+      : state.status === "confirm_name" || state.status === "withdrawal_confirm" || state.status === "receipt_prompt" || state.status === "withdrawal_result" || (state.status === "welcome" && pinVerified && showAccountInformation)
         ? "confirm"
       : ["enter_name", "letter_check"].includes(state.status)
         ? "letters"
@@ -2045,6 +2041,11 @@ export function AtmScenarioPage() {
         if (state.status === "receipt_prompt") completeReceiptChoice(false);
       }}
       onBackspace={() => {
+        if (state.status === "welcome" && pinVerified && showAccountInformation) {
+          stopSpeech();
+          setShowAccountInformation(false);
+          return;
+        }
         if (state.status === "welcome" && cardInsertionComplete && !pinVerified) {
           setEntryPin((current) => current.slice(0, -1));
           setEntryPinError("");

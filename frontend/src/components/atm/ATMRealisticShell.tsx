@@ -359,10 +359,13 @@ function OverlayButton({
     <button
       type="button"
       aria-label={label}
-      onClick={() => {
+      onPointerDown={() => {
         playAtmButtonBeep();
-        onClick();
       }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
+      }}
+      onClick={onClick}
       style={{
         left: `${x}%`,
         top: `${y}%`,
