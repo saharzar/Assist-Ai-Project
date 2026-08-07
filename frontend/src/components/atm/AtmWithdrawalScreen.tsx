@@ -167,35 +167,21 @@ export function AtmWithdrawalConfirmScreen({
 }
 
 export function AtmReceiptPromptScreen({
-  speechError,
-  isListening,
-  isPreparingVoice,
-  isVoiceSupported,
   isPrinting,
   labels,
-  onVoiceStart,
-  onVoiceStop,
-  onTestReceipt,
+  onPrintReceipt,
+  onSkipReceipt,
 }: {
-  speechError: string;
-  isListening: boolean;
-  isPreparingVoice: boolean;
-  isVoiceSupported: boolean;
   isPrinting: boolean;
   labels: {
     title: string;
     question: string;
-    hint: string;
-    voiceButton: string;
-    voiceHint: string;
     printing: string;
-    testReceipt: string;
-    listening: string;
-    preparing: string;
+    printReceipt: string;
+    skipReceipt: string;
   };
-  onVoiceStart: () => void;
-  onVoiceStop: () => void;
-  onTestReceipt: () => void;
+  onPrintReceipt: () => void;
+  onSkipReceipt: () => void;
 }) {
   return (
     <div className="flex h-full flex-col justify-center space-y-3">
@@ -204,31 +190,10 @@ export function AtmReceiptPromptScreen({
         <p className="text-lg font-bold text-[#302992]">{isPrinting ? labels.printing : labels.question}</p>
       </div>
       {!isPrinting && <>
-        <p className="text-xs font-semibold text-slate-600">{labels.hint}</p>
-        <button
-          type="button"
-          onClick={onTestReceipt}
-          className="min-h-11 w-full rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-        >
-          {labels.testReceipt}
-        </button>
-        <button
-          type="button"
-          disabled={!isVoiceSupported}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            onVoiceStart();
-          }}
-          onPointerUp={onVoiceStop}
-          onPointerCancel={onVoiceStop}
-          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300"
-        >
-          <Mic className="h-4 w-4" aria-hidden="true" />
-          {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
-        </button>
-        <p className="text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
-        {speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={onPrintReceipt} className="min-h-14 rounded-lg bg-[#302992] px-4 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.printReceipt}</button>
+          <button type="button" onClick={onSkipReceipt} className="min-h-14 rounded-lg border-2 border-[#302992] bg-white px-4 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.skipReceipt}</button>
+        </div>
       </>}
     </div>
   );

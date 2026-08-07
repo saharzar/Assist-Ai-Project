@@ -137,6 +137,11 @@ function playCardRemoveSound() {
   void cardRemoveAudio.play().catch(() => undefined);
 }
 
+function stopCardRemoveSound() {
+  cardRemoveAudio.pause();
+  cardRemoveAudio.currentTime = 0;
+}
+
 function playCardInsertSound() {
   const audio = new Audio(atmCardInsertSound);
   audio.volume = 0.7;
@@ -215,6 +220,7 @@ export function AtmScenarioPage() {
   const [cashAnimationDurationMs, setCashAnimationDurationMs] = useState(5000);
   const [cardEjecting, setCardEjecting] = useState(false);
   const [cardCollectible, setCardCollectible] = useState(false);
+  const [leaveFromMenu, setLeaveFromMenu] = useState(false);
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -1375,7 +1381,7 @@ export function AtmScenarioPage() {
         if (state.status === "withdrawal") {
           void startAmountListening();
         }
-        if (state.status === "withdrawal_confirm" || state.status === "receipt_prompt" || state.status === "withdrawal_result") {
+        if (state.status === "withdrawal_confirm" || state.status === "withdrawal_result") {
           void startWithdrawalConfirmationListening();
         }
       }
@@ -1409,6 +1415,45 @@ export function AtmScenarioPage() {
     state.status,
     stopListening,
   ]);
+
+  useEffect(() => {
+    const handleNumberKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+      const element = event.target as HTMLElement | null;
+      if (element?.closest("input, textarea, select") || element?.isContentEditable) return;
+
+      const enteringInitialPin = !pinSessionEnded && state.status === "welcome" && cardInsertionComplete && !pinVerified;
+      const enteringScenarioPin = state.status === "pin_attempt";
+      const enteringAmount = state.status === "withdrawal" && state.errorMessage !== ATM_ERROR.insufficientFunds;
+      if (!enteringInitialPin && !enteringScenarioPin && !enteringAmount) return;
+      const isDigit = /^\d$/.test(event.key);
+      const isBackspace = event.key === "Backspace";
+      const isDelete = event.key === "Delete";
+      if (!isDigit && !isBackspace && !isDelete) return;
+
+      event.preventDefault();
+      recordInputMode("keyboard");
+      if (enteringInitialPin) {
+        setEntryPin((current) => isDelete ? "" : isBackspace ? current.slice(0, -1) : `${current}${event.key}`.slice(0, 4));
+        setEntryPinError("");
+      } else if (enteringAmount) {
+        dispatch(isDelete
+          ? { type: "WITHDRAWAL_CLEAR" }
+          : isBackspace
+            ? { type: "WITHDRAWAL_BACKSPACE" }
+            : { type: "WITHDRAWAL_DIGIT", digit: event.key });
+      } else {
+        dispatch(isDelete
+          ? { type: "PIN_CLEAR" }
+          : isBackspace
+            ? { type: "PIN_BACKSPACE" }
+            : { type: "PIN_DIGIT", digit: event.key });
+      }
+    };
+
+    window.addEventListener("keydown", handleNumberKey);
+    return () => window.removeEventListener("keydown", handleNumberKey);
+  }, [cardInsertionComplete, pinSessionEnded, pinVerified, recordInputMode, state.errorMessage, state.status]);
 
   useEffect(() => {
     if (document.activeElement instanceof HTMLButtonElement) {
@@ -1540,6 +1585,7 @@ export function AtmScenarioPage() {
               onClick={() => {
                 stopSpeech();
                 setShowAccountInformation(false);
+                setLeaveFromMenu(true);
                 dispatch({ type: "LEAVE_ATM" });
               }}
               className="min-h-14 rounded-xl bg-[#302992] px-4 py-3 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
@@ -1828,36 +1874,16 @@ export function AtmScenarioPage() {
       case "receipt_prompt":
         return (
           <AtmReceiptPromptScreen
-            speechError={speechError}
-            isListening={isListening}
-            isPreparingVoice={isPreparingVoice}
-            isVoiceSupported={speechRecognitionSupported}
             isPrinting={receiptAnimating}
             labels={{
               title: text.receiptTitle,
               question: text.receiptQuestion,
-              hint: text.receiptHint,
-              voiceButton: text.receiptVoiceButton,
-              voiceHint: text.receiptVoiceHint,
               printing: text.receiptPrinting,
-              testReceipt: "Test receipt animation",
-              listening: text.listening,
-              preparing: text.preparingVoice,
+              printReceipt: text.receiptPrintButton,
+              skipReceipt: text.receiptSkipButton,
             }}
-            onVoiceStart={() => {
-              spaceIsHeldRef.current = true;
-              void startWithdrawalConfirmationListening();
-            }}
-            onVoiceStop={stopListening}
-            onTestReceipt={() => {
-              if (receiptAnimating) return;
-              void getReceiptPrintDurationMs().then((durationMs) => {
-                setReceiptAnimationDurationMs(durationMs);
-                if (soundEnabled) playReceiptPrintSound();
-                setReceiptAnimating(true);
-                window.setTimeout(() => setReceiptAnimating(false), durationMs + 500);
-              });
-            }}
+            onPrintReceipt={() => completeReceiptChoice(true)}
+            onSkipReceipt={() => completeReceiptChoice(false)}
           />
         );
 
@@ -1948,12 +1974,18 @@ export function AtmScenarioPage() {
       onCardCollect={() => {
         if (!cardCollectible) return;
         stopSpeech();
+        stopCardRemoveSound();
         setCardEjecting(false);
         setCardCollectible(false);
         if (pinSessionEnded) {
           setSecurityCardCollected(true);
         } else if (state.status === "card_return") {
-          dispatch({ type: "CARD_COLLECTED" });
+          if (leaveFromMenu) {
+            setLeaveFromMenu(false);
+            navigate("/scenarios");
+          } else {
+            dispatch({ type: "CARD_COLLECTED" });
+          }
         }
       }}
       onCardInsert={() => {
