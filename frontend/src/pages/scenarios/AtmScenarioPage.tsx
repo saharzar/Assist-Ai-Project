@@ -1792,6 +1792,7 @@ export function AtmScenarioPage() {
               voiceHint: text.amountVoiceHint,
               listening: text.listening,
               preparing: text.preparingVoice,
+              backToMenu: text.backToMenu,
             }}
             onAmountChange={(value) => dispatch({ type: "WITHDRAWAL_REPLACE", value })}
             onPresetSelect={(amount) => {
@@ -1803,6 +1804,11 @@ export function AtmScenarioPage() {
               void startAmountListening();
             }}
             onVoiceStop={stopListening}
+            onBackToMenu={() => {
+              stopSpeech();
+              stopListening();
+              dispatch({ type: "WITHDRAWAL_RETURN_TO_MENU" });
+            }}
           />
         );
 
