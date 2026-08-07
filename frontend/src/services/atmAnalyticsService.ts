@@ -10,7 +10,7 @@ type SessionStartResponse = {
 
 type SessionEvent = {
   client_event_id: string;
-  event_type: "progress" | "pin_submission" | "input_mode" | "identity_verification" | "returned_to_pin";
+  event_type: "progress" | "pin_submission" | "card_pin_submission" | "input_mode" | "identity_verification" | "returned_to_pin";
   pin_outcome?: AtmPinOutcome;
   final_step_reached?: string;
   input_mode?: AtmInputMode;
@@ -62,7 +62,7 @@ export function completeAtmAnalyticsSession(sessionId: string, finalStep: string
 }
 export function terminateAtmAnalyticsSession(
   sessionId: string,
-  reason: "verification_failed" | "pin_failed_after_verification",
+  reason: "verification_failed" | "pin_failed_after_verification" | "card_pin_failed",
 ) {
   return apiRequest(`/api/atm-sessions/${sessionId}/terminate`, {
     method: "POST",

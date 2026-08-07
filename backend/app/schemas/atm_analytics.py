@@ -21,7 +21,7 @@ class AtmSessionStartResponse(BaseModel):
 
 class AtmSessionEventCreate(BaseModel):
     client_event_id: UUID
-    event_type: Literal["progress", "pin_submission", "input_mode", "identity_verification", "returned_to_pin"]
+    event_type: Literal["progress", "pin_submission", "card_pin_submission", "input_mode", "identity_verification", "returned_to_pin"]
     pin_outcome: AtmPinOutcome | None = None
     final_step_reached: str | None = Field(default=None, max_length=32)
     input_mode: AtmInputMode | None = None
@@ -30,7 +30,7 @@ class AtmSessionEventCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_event_fields(self):
-        if self.event_type == "pin_submission" and self.pin_outcome is None:
+        if self.event_type in {"pin_submission", "card_pin_submission"} and self.pin_outcome is None:
             raise ValueError("pin_outcome is required for PIN submissions")
         if self.event_type == "progress" and self.final_step_reached is None:
             raise ValueError("final_step_reached is required for progress events")
@@ -46,7 +46,7 @@ class AtmSessionFinish(BaseModel):
 
 
 class AtmSessionTerminate(BaseModel):
-    reason: Literal["verification_failed", "pin_failed_after_verification"]
+    reason: Literal["verification_failed", "pin_failed_after_verification", "card_pin_failed"]
 
 
 class AtmSessionRead(BaseModel):

@@ -280,6 +280,65 @@ def test_two_wrong_pins_after_verification_end_the_session_for_security():
         assert session.total_pin_submission_count == 3
 
 
+def test_card_pin_flow_can_complete_successfully():
+    with test_context() as (client, db):
+        user = make_user(db, email="card-pin-success@example.com")
+        headers = auth_headers(user)
+        session_id = start_session(client, headers)
+
+        pin = client.post(
+            f"/api/atm-sessions/{session_id}/events",
+            headers=headers,
+            json={
+                "client_event_id": "00000000-0000-4000-8000-000000000050",
+                "event_type": "card_pin_submission",
+                "pin_outcome": "success",
+                "final_step_reached": "menu",
+            },
+        )
+        completed = client.post(
+            f"/api/atm-sessions/{session_id}/complete",
+            headers=headers,
+            json={"final_step_reached": "success"},
+        )
+
+        assert pin.status_code == 200
+        assert completed.status_code == 200
+        assert completed.json()["completion_status"] == "completed"
+        assert completed.json()["success"] is True
+
+
+def test_three_failed_card_pins_security_terminate_session():
+    with test_context() as (client, db):
+        user = make_user(db, email="card-pin-terminated@example.com")
+        headers = auth_headers(user)
+        session_id = start_session(client, headers)
+
+        for index in range(3):
+            response = client.post(
+                f"/api/atm-sessions/{session_id}/events",
+                headers=headers,
+                json={
+                    "client_event_id": f"00000000-0000-4000-8000-00000000005{index + 1}",
+                    "event_type": "card_pin_submission",
+                    "pin_outcome": "incorrect",
+                    "final_step_reached": "security_terminated" if index == 2 else "card_pin",
+                },
+            )
+            assert response.status_code == 200
+
+        terminated = client.post(
+            f"/api/atm-sessions/{session_id}/terminate",
+            headers=headers,
+            json={"reason": "card_pin_failed"},
+        )
+
+        assert terminated.status_code == 200
+        assert terminated.json()["completion_status"] == "completed"
+        assert terminated.json()["security_terminated"] is True
+        assert terminated.json()["termination_reason"] == "card_pin_failed_three_times"
+
+
 def test_abandoned_session_and_session_ownership_are_enforced():
     with test_context() as (client, db):
         owner = make_user(db, email="owner@example.com")

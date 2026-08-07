@@ -283,6 +283,7 @@ export function AtmScenarioPage() {
   );
 
   const beginAnalyticsSession = useCallback(() => {
+    if (analyticsSessionIdRef.current || analyticsStartRef.current) return;
     analyticsSessionIdRef.current = null;
     recordedInputModesRef.current = new Set();
     analyticsCredentialsRef.current = { token, guestToken: guestSessionToken };
@@ -2084,6 +2085,7 @@ export function AtmScenarioPage() {
         }
       }}
       onCardInsert={() => {
+        beginAnalyticsSession();
         setEntryPin("");
         setEntryPinError("");
         setEntryPinAttempts(0);
@@ -2179,16 +2181,40 @@ export function AtmScenarioPage() {
           }
           if (entryPin !== setupPinRef.current) {
             const nextAttempts = entryPinAttempts + 1;
+            enqueueAnalytics((sessionId) =>
+              recordAtmAnalyticsEvent(sessionId, {
+                client_event_id: crypto.randomUUID(),
+                event_type: "card_pin_submission",
+                pin_outcome: "incorrect",
+                final_step_reached: nextAttempts >= 3 ? "security_terminated" : "card_pin",
+              }),
+            );
             setEntryPin("");
             setEntryPinAttempts(nextAttempts);
             if (nextAttempts >= 3) {
+              latestStatusRef.current = "security_terminated";
               setEntryPinError("");
               setPinSessionEnded(true);
+              enqueueAnalytics(async (sessionId) => {
+                await terminateAtmAnalyticsSession(sessionId, "card_pin_failed");
+                if (analyticsSessionIdRef.current === sessionId) {
+                  analyticsSessionIdRef.current = null;
+                  analyticsStartRef.current = null;
+                }
+              });
             } else {
               setEntryPinError("incorrect");
             }
             return;
           }
+          enqueueAnalytics((sessionId) =>
+            recordAtmAnalyticsEvent(sessionId, {
+              client_event_id: crypto.randomUUID(),
+              event_type: "card_pin_submission",
+              pin_outcome: "success",
+              final_step_reached: "menu",
+            }),
+          );
           setEntryPinError("");
           setPinVerified(true);
           return;
