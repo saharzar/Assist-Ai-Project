@@ -13,7 +13,7 @@ export function BillCardPreview({ details }: { details: CardPreviewDetails }) {
       <div className="relative flex h-full flex-col justify-between">
         <div className="flex items-start justify-between">
           <span className="h-10 w-14 rounded-lg bg-gradient-to-br from-amber-200 to-amber-500 shadow-inner" aria-hidden="true" />
-          <strong className="text-xl tracking-wide">ASSIST BANK</strong>
+          <strong className="text-xl tracking-wide">ASSIST-AI BANK</strong>
         </div>
         <p className="font-mono text-lg font-bold tracking-[0.12em] sm:text-xl">{visibleNumber}</p>
         <div className="flex items-end justify-between gap-4 text-xs uppercase tracking-wider">
@@ -24,4 +24,3 @@ export function BillCardPreview({ details }: { details: CardPreviewDetails }) {
     </div>
   );
 }
-

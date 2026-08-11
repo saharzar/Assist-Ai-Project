@@ -10,6 +10,7 @@ import {
   billDefinitions,
   billPaymentReducer,
   initialBillPaymentState,
+  isValidCardExpiry,
   type BillSetupDetails,
   type BillType,
 } from "../../lib/billPaymentState";
@@ -101,7 +102,9 @@ function LoginStep({ setup, onSuccess }: { setup: BillSetupDetails; onSuccess: (
 function CardPaymentStep({ amount, systemError, onBack, onSubmit }: { amount: string; systemError: boolean; onBack: () => void; onSubmit: () => void }) {
   const [details, setDetails] = useState<CardPreviewDetails & { cvv: string }>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
   const [submitted, setSubmitted] = useState(false);
-  const cardValid = /^\d{16}$/.test(details.cardNumber) && /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry) && /^\d{3}$/.test(details.cvv) && /^[A-Za-z]+(?:[ '-][A-Za-z]+)+$/.test(details.cardholderName.trim());
+  const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
+  const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
+  const cardValid = /^\d{16}$/.test(details.cardNumber) && isValidCardExpiry(details.expiry) && /^\d{3}$/.test(details.cvv) && /^[A-Za-z]+(?:[ '-][A-Za-z]+)+$/.test(details.cardholderName.trim());
   const update = (field: keyof typeof details, value: string) => setDetails((current) => ({ ...current, [field]: value }));
   return <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
     <form autoComplete="off" onSubmit={(event) => { event.preventDefault(); setSubmitted(true); if (!cardValid) return; onSubmit(); if (!systemError) setDetails({ cardNumber: "", expiry: "", cardholderName: details.cardholderName, cvv: "" }); }}>
@@ -115,7 +118,8 @@ function CardPaymentStep({ amount, systemError, onBack, onSubmit }: { amount: st
           <ScenarioInput label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} name="bill-card-cvv" inputMode="numeric" placeholder="3 digits" password />
         </div>
       </div>
-      {submitted && !cardValid && <p role="alert" className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">Please enter valid card information in every field.</p>}
+      {submitted && cardExpired && <p role="alert" className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">This card has expired. Please use a card with a later expiry date.</p>}
+      {submitted && !cardExpired && !cardValid && <p role="alert" className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">Please enter valid card information in every field.</p>}
       <div className="mt-6 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">Cancel</button><button type="submit" className="min-h-12 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]">Confirm payment</button></div>
     </form>
     <aside className="lg:sticky lg:top-8"><BillCardPreview details={details} /><p className="mt-3 text-center text-xs font-semibold text-slate-500">Your scenario card updates as you type.</p></aside>
@@ -125,4 +129,3 @@ function CardPaymentStep({ amount, systemError, onBack, onSubmit }: { amount: st
 function ScenarioInput({ label, value, onChange, name, inputMode, placeholder, password = false }: { label: string; value: string; onChange: (value: string) => void; name: string; inputMode?: "numeric"; placeholder?: string; password?: boolean }) {
   return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.target.value)} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /></label>;
 }
-

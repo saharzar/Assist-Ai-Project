@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { billDefinitions, billPaymentReducer, initialBillPaymentState } from "./billPaymentState";
+import { billDefinitions, billPaymentReducer, initialBillPaymentState, isValidCardExpiry } from "./billPaymentState";
 
 describe("bill payment scenario state", () => {
   it("moves from login through bill selection and card payment", () => {
@@ -38,5 +38,13 @@ describe("bill payment scenario state", () => {
     expect(returned.step).toBe("bill-selection");
     expect(returned.selectedBill).toBeNull();
   });
-});
 
+  it("rejects expired cards and accepts the current or a future expiry month", () => {
+    const referenceDate = new Date(2026, 7, 11);
+
+    expect(isValidCardExpiry("07/26", referenceDate)).toBe(false);
+    expect(isValidCardExpiry("08/26", referenceDate)).toBe(true);
+    expect(isValidCardExpiry("01/27", referenceDate)).toBe(true);
+    expect(isValidCardExpiry("13/27", referenceDate)).toBe(false);
+  });
+});

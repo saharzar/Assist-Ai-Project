@@ -46,6 +46,16 @@ export const initialBillPaymentState: BillPaymentState = {
   systemError: false,
 };
 
+export function isValidCardExpiry(value: string, now = new Date()) {
+  const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(value);
+  if (!match) return false;
+  const expiryMonth = Number(match[1]);
+  const expiryYear = 2000 + Number(match[2]);
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  return expiryYear > currentYear || (expiryYear === currentYear && expiryMonth >= currentMonth);
+}
+
 export function billPaymentReducer(state: BillPaymentState, action: BillPaymentAction): BillPaymentState {
   switch (action.type) {
     case "LOGIN_SUCCESS":
@@ -64,4 +74,3 @@ export function billPaymentReducer(state: BillPaymentState, action: BillPaymentA
       return state;
   }
 }
-
