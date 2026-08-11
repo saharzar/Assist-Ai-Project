@@ -7,7 +7,7 @@ import { atmTranslations } from "../lib/atmTranslations";
 import { preloadAssistantMessage } from "../services/speechSynthesisService";
 import type { Scenario } from "../types/scenario";
 
-const ACTIVE_SCENARIO_SLUG = "atm-withdrawal";
+const ACTIVE_SCENARIO_SLUGS = new Set(["atm-withdrawal", "online-bill-payment"]);
 
 export function ScenarioCataloguePage() {
   const { language, t, translateScenario } = useTranslation();
@@ -78,7 +78,7 @@ export function ScenarioCataloguePage() {
             <ScenarioCard
               key={scenario.id}
               scenario={scenario}
-              isAvailable={scenario.slug === ACTIVE_SCENARIO_SLUG}
+              isAvailable={ACTIVE_SCENARIO_SLUGS.has(scenario.slug)}
             />
           ))}
         </div>

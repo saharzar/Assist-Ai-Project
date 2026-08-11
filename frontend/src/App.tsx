@@ -20,6 +20,8 @@ import { ScenarioCataloguePage } from "./pages/ScenarioCataloguePage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
 import { AtmScenarioPage } from "./pages/scenarios/AtmScenarioPage";
 import { AtmPracticeSetupPage } from "./pages/scenarios/AtmPracticeSetupPage";
+import { BillPaymentScenarioPage } from "./pages/scenarios/BillPaymentScenarioPage";
+import { BillPaymentSetupPage } from "./pages/scenarios/BillPaymentSetupPage";
 
 export function App() {
   return (
@@ -37,6 +39,8 @@ export function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="scenario/atm-withdrawal/practice" element={<AtmScenarioPage />} />
               <Route path="scenario/atm-withdrawal/setup" element={<AtmPracticeSetupPage />} />
+              <Route path="scenario/online-bill-payment/setup" element={<BillPaymentSetupPage />} />
+              <Route path="scenario/online-bill-payment/run" element={<BillPaymentScenarioPage />} />
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute allowedRoles={["user"]} />}>

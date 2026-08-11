@@ -38,6 +38,8 @@ export function PageShell() {
   const isAtmScenario = [
     "/scenario/atm-withdrawal/setup",
     "/scenario/atm-withdrawal/practice",
+    "/scenario/online-bill-payment/setup",
+    "/scenario/online-bill-payment/run",
   ].includes(location.pathname);
   const isLandingPage = location.pathname === "/";
   const isAuthPage =

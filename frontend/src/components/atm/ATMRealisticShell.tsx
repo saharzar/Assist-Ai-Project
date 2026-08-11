@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
 import atmButtonBeepUrl from "../../assets/atm-button-beep.mp3";
+import atmCreditCardUrl from "../../assets/atm-credit-card.png";
+import atmEuroNotesUrl from "../../assets/atm-euro-notes.png";
+import atmTurkishLiraUrl from "../../assets/atm-turkish-lira.png";
+import { useTranslation } from "../../i18n";
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 const AudioContextConstructor =
@@ -164,6 +168,9 @@ export function ATMRealisticShell({
   onCardCollect,
   onCardInsert,
 }: ATMRealisticShellProps) {
+  const { language } = useTranslation();
+  const cashImageUrl = language === "tr" ? atmTurkishLiraUrl : atmEuroNotesUrl;
+
   const commandOverlays = (
     <>
       <OverlayButton
@@ -221,6 +228,12 @@ export function ATMRealisticShell({
                 onClick={onCardInsert}
                 className="absolute inset-0 rounded-lg border-2 border-cyan-300/0 bg-cyan-300/0 transition hover:border-cyan-300/70 hover:bg-cyan-300/20 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300"
               >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-pulse overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl"
+                >
+                  <img src={atmCreditCardUrl} alt="" draggable={false} className="absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
+                </span>
                 <span className="sr-only">Insert credit card</span>
               </button>
             )}
@@ -229,7 +242,9 @@ export function ATMRealisticShell({
                 className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
                 aria-hidden="true"
               >
-                <div className="relative right-[5%] top-[30%] h-[82%] w-[52%] rounded-md border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]" />
+                <div className="relative right-[5%] top-[30%] h-[82%] w-[52%] overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]">
+                  <img src={atmCreditCardUrl} alt="" draggable={false} className="absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
+                </div>
               </div>
             )}
             {cardEjecting && (
@@ -238,8 +253,9 @@ export function ATMRealisticShell({
                 aria-label="Collect credit card"
                 disabled={!cardCollectible}
                 onClick={onCardCollect}
-                className={`absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-[card-out_1400ms_ease-out_forwards] rounded-md border border-slate-300 bg-gradient-to-r from-slate-100 via-white to-cyan-100 shadow-xl ${cardCollectible ? "pointer-events-auto cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "pointer-events-none"}`}
+                className={`absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-[card-out_1400ms_ease-out_forwards] overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl ${cardCollectible ? "pointer-events-auto cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "pointer-events-none"}`}
               >
+                <img src={atmCreditCardUrl} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
                 <span className="sr-only">Collect credit card</span>
               </button>
             )}
@@ -268,10 +284,13 @@ export function ATMRealisticShell({
               className={`absolute left-[10%] top-0 h-[82%] w-[80%] animate-[cash-out_ease-out_forwards] border-0 bg-transparent p-0 ${cashCollectible ? "cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "cursor-default"}`}
               style={{ animationDuration: `${cashAnimationDurationMs}ms` }}
             >
-              <div className="absolute inset-x-[4%] top-0 h-[76%] rounded-md border-2 border-emerald-700 bg-gradient-to-br from-emerald-100 via-green-50 to-emerald-200 shadow-xl" />
-              <div className="absolute inset-x-0 top-[12%] h-[76%] rounded-md border-2 border-emerald-800 bg-gradient-to-br from-green-100 via-white to-emerald-200 shadow-xl">
-                <div className="absolute inset-[16%] rounded-full border-2 border-emerald-500" />
-              </div>
+              <img
+                src={cashImageUrl}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="pointer-events-none absolute inset-0 h-full w-full select-none object-fill drop-shadow-xl"
+              />
             </button>
           </div>
         )}
