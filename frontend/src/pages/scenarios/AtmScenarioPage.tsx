@@ -2266,7 +2266,7 @@ export function AtmScenarioPage() {
           dispatch({ type: "WITHDRAWAL_SUBMIT" });
         }
         if (state.status === "withdrawal_result") {
-          dispatch({ type: "WITHDRAWAL_RESULT_CONTINUE" });
+          completeTransactionChoice(true);
         }
       }}
       onCancel={() => {
