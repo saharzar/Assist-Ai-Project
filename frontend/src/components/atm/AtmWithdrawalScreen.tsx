@@ -48,25 +48,25 @@ export function AtmWithdrawalScreen({
   const [amountInputUnlocked, setAmountInputUnlocked] = useState(false);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-end justify-between gap-4 border-b border-indigo-100 pb-2">
+    <div className="space-y-1.5">
+      <div className="flex items-end justify-between gap-3 border-b border-indigo-100 pb-1">
         <div>
-          <h1 className="text-xl font-bold text-[#171452]">{labels.title}</h1>
-          <p className="mt-1 text-xs font-semibold text-slate-600">{labels.availableBalance}</p>
+          <h1 className="text-lg font-bold leading-tight text-[#171452]">{labels.title}</h1>
+          <p className="text-[11px] font-semibold leading-tight text-slate-600">{labels.availableBalance}</p>
         </div>
-        <strong className="text-2xl text-[#302992]">{formatAmount(balance)}</strong>
+        <strong className="text-xl leading-none text-[#302992]">{formatAmount(balance)}</strong>
       </div>
 
       <div>
-        <p className="text-xs font-bold uppercase text-slate-600">{labels.chooseAmount}</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <p className="text-[11px] font-bold uppercase leading-tight text-slate-600">{labels.chooseAmount}</p>
+        <div className="mt-1 grid grid-cols-3 gap-1.5">
           {PRESET_AMOUNTS.map((amount) => (
             <button
               key={amount}
               type="button"
               aria-label={`${labels.chooseAmount}: ${formatAmount(amount)}`}
               onClick={() => onPresetSelect(amount)}
-              className="min-h-10 rounded-lg border border-indigo-200 bg-[#f4f3ff] px-2 text-sm font-bold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="min-h-8 rounded-md border border-indigo-200 bg-[#f4f3ff] px-2 text-xs font-bold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             >
               {formatAmount(amount)}
             </button>
@@ -74,7 +74,7 @@ export function AtmWithdrawalScreen({
         </div>
       </div>
 
-      <label className="block text-xs font-bold text-slate-700">
+      <label className="block text-[11px] font-bold leading-tight text-slate-700">
         {labels.customAmount}
         <input
           name="atm-withdrawal-amount-not-password"
@@ -90,7 +90,7 @@ export function AtmWithdrawalScreen({
           data-lpignore="true"
           data-1p-ignore="true"
           placeholder={labels.amountPlaceholder}
-          className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-xl font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+          className="mt-0.5 min-h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-base font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
       </label>
 
@@ -105,7 +105,7 @@ export function AtmWithdrawalScreen({
           }}
           onPointerUp={onVoiceStop}
           onPointerCancel={onVoiceStop}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300"
+          className="flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-[#302992] px-2 text-xs font-bold leading-tight text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300"
         >
           <Mic className="h-4 w-4" aria-hidden="true" />
           {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
@@ -113,20 +113,20 @@ export function AtmWithdrawalScreen({
         <button
           type="button"
           onClick={onBackToMenu}
-          className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="min-h-9 rounded-md border-2 border-[#302992] bg-white px-2 text-xs font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {labels.backToMenu}
         </button>
       </div>
-      <p className="text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
-      {speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
+      <p className="text-[10px] font-semibold leading-tight text-slate-600">{labels.voiceHint}</p>
+      {speechError && <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-1.5 text-[10px] font-semibold leading-tight text-amber-900">{speechError}</div>}
 
       {errorMessage && (
-        <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-900">
+        <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 p-1.5 text-[10px] font-semibold leading-tight text-rose-900">
           {errorMessage}
         </div>
       )}
-      <p className="text-xs font-semibold text-[#302992]">{labels.pressEnter}</p>
+      <p className="text-[10px] font-semibold leading-tight text-[#302992]">{labels.pressEnter}</p>
     </div>
   );
 }

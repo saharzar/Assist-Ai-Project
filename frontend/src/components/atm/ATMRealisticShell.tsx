@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
 import atmButtonBeepUrl from "../../assets/atm-button-beep.mp3";
@@ -170,6 +170,33 @@ export function ATMRealisticShell({
 }: ATMRealisticShellProps) {
   const { language } = useTranslation();
   const cashImageUrl = language === "tr" ? atmTurkishLiraUrl : atmEuroNotesUrl;
+  const cardLabel = {
+    en: "CARD",
+    es: "TARJETA",
+    de: "KARTE",
+    tr: "KART",
+    pt: "CARTÃO",
+    fr: "CARTE",
+  }[language];
+
+  useEffect(() => {
+    if (!onEnter || keypadMode === "none") return;
+
+    const handlePhysicalEnter = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.repeat) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button[aria-label="Enter"]')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      playAtmButtonBeep();
+      onEnter();
+    };
+
+    window.addEventListener("keydown", handlePhysicalEnter, true);
+    return () => window.removeEventListener("keydown", handlePhysicalEnter, true);
+  }, [keypadMode, onEnter]);
 
   const commandOverlays = (
     <>
@@ -233,6 +260,7 @@ export function ATMRealisticShell({
                   className="pointer-events-none absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-pulse overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl"
                 >
                   <img src={atmCreditCardUrl} alt="" draggable={false} className="absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
+                  <span className="absolute left-1/2 top-[6%] z-10 -translate-x-1/2 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-[0.08em] text-white shadow-sm">{cardLabel}</span>
                 </span>
                 <span className="sr-only">Insert credit card</span>
               </button>
@@ -244,6 +272,7 @@ export function ATMRealisticShell({
               >
                 <div className="relative right-[5%] top-[30%] h-[82%] w-[52%] overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl animate-[card-in-out_1400ms_ease-in-out_forwards]">
                   <img src={atmCreditCardUrl} alt="" draggable={false} className="absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
+                  <span className="absolute left-1/2 top-[6%] z-10 -translate-x-1/2 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-[0.08em] text-white shadow-sm">{cardLabel}</span>
                 </div>
               </div>
             )}
@@ -256,6 +285,7 @@ export function ATMRealisticShell({
                 className={`absolute left-[19%] top-[30%] h-[62%] w-[52%] animate-[card-out_1400ms_ease-out_forwards] overflow-hidden rounded-md border border-blue-400/60 bg-[#061a4a] shadow-xl ${cardCollectible ? "pointer-events-auto cursor-pointer focus:outline-none focus:ring-4 focus:ring-cyan-400" : "pointer-events-none"}`}
               >
                 <img src={atmCreditCardUrl} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute left-[-9%] top-[-18%] h-[139%] w-[118%] max-w-none select-none" />
+                <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[6%] z-10 -translate-x-1/2 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-[0.08em] text-white shadow-sm">{cardLabel}</span>
                 <span className="sr-only">Collect credit card</span>
               </button>
             )}

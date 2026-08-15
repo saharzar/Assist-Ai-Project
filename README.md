@@ -6,7 +6,7 @@
 
 **Formal project title:** *Design and Development of an Artificial Intelligence-Supported Virtual Assistant for Autistic Adults to Practice and Strengthen Social Skills and Support Inclusion in Society.*
 
-The project combines an accessible React interface with a secure FastAPI and PostgreSQL backend. Its first complete simulation is a realistic ATM practice scenario where users can safely rehearse name confirmation, PIN entry, identity verification, error recovery, and security-related outcomes without providing real banking information.
+The project combines an accessible React interface with a secure FastAPI and PostgreSQL backend. It currently includes a realistic ATM scenario and a first-draft online bill-payment scenario. Both let users rehearse common independent-living tasks without using real account, card, or banking details.
 
 > ASSIST-AI is an educational practice tool. It does not provide medical advice, replace professional support, or request real banking credentials.
 
@@ -57,7 +57,7 @@ Speech-provider secrets remain in the backend environment and are never included
 
 ## Current Status
 
-ASSIST-AI currently provides a production-ready project foundation, account and administration workflows, speech-provider management, usage controls, analytics, and one fully interactive ATM scenario. Eleven additional scenarios are presented in the catalogue as disabled previews for future development.
+ASSIST-AI currently provides a production-ready project foundation, account and administration workflows, speech-provider management, usage controls, analytics, a fully interactive ATM scenario, and a first-draft online bill-payment scenario. The remaining catalogue scenarios are disabled previews for future development.
 
 This version includes:
 
@@ -68,8 +68,10 @@ This version includes:
 - Console email logging or real SMTP notifications for account request, approval, denial, suspension, and activation notices
 - PostgreSQL users and guest sessions
 - User category selection during sign up
-- Scenario catalogue with the ATM scenario enabled
-- Realistic ATM practice interface with clickable keypad and keyboard overlays
+- Scenario catalogue with the ATM and online bill-payment scenarios enabled
+- Realistic ATM interface with clickable controls, card/receipt/cash animations, and synchronized sound effects
+- ATM input through on-screen controls, a computer keyboard, or voice where supported
+- Step-by-step online bill-payment draft with account setup, login, bill selection, card validation, a simulated first payment failure, and successful retry
 - Azure and Soniox speech-provider support with configurable TTS/STT priority and browser fallback
 - Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, and audit history
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
@@ -90,24 +92,42 @@ This version includes:
 - `GET /api/tts/usage`
 - `POST /api/tts`
 
-Other scenarios are visible as locked or disabled previews while the ATM scenario is the active practice flow.
+Other scenarios remain visible as locked or disabled previews while the ATM and online bill-payment scenarios are available.
 
-## ATM Practice Flow
+## ATM Scenario Flow
 
-The ATM scenario uses a realistic ATM image with responsive interactive overlays for the screen, numeric keypad, command keys, and alphabet keyboard. Its current flow is:
+The ATM scenario uses a realistic ATM image with responsive overlays for its screen, card slot, cash dispenser, receipt printer, numeric keypad, command keys, and alphabet keyboard. Its current flow is:
 
-1. Start the practice session.
-2. Say or type a full name.
-3. Review the recognized name and confirm it after a three-second safety delay.
-4. Enter a randomly generated four-digit practice PIN by keypad or voice.
-5. Experience a simulated system problem on the first PIN submission and enter the PIN again.
-6. Complete an identity check using the second letter of the first name and the final letter of the surname.
-7. Continue according to the stored PIN result and identity-verification result.
-8. Finish successfully, retry safely, or end the session after repeated security failures.
+1. Read the introduction, enter a full name, and create a four-digit PIN for the session.
+2. Start the ATM, click the displayed card, and wait for the insertion animation and sound to finish.
+3. Enter the created PIN using the ATM keypad, computer keyboard, or voice, then press the ATM or computer **Enter** key to confirm.
+4. Receive clear feedback after an incorrect PIN. Three incorrect attempts end the session for security and return the card.
+5. After successful authentication, open the main menu to withdraw money, view account information, or leave the ATM.
+6. For a withdrawal, select a preset amount or enter or say a custom amount, then press **Enter**. Insufficient funds return the user safely to amount selection.
+7. Confirm the withdrawal and choose whether to print a receipt.
+8. Wait for the receipt and cash animations and sounds. Cash must be collected by clicking the displayed money; the keyboard Enter key cannot collect it.
+9. Choose another transaction or finish. On the withdrawal-complete screen, **Enter** means another transaction and returns to the menu.
+10. When finishing, click the returned card after its animation and sound, then continue to the completion screen or scenario catalogue.
+
+If the user remains inactive, the ATM displays and speaks periodic warnings. Preparing or actively using the microphone counts as activity: it resets and pauses the inactivity timer until listening ends. After one minute without any interaction, the session ends, the card is returned, and collecting it takes the user back to the scenario catalogue. Turkish sessions display Turkish lira; the other supported languages display euros.
 
 The assistant stops speaking when the user begins recording, changes screens, leaves the scenario, or starts another message. Repeated fixed prompts can be served from the shared backend TTS cache, while dynamic name and PIN segments are generated only when needed.
 
-Scenario analytics classify completed sessions as **successful**, early exits as **abandoned**, and repeated verification or post-verification PIN failures as **security terminated**.
+Scenario analytics include registered and guest sessions and classify outcomes as **successful**, **abandoned**, or **security terminated**.
+
+## Online Bill-Payment Draft Flow
+
+The online bill-payment scenario is a modular first draft that follows the same calm, step-by-step visual style:
+
+1. Read the introduction and create temporary first-name, last-name, username, and password details.
+2. Log in with the newly created username and password.
+3. Select an electricity, natural-gas, water, or internet bill and review the amount due.
+4. Choose credit-card payment and enter a cardholder name, card number, expiry date, and CVV while viewing a live card preview.
+5. Reject invalid or expired cards with a localized error message.
+6. Simulate a system failure on the first valid payment attempt, then complete the payment after the next valid attempt.
+7. Show a localized success screen confirming that the bill was paid.
+
+The complete flow, including validation and error messages, is available in English, Turkish, German, Spanish, Portuguese, and French. Users are instructed to enter made-up scenario details only and never use a real account or card.
 
 ## User Roles
 
@@ -191,12 +211,12 @@ The endpoint returns `{"message":"Test email processed."}` whether the message w
 
 ## Speech Services
 
-ASSIST-AI supports Azure AI Speech and Soniox through the backend, with browser speech available as a final fallback where supported. The frontend never receives provider API keys. For TTS, it calls `POST /api/tts`, and the backend:
+ASSIST-AI supports Azure AI Speech and Soniox through the backend, with browser speech available as a fallback where supported. Registered users follow the administrator-defined provider order and can fall back to browser speech after a provider error or exhausted allowance. Guest sessions use browser TTS and STT directly. The frontend never receives provider API keys. For backend TTS, it calls `POST /api/tts`, and the backend:
 
 1. Confirms the user is logged in.
 2. Checks the user's TTS character limit.
 3. Looks for cached audio.
-4. Calls Azure only when needed.
+4. Calls the selected backend speech provider only when needed.
 5. Updates PostgreSQL usage.
 6. Returns MP3 audio to the frontend.
 
@@ -247,7 +267,7 @@ Administrators can open **Speech Provider Management** to monitor monthly TTS ch
 
 The monthly provider totals are global estimates based only on ASSIST-AI requests; Azure does not provide a remaining-free-quota API. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Azure quota, and request IDs prevent retries from being counted twice.
 
-Global speech routing is stored in PostgreSQL and becomes effective for registered users and supported guest requests. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Azure and Soniox support both TTS and STT, while browser speech is used only when the client reports that capability.
+Global speech routing is stored in PostgreSQL and applies to registered users. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Azure and Soniox support both TTS and STT. Guest sessions bypass paid providers and use browser speech when the client reports that capability.
 
 Provider warning and automatic-switch levels are configured as real usage values rather than percentages. TTS levels use characters and STT levels use audio seconds. Crossing a warning level sends one email per provider and billing period to `ADMIN_NOTIFICATION_EMAIL` (or `ADMIN_EMAIL` when no notification address is set). Crossing the switch level makes the next eligible provider in the configured priority order active for subsequent requests.
 

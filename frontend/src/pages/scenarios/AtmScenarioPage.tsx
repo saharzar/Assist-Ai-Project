@@ -717,10 +717,18 @@ export function AtmScenarioPage() {
   }, [inactivityTimedOut, inactivityWarningRemaining, stopSpeech]);
 
   useEffect(() => {
+    if (isPreparingVoice || isListening) {
+      resetInactivityTimer();
+    }
+  }, [isListening, isPreparingVoice, resetInactivityTimer]);
+
+  useEffect(() => {
     const timerActive =
       pinVerified &&
       !pinSessionEnded &&
       !inactivityTimedOut &&
+      !isPreparingVoice &&
+      !isListening &&
       !receiptAnimating &&
       !["cash_dispensing", "card_return", "success", "security_terminated", "lockout"].includes(state.status);
 
@@ -745,7 +753,7 @@ export function AtmScenarioPage() {
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [inactivityTimedOut, pinSessionEnded, pinVerified, receiptAnimating, state.status]);
+  }, [inactivityTimedOut, isListening, isPreparingVoice, pinSessionEnded, pinVerified, receiptAnimating, state.status]);
 
   useEffect(() => {
     if (inactivityWarningRemaining === null) return;
@@ -2266,7 +2274,7 @@ export function AtmScenarioPage() {
           dispatch({ type: "WITHDRAWAL_SUBMIT" });
         }
         if (state.status === "withdrawal_result") {
-          dispatch({ type: "WITHDRAWAL_RESULT_CONTINUE" });
+          completeTransactionChoice(true);
         }
       }}
       onCancel={() => {
