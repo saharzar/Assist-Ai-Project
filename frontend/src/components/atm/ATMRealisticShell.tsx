@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
 import atmButtonBeepUrl from "../../assets/atm-button-beep.mp3";
@@ -170,6 +170,25 @@ export function ATMRealisticShell({
 }: ATMRealisticShellProps) {
   const { language } = useTranslation();
   const cashImageUrl = language === "tr" ? atmTurkishLiraUrl : atmEuroNotesUrl;
+
+  useEffect(() => {
+    if (!onEnter || (keypadMode === "none" && !cashCollectible)) return;
+
+    const handlePhysicalEnter = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.repeat) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button[aria-label="Enter"]')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      playAtmButtonBeep();
+      onEnter();
+    };
+
+    window.addEventListener("keydown", handlePhysicalEnter, true);
+    return () => window.removeEventListener("keydown", handlePhysicalEnter, true);
+  }, [cashCollectible, keypadMode, onEnter]);
 
   const commandOverlays = (
     <>
