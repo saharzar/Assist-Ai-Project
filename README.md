@@ -109,7 +109,7 @@ The ATM scenario uses a realistic ATM image with responsive overlays for its scr
 9. Choose another transaction or finish. On the withdrawal-complete screen, **Enter** means another transaction and returns to the menu.
 10. When finishing, click the returned card after its animation and sound, then continue to the completion screen or scenario catalogue.
 
-If the user remains inactive, the ATM displays and speaks periodic warnings. After one minute without activity, the session ends, the card is returned, and collecting it takes the user back to the scenario catalogue. Turkish sessions display Turkish lira; the other supported languages display euros.
+If the user remains inactive, the ATM displays and speaks periodic warnings. Preparing or actively using the microphone counts as activity: it resets and pauses the inactivity timer until listening ends. After one minute without any interaction, the session ends, the card is returned, and collecting it takes the user back to the scenario catalogue. Turkish sessions display Turkish lira; the other supported languages display euros.
 
 The assistant stops speaking when the user begins recording, changes screens, leaves the scenario, or starts another message. Repeated fixed prompts can be served from the shared backend TTS cache, while dynamic name and PIN segments are generated only when needed.
 
