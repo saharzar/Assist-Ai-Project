@@ -1,6 +1,6 @@
-import { CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, Waves } from "lucide-react";
-import { useEffect, useMemo, useReducer, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { AlertTriangle, CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, Waves } from "lucide-react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
@@ -9,6 +9,8 @@ import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
+import { billLoginSecurityTranslations } from "../../lib/billLoginSecurityTranslations";
+import { billInactivityTranslations } from "../../lib/billInactivityTranslations";
 import { cardHintTranslations, type CardHintField } from "../../lib/cardHintTranslations";
 import { createBillStatementMetadata, type BillStatementMetadata } from "../../lib/billStatement";
 import { billStatementTranslations } from "../../lib/billStatementTranslations";
@@ -38,13 +40,22 @@ function readSetupDetails(): BillSetupDetails | null {
 }
 
 export function BillPaymentScenarioPage() {
+  const navigate = useNavigate();
   const setup = useMemo(readSetupDetails, []);
   const [state, dispatch] = useReducer(billPaymentReducer, initialBillPaymentState);
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];
   const assistantText = billAssistantTranslations[language];
+  const loginSecurityText = billLoginSecurityTranslations[language];
+  const inactivityText = billInactivityTranslations[language];
   const statusText = billStatusTranslations[language];
   const [receiptVisible, setReceiptVisible] = useState(false);
+  const [loginAssistantMessage, setLoginAssistantMessage] = useState("");
+  const [loginLocked, setLoginLocked] = useState(false);
+  const [, setInactivitySeconds] = useState(0);
+  const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
+  const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
+  const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
@@ -66,11 +77,44 @@ export function BillPaymentScenarioPage() {
     : state.step === "success" && receiptVisible
       ? "receipt"
       : state.step;
-  const assistantMessage = assistantStep === "bill-selection"
+  const assistantMessage = inactivityTimedOut
+    ? inactivityText.timeoutAssistant
+    : inactivityWarningRemaining !== null
+      ? inactivityText.warning(inactivityWarningRemaining)
+    : state.step === "login" && loginAssistantMessage
+    ? loginAssistantMessage
+    : assistantStep === "bill-selection"
     ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
     : assistantStep === "bill-details" && state.selectedBill
       ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatAmount(state.selectedBill.amount))
     : assistantText.messages[assistantStep];
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimedOut || loginLocked) return;
+    setInactivitySeconds(0);
+    setInactivityWarningRemaining(null);
+  }, [inactivityTimedOut, loginLocked]);
+
+  const handleAssistantSpeakingChange = useCallback((speaking: boolean) => {
+    setAssistantSpeaking(speaking);
+    // Normal guidance restarts the idle period. Automatic warning speech only
+    // pauses the countdown so that four ignored warnings can still time out.
+    if (speaking && inactivityWarningRemaining === null && !inactivityTimedOut) {
+      setInactivitySeconds(0);
+    }
+  }, [inactivityTimedOut, inactivityWarningRemaining]);
+
+  const finishInactiveSession = useCallback(() => {
+    navigate("/scenario/online-bill-payment", { replace: true });
+  }, [navigate]);
+
+  const handleAssistantMessageEnd = useCallback(() => {
+    if (inactivityTimedOut || loginLocked) {
+      finishInactiveSession();
+      return;
+    }
+    if (inactivityWarningRemaining !== null) setInactivityWarningRemaining(null);
+  }, [finishInactiveSession, inactivityTimedOut, inactivityWarningRemaining, loginLocked]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -82,10 +126,60 @@ export function BillPaymentScenarioPage() {
     return stopSuccessSound;
   }, [state.step]);
 
+  useEffect(() => {
+    if (!loginLocked) return;
+    const soundEnabled = localStorage.getItem("assist_ai_sound_enabled") !== "false";
+    const fallbackTimer = window.setTimeout(() => navigate("/scenario/online-bill-payment", { replace: true }), soundEnabled ? 8000 : 1500);
+    return () => window.clearTimeout(fallbackTimer);
+  }, [loginLocked, navigate]);
+
+  useEffect(() => {
+    if (inactivityTimedOut || loginLocked || assistantSpeaking) return;
+    const timer = window.setInterval(() => {
+      setInactivitySeconds((current) => {
+        const next = current + 1;
+        if (next >= 60) {
+          setInactivityWarningRemaining(null);
+          setInactivityTimedOut(true);
+          return 60;
+        }
+        if (next % 15 === 0) setInactivityWarningRemaining(60 - next);
+        return next;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [assistantSpeaking, inactivityTimedOut, loginLocked]);
+
+  useEffect(() => {
+    if (!inactivityTimedOut) return;
+    const soundEnabled = localStorage.getItem("assist_ai_sound_enabled") !== "false";
+    const fallbackTimer = window.setTimeout(finishInactiveSession, soundEnabled ? 8000 : 2000);
+    return () => window.clearTimeout(fallbackTimer);
+  }, [finishInactiveSession, inactivityTimedOut]);
+
+  useEffect(() => {
+    if (inactivityWarningRemaining === null || localStorage.getItem("assist_ai_sound_enabled") !== "false") return;
+    const timer = window.setTimeout(() => setInactivityWarningRemaining(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [inactivityWarningRemaining]);
+
   return (
-    <div onPointerDownCapture={unlockAssistantAudioPlayback}>
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} />}>
-      {state.step === "login" && <LoginStep setup={setup} text={text} onSuccess={() => dispatch({ type: "LOGIN_SUCCESS" })} />}
+    <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+      {inactivityTimedOut ? (
+        <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
+          <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />
+          <p className="mt-4 text-xs font-extrabold uppercase tracking-wide text-amber-700">{inactivityText.timeoutTitle}</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-slate-950">{inactivityText.timeoutMessage}</h2>
+        </div>
+      ) : <>
+      {inactivityWarningRemaining !== null && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
+          <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
+          <div><p className="text-xs font-extrabold uppercase tracking-wide text-amber-700">{inactivityText.warningTitle}</p><p className="mt-1 font-bold">{inactivityText.warning(inactivityWarningRemaining)}</p></div>
+        </div>
+      )}
+      {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginAssistantMessage} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginAssistantMessage(""); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
       {state.step === "bill-selection" && (
         <div>
         <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
@@ -148,6 +242,7 @@ export function BillPaymentScenarioPage() {
           onReceiptVisibilityChange={setReceiptVisible}
         />
       )}
+      </>}
     </BillScenarioShell>
     </div>
   );
@@ -162,16 +257,41 @@ function BillDetailItem({ label, value, mono = false, important = false }: { lab
   );
 }
 
-function LoginStep({ setup, text, onSuccess }: { setup: BillSetupDetails; text: BillPaymentText; onSuccess: () => void }) {
+function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }: { setup: BillSetupDetails; text: BillPaymentText; securityText: { incorrect: (attempts: number) => string; locked: string }; onSuccess: () => void; onFailed: (message: string) => void; onLocked: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  return <form className="mx-auto max-w-xl space-y-5" autoComplete="off" onSubmit={(event) => { event.preventDefault(); if (username === setup.username && password === setup.password) { setError(""); onSuccess(); } else setError(text.loginError); }}>
+  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [locked, setLocked] = useState(false);
+  return <form className="mx-auto max-w-xl space-y-5" autoComplete="off" onSubmit={(event) => {
+    event.preventDefault();
+    if (locked) return;
+    if (username === setup.username && password === setup.password) { setError(""); onSuccess(); return; }
+    if (username !== setup.username) {
+      setPassword("");
+      setError(text.loginError);
+      onFailed(text.loginError);
+      return;
+    }
+    const nextAttempts = attemptsRemaining - 1;
+    setAttemptsRemaining(nextAttempts);
+    setPassword("");
+    if (nextAttempts <= 0) {
+      setLocked(true);
+      setError(securityText.locked);
+      onFailed(securityText.locked);
+      onLocked();
+      return;
+    }
+    const message = securityText.incorrect(nextAttempts);
+    setError(message);
+    onFailed(message);
+  }}>
     <ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
     <label className="block text-sm font-bold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border border-slate-300 px-4 pr-12 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label>
     {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</p>}
-    <button type="submit" className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]">{text.loginButton}</button>
+    <button type="submit" disabled={locked} className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72] disabled:cursor-not-allowed disabled:opacity-60">{text.loginButton}</button>
   </form>;
 }
 

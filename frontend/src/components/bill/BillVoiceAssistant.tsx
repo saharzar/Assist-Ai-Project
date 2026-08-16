@@ -8,7 +8,7 @@ import { speakAssistantMessage, stopAssistantSpeech, stopSuccessSound } from "..
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
-export function BillVoiceAssistant({ message }: { message: string }) {
+export function BillVoiceAssistant({ message, onMessageEnd, onSpeakingChange }: { message: string; onMessageEnd?: () => void; onSpeakingChange?: (speaking: boolean) => void }) {
   const { language } = useTranslation();
   const text = billAssistantTranslations[language];
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_STORAGE_KEY) !== "false");
@@ -19,18 +19,19 @@ export function BillVoiceAssistant({ message }: { message: string }) {
   const stopSpeech = useCallback(() => {
     stopAssistantSpeech();
     setIsSpeaking(false);
-  }, []);
+    onSpeakingChange?.(false);
+  }, [onSpeakingChange]);
 
   const speak = useCallback(() => {
     if (!soundEnabled || !message.trim()) return;
     setTtsError("");
     speakAssistantMessage(message, {
       allowBrowserFallback: true,
-      onStart: () => setIsSpeaking(true),
-      onEnd: () => setIsSpeaking(false),
-      onError: () => { setIsSpeaking(false); setTtsError(text.voiceError); },
+      onStart: () => { setIsSpeaking(true); onSpeakingChange?.(true); },
+      onEnd: () => { setIsSpeaking(false); onSpeakingChange?.(false); onMessageEnd?.(); },
+      onError: () => { setIsSpeaking(false); onSpeakingChange?.(false); setTtsError(text.voiceError); onMessageEnd?.(); },
     }, language);
-  }, [language, message, soundEnabled, text.voiceError]);
+  }, [language, message, onMessageEnd, onSpeakingChange, soundEnabled, text.voiceError]);
 
   useEffect(() => {
     const speechKey = `${language}:${message}`;
