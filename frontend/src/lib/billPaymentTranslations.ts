@@ -33,7 +33,7 @@ const saferScenarioWarnings: Record<LanguageCode, string> = {
   en: "Use only made-up details for this scenario. Do not use a real account or card.",
   es: "Usa solo datos inventados para este escenario. No uses una cuenta ni una tarjeta real.",
   de: "Verwenden Sie für dieses Szenario nur erfundene Daten. Nutzen Sie kein echtes Konto und keine echte Karte.",
-  tr: "Bu senaryoda yalnızca örnek bilgiler kullanın. Gerçek bir hesap veya kart kullanmayın.",
+  tr: "Bu senaryoda gerçek bir hesap veya kart kullanmayın.",
   pt: "Use apenas dados inventados neste cenário. Não use uma conta nem um cartão real.",
   fr: "Utilisez uniquement des données fictives pour ce scénario. N’utilisez ni compte ni carte réels.",
 };

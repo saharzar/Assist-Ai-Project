@@ -1,11 +1,17 @@
-import { CheckCircle2, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, RotateCcw, Waves } from "lucide-react";
-import { useMemo, useReducer, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, Waves } from "lucide-react";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { Navigate } from "react-router-dom";
 
 import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
+import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { useTranslation } from "../../i18n";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
+import { cardHintTranslations, type CardHintField } from "../../lib/cardHintTranslations";
+import { createBillStatementMetadata, type BillStatementMetadata } from "../../lib/billStatement";
+import { billStatementTranslations } from "../../lib/billStatementTranslations";
+import { createPracticeCardDetails, matchesPracticeCard } from "../../lib/practiceCard";
+import { practiceCardTranslations } from "../../lib/practiceCardTranslations";
 import {
   BILL_SETUP_STORAGE_KEY,
   billDefinitions,
@@ -32,9 +38,14 @@ export function BillPaymentScenarioPage() {
   const [state, dispatch] = useReducer(billPaymentReducer, initialBillPaymentState);
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];
+  const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
   const formatAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  const formatDueDate = (date: Date) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
+  const statements = useMemo(() => Object.fromEntries(
+    billDefinitions.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
+  ) as Record<BillType, BillStatementMetadata>, []);
 
   if (!setup) return <Navigate to="/scenario/online-bill-payment/setup" replace />;
 
@@ -42,25 +53,43 @@ export function BillPaymentScenarioPage() {
   const title = state.step === "login" ? text.loginTitle : state.step === "bill-selection" ? text.selectTitle : state.step === "bill-details" ? text.reviewTitle : state.step === "card-payment" ? text.cardTitle : text.completeTitle;
   const subtitle = state.step === "login" ? text.loginSubtitle : state.step === "bill-selection" ? text.selectSubtitle : state.step === "bill-details" ? text.reviewSubtitle : state.step === "card-payment" ? text.cardSubtitle : text.completeSubtitle;
   const billLabel = (type: BillType) => text[type === "natural-gas" ? "naturalGas" : type];
+  const customerName = `${setup.firstName} ${setup.lastName}`;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [state.step]);
 
   return (
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"}>
       {state.step === "login" && <LoginStep setup={setup} text={text} onSuccess={() => dispatch({ type: "LOGIN_SUCCESS" })} />}
       {state.step === "bill-selection" && (
         <div className="grid gap-4 sm:grid-cols-2">
           {billDefinitions.map((bill) => {
             const Icon = billIcons[bill.type];
-            return <button key={bill.type} type="button" onClick={() => dispatch({ type: "SELECT_BILL", bill })} className="group flex min-h-28 items-center gap-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 text-left hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#302992] text-white"><Icon className="h-6 w-6" /></span><span><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{text.viewBill}</span></span></button>;
+            return <button key={bill.type} type="button" onClick={() => dispatch({ type: "SELECT_BILL", bill })} className="group flex min-h-28 items-center gap-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 text-left hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#302992] text-white"><Icon className="h-6 w-6" /></span><span><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{text.viewBill}</span></span></button>;
           })}
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-cyan-50 p-6">
-            <p className="text-sm font-bold uppercase tracking-wide text-[#087f8c]">{billLabel(state.selectedBill.type)} {text.bill}</p>
-            <div className="mt-5 flex items-end justify-between gap-4"><span className="font-semibold text-slate-600">{text.amountDue}</span><strong className="text-4xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
+        <div className="mx-auto max-w-4xl">
+          <div className="overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3 bg-gradient-to-br from-indigo-50 to-cyan-50 p-4 sm:px-5">
+              <div><p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">{statementText.details}</p><h2 className="mt-0.5 text-xl font-extrabold text-[#1d1a5e]">{billLabel(state.selectedBill.type)} {text.bill}</h2></div>
+              <div className="text-right"><span className="block text-xs font-semibold text-slate-600">{text.amountDue}</span><strong className="text-3xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
+            </div>
+            <div className="p-4 sm:px-5">
+              <p className="rounded-lg border border-cyan-200 bg-cyan-50/70 p-3 text-sm font-semibold leading-6 text-[#1d1a5e]">{statementText.summary.replace("{name}", customerName).replace("{amount}", formatAmount(state.selectedBill.amount)).replace("{bill}", billLabel(state.selectedBill.type).toLowerCase()).replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                <BillDetailItem label={statementText.customer} value={customerName} />
+                <BillDetailItem label={statementText.provider} value={billLabel(state.selectedBill.type)} />
+                <BillDetailItem label={statementText.subscriptionNumber} value={statements[state.selectedBill.type].subscriptionNumber} mono />
+                <BillDetailItem label={statementText.referenceNumber} value={statements[state.selectedBill.type].referenceNumber} mono />
+                <BillDetailItem label={statementText.dueDate} value={formatDueDate(statements[state.selectedBill.type].dueDate)} important />
+              </dl>
+              <p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm font-bold text-amber-950"><CalendarDays className="h-4 w-4 shrink-0" /> {statementText.deadlineNotice.replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
+            </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
             <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]"><CreditCard className="h-5 w-5" /> {text.payCard}</button>
           </div>
@@ -69,6 +98,7 @@ export function BillPaymentScenarioPage() {
       {state.step === "card-payment" && state.selectedBill && (
         <CardPaymentStep
           amount={formatAmount(state.selectedBill.amount)}
+          cardholderName={customerName}
           systemError={state.systemError}
           text={text}
           onBack={() => dispatch({ type: "BACK_TO_BILLS" })}
@@ -76,17 +106,30 @@ export function BillPaymentScenarioPage() {
         />
       )}
       {state.step === "success" && state.selectedBill && (
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-teal-100 text-teal-700"><CheckCircle2 className="h-11 w-11" /></span>
-          <h2 className="mt-5 text-3xl font-extrabold text-[#1d1a5e]">{text.thanks.replace("{name}", setup.firstName)}</h2>
-          <p className="mt-3 text-lg leading-8 text-slate-600">{text.paidSuccess.replace("{bill}", billLabel(state.selectedBill.type).toLowerCase()).replace("{amount}", formatAmount(state.selectedBill.amount))}</p>
-          <div className="mt-7 grid gap-3 sm:grid-cols-2">
-            <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]">{text.finish}</Link>
-            <Link to="/scenario/online-bill-payment/setup" onClick={() => sessionStorage.removeItem(BILL_SETUP_STORAGE_KEY)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50"><RotateCcw className="h-5 w-5" /> {text.startAgain}</Link>
-          </div>
-        </div>
+        <BillPaymentReceipt
+          details={{
+            customerName,
+            billLabel: billLabel(state.selectedBill.type),
+            amount: formatAmount(state.selectedBill.amount),
+            subscriptionNumber: statements[state.selectedBill.type].subscriptionNumber,
+            billReference: statements[state.selectedBill.type].referenceNumber,
+          }}
+          finishLabel={text.finish}
+          startAgainLabel={text.startAgain}
+          setupPath="/scenario/online-bill-payment/setup"
+          onStartAgain={() => sessionStorage.removeItem(BILL_SETUP_STORAGE_KEY)}
+        />
       )}
     </BillScenarioShell>
+  );
+}
+
+function BillDetailItem({ label, value, mono = false, important = false }: { label: string; value: string; mono?: boolean; important?: boolean }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${important ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
+      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className={`mt-0.5 text-sm font-bold ${mono ? "font-mono tracking-wide" : ""} ${important ? "text-amber-950" : "text-[#1d1a5e]"}`}>{value}</dd>
+    </div>
   );
 }
 
@@ -103,33 +146,55 @@ function LoginStep({ setup, text, onSuccess }: { setup: BillSetupDetails; text: 
   </form>;
 }
 
-function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amount: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
-  const [details, setDetails] = useState<CardPreviewDetails & { cvv: string }>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
+function CardPaymentStep({ amount, cardholderName, systemError, text, onBack, onSubmit }: { amount: string; cardholderName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
+  const { language } = useTranslation();
+  const practiceText = practiceCardTranslations[language];
+  const hintText = cardHintTranslations[language];
+  const expectedCard = useMemo(() => createPracticeCardDetails(cardholderName), [cardholderName]);
+  const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [hintsVisible, setHintsVisible] = useState(false);
+  const [hintField, setHintField] = useState<CardHintField>("cardholderName");
   const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
   const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
-  const cardValid = /^\d{16}$/.test(details.cardNumber) && isValidCardExpiry(details.expiry) && /^\d{3}$/.test(details.cvv) && /^[A-Za-z]+(?:[ '-][A-Za-z]+)+$/.test(details.cardholderName.trim());
+  const cardMatches = matchesPracticeCard(details, expectedCard);
   const update = (field: keyof typeof details, value: string) => setDetails((current) => ({ ...current, [field]: value }));
-  return <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
-    <form autoComplete="off" onSubmit={(event) => { event.preventDefault(); setSubmitted(true); if (!cardValid) return; onSubmit(); if (!systemError) setDetails({ cardNumber: "", expiry: "", cardholderName: details.cardholderName, cvv: "" }); }}>
-      <div className="rounded-xl bg-indigo-50 p-4"><span className="text-sm font-semibold text-slate-600">{text.paymentAmount}</span><strong className="ml-3 text-xl text-[#302992]">{amount}</strong></div>
-      {systemError && <div role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"><strong>{text.systemErrorTitle}</strong><p className="mt-1 text-sm">{text.systemErrorBody}</p></div>}
-      <div className="mt-5 space-y-4">
-        <ScenarioInput label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", value.replace(/[^A-Za-z '-]/g, "").toUpperCase())} name="bill-cardholder" />
-        <ScenarioInput label={text.cardNumber} value={details.cardNumber} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} name="bill-card-number" inputMode="numeric" placeholder={text.digits16} />
-        <div className="grid grid-cols-2 gap-4">
-          <ScenarioInput label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} name="bill-card-expiry" inputMode="numeric" placeholder="MM/YY" />
-          <ScenarioInput label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} name="bill-card-cvv" inputMode="numeric" placeholder={text.digits3} password />
+  const submitPayment = () => {
+    setSubmitted(true);
+    if (!cardMatches) return;
+    onSubmit();
+    if (!systemError) {
+      setDetails({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
+      setSubmitted(false);
+    }
+  };
+  return <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+    <div role="group" aria-label={text.cardTitle} data-form-type="other">
+      <div className="rounded-xl bg-indigo-50 px-4 py-2.5"><span className="text-sm font-semibold text-slate-600">{text.paymentAmount}</span><strong className="ml-3 text-xl text-[#302992]">{amount}</strong></div>
+      <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><strong className="text-base text-[#1d1a5e]">{practiceText.instructionTitle}</strong><p className="mt-1 text-sm leading-5 text-slate-700">{practiceText.instruction}</p></div><button type="button" aria-expanded={hintsVisible} onClick={() => setHintsVisible((current) => !current)} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-[#302992] bg-white px-3 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50"><CircleHelp className="h-5 w-5" /> {hintsVisible ? hintText.hide : hintText.show}</button></div>
+        {hintsVisible && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950">{hintText.help}</p>}
+      </div>
+      {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
+      <div className="mt-3 space-y-3">
+        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", value.replace(/[^A-Za-z '-]/g, "").toUpperCase())} onFocus={() => setHintField("cardholderName")} name="scenario-copy-holder" />
+        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder={text.digits16} />
+        <div className="grid grid-cols-2 gap-3">
+          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setHintField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
+          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setHintField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
         </div>
       </div>
-      {submitted && cardExpired && <p role="alert" className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{text.expiredError}</p>}
-      {submitted && !cardExpired && !cardValid && <p role="alert" className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{text.cardError}</p>}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="submit" className="min-h-12 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
-    </form>
-    <aside className="lg:sticky lg:top-8"><BillCardPreview details={details} /><p className="mt-3 text-center text-xs font-semibold text-slate-500">{text.previewHint}</p></aside>
+      {submitted && cardExpired && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.expiredError}</p>}
+      {submitted && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
+    </div>
+    <aside className="lg:sticky lg:top-8">
+      <BillCardPreview details={expectedCard} hintsVisible={hintsVisible} hintField={hintField} />
+      <p className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-center text-sm font-semibold leading-5 text-[#1d1a5e]">{hintText.stuckMessage}</p>
+    </aside>
   </div>;
 }
 
-function ScenarioInput({ label, value, onChange, name, inputMode, placeholder, password = false }: { label: string; value: string; onChange: (value: string) => void; name: string; inputMode?: "numeric"; placeholder?: string; password?: boolean }) {
-  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.target.value)} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /></label>;
+function ScenarioInput({ label, value, onChange, onFocus, name, inputMode, placeholder, password = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; onFocus?: () => void; name: string; inputMode?: "numeric"; placeholder?: string; password?: boolean; compact?: boolean }) {
+  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.currentTarget.value)} onFocus={onFocus} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete="off" aria-autocomplete="none" spellCheck={false} data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" className={`${compact ? "mt-1.5 min-h-11 rounded-xl px-3 text-sm" : "mt-2 min-h-12 rounded-xl px-4"} w-full border border-slate-300 bg-white text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300`} /></label>;
 }
