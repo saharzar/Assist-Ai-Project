@@ -98,12 +98,9 @@ export function BillPaymentScenarioPage() {
 
   const handleAssistantSpeakingChange = useCallback((speaking: boolean) => {
     setAssistantSpeaking(speaking);
-    // Normal guidance restarts the idle period. Automatic warning speech only
-    // pauses the countdown so that four ignored warnings can still time out.
-    if (speaking && inactivityWarningRemaining === null && !inactivityTimedOut) {
-      setInactivitySeconds(0);
-    }
-  }, [inactivityTimedOut, inactivityWarningRemaining]);
+    // Assistant speech only pauses the countdown. The elapsed idle time is
+    // preserved and continues after speech ends; only user activity resets it.
+  }, []);
 
   const finishInactiveSession = useCallback(() => {
     navigate("/scenario/online-bill-payment", { replace: true });
