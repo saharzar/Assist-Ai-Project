@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, FileText, RotateCcw } from "lucide-react";
+import { CheckCircle2, Download, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -13,12 +13,12 @@ type ReceiptDetails = {
   billReference: string;
 };
 
-export function BillPaymentReceipt({ details, finishLabel, startAgainLabel, setupPath, onStartAgain }: {
+export function BillPaymentReceipt({ details, thanksTitle, confirmationMessage, onPayAnother, onReceiptVisibilityChange }: {
   details: ReceiptDetails;
-  finishLabel: string;
-  startAgainLabel: string;
-  setupPath: string;
-  onStartAgain: () => void;
+  thanksTitle: string;
+  confirmationMessage: string;
+  onPayAnother: () => void;
+  onReceiptVisibilityChange?: (visible: boolean) => void;
 }) {
   const { language } = useTranslation();
   const text = billReceiptTranslations[language];
@@ -93,14 +93,20 @@ export function BillPaymentReceipt({ details, finishLabel, startAgainLabel, setu
 
   return (
     <div className="mx-auto max-w-3xl">
+      <div className="mb-5 text-center">
+        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-teal-700"><CheckCircle2 className="h-9 w-9" /></span>
+        <h2 className="mt-3 text-2xl font-extrabold text-[#1d1a5e]">{thanksTitle}</h2>
+        <p className="mt-2 text-base font-semibold text-slate-600">{confirmationMessage}</p>
+      </div>
       {!showReceipt ? (
         <div className="rounded-2xl border border-indigo-200 bg-white p-5 text-center shadow-sm sm:p-7">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-100 text-teal-700"><FileText className="h-7 w-7" /></span>
           <h2 className="mt-4 text-2xl font-extrabold text-[#1d1a5e]">{text.receiptQuestion}</h2>
           <p className="mx-auto mt-2 max-w-xl text-slate-600">{text.receiptHelp}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setShowReceipt(true)} className="min-h-12 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]">{text.viewReceipt}</button>
-            <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.noReceipt}</Link>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <button type="button" onClick={() => { setShowReceipt(true); onReceiptVisibilityChange?.(true); }} className="min-h-12 rounded-xl bg-[#302992] px-4 py-3 font-bold text-white hover:bg-[#211c72]">{text.viewReceipt}</button>
+            <button type="button" onClick={onPayAnother} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-4 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.payAnother}</button>
+            <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-slate-400 bg-white px-4 py-3 font-bold text-slate-700 hover:bg-slate-50">{text.finishAndLeave}</Link>
           </div>
         </div>
       ) : (
@@ -114,8 +120,8 @@ export function BillPaymentReceipt({ details, finishLabel, startAgainLabel, setu
           </dl>
           <div className="grid gap-3 border-t border-slate-200 p-5 sm:grid-cols-3">
             <button type="button" onClick={saveReceipt} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#302992] px-4 py-3 font-bold text-white hover:bg-[#211c72]"><Download className="h-5 w-5" /> {text.downloadReceipt}</button>
-            <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-[#302992] px-4 py-3 font-bold text-[#302992] hover:bg-indigo-50">{finishLabel}</Link>
-            <Link to={setupPath} onClick={onStartAgain} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-[#302992] px-4 py-3 font-bold text-[#302992] hover:bg-indigo-50"><RotateCcw className="h-5 w-5" /> {startAgainLabel}</Link>
+            <button type="button" onClick={onPayAnother} className="min-h-12 rounded-xl border-2 border-[#302992] px-4 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.payAnother}</button>
+            <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-slate-400 px-4 py-3 font-bold text-slate-700 hover:bg-slate-50">{text.finishAndLeave}</Link>
           </div>
           {saved && <p role="status" className="px-5 pb-4 text-center text-sm font-bold text-teal-700">{text.receiptSaved}</p>}
         </div>

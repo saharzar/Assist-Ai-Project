@@ -26,6 +26,20 @@ describe("bill payment scenario state", () => {
     expect(failed.paymentAttempts).toBe(1);
     expect(completed.step).toBe("success");
     expect(completed.paymentAttempts).toBe(2);
+    expect(completed.paidBillTypes).toEqual(["water"]);
+  });
+
+  it("keeps a paid bill marked when the user chooses another bill", () => {
+    const selected = billPaymentReducer(
+      { ...initialBillPaymentState, step: "bill-selection" },
+      { type: "SELECT_BILL", bill: billDefinitions[0] },
+    );
+    const completed = billPaymentReducer(selected, { type: "PAYMENT_SUCCESS" });
+    const anotherBill = billPaymentReducer(completed, { type: "PAY_ANOTHER_BILL" });
+
+    expect(anotherBill.step).toBe("bill-selection");
+    expect(anotherBill.selectedBill).toBeNull();
+    expect(anotherBill.paidBillTypes).toEqual(["electricity"]);
   });
 
   it("returns to bill selection without retaining the selected bill", () => {

@@ -5,11 +5,14 @@ import { Navigate } from "react-router-dom";
 import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
+import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useTranslation } from "../../i18n";
+import { billAssistantTranslations, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
 import { cardHintTranslations, type CardHintField } from "../../lib/cardHintTranslations";
 import { createBillStatementMetadata, type BillStatementMetadata } from "../../lib/billStatement";
 import { billStatementTranslations } from "../../lib/billStatementTranslations";
+import { billStatusTranslations } from "../../lib/billStatusTranslations";
 import { createPracticeCardDetails, matchesPracticeCard } from "../../lib/practiceCard";
 import { practiceCardTranslations } from "../../lib/practiceCardTranslations";
 import {
@@ -21,6 +24,7 @@ import {
   type BillSetupDetails,
   type BillType,
 } from "../../lib/billPaymentState";
+import { playSuccessSound, stopSuccessSound, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 const billIcons = { electricity: Lightbulb, "natural-gas": Flame, water: Waves, internet: Globe2 } satisfies Record<BillType, typeof Lightbulb>;
 
@@ -38,6 +42,9 @@ export function BillPaymentScenarioPage() {
   const [state, dispatch] = useReducer(billPaymentReducer, initialBillPaymentState);
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];
+  const assistantText = billAssistantTranslations[language];
+  const statusText = billStatusTranslations[language];
+  const [receiptVisible, setReceiptVisible] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
@@ -54,20 +61,41 @@ export function BillPaymentScenarioPage() {
   const subtitle = state.step === "login" ? text.loginSubtitle : state.step === "bill-selection" ? text.selectSubtitle : state.step === "bill-details" ? text.reviewSubtitle : state.step === "card-payment" ? text.cardSubtitle : text.completeSubtitle;
   const billLabel = (type: BillType) => text[type === "natural-gas" ? "naturalGas" : type];
   const customerName = `${setup.firstName} ${setup.lastName}`;
+  const assistantStep: BillAssistantStep = state.step === "card-payment" && state.systemError
+    ? "payment-error"
+    : state.step === "success" && receiptVisible
+      ? "receipt"
+      : state.step;
+  const assistantMessage = assistantStep === "bill-selection"
+    ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
+    : assistantStep === "bill-details" && state.selectedBill
+      ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatAmount(state.selectedBill.amount))
+    : assistantText.messages[assistantStep];
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [state.step]);
 
+  useEffect(() => {
+    if (state.step !== "success") return;
+    if (localStorage.getItem("assist_ai_sound_enabled") !== "false") playSuccessSound();
+    return stopSuccessSound;
+  }, [state.step]);
+
   return (
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"}>
+    <div onPointerDownCapture={unlockAssistantAudioPlayback}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} />}>
       {state.step === "login" && <LoginStep setup={setup} text={text} onSuccess={() => dispatch({ type: "LOGIN_SUCCESS" })} />}
       {state.step === "bill-selection" && (
+        <div>
+        <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {billDefinitions.map((bill) => {
             const Icon = billIcons[bill.type];
-            return <button key={bill.type} type="button" onClick={() => dispatch({ type: "SELECT_BILL", bill })} className="group flex min-h-28 items-center gap-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 text-left hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#302992] text-white"><Icon className="h-6 w-6" /></span><span><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{text.viewBill}</span></span></button>;
+            const isPaid = state.paidBillTypes.includes(bill.type);
+            return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-32 items-center gap-4 rounded-2xl border px-5 pb-5 pt-9 text-left focus:outline-none focus:ring-2 focus:ring-cyan-400 ${isPaid ? "cursor-not-allowed border-teal-200 bg-teal-50 opacity-80" : "border-indigo-200 bg-indigo-50/70 hover:border-cyan-400 hover:bg-cyan-50"}`}><span className={`absolute right-4 top-3 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white ${isPaid ? "bg-teal-700" : "bg-amber-600"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${isPaid ? "bg-teal-700" : "bg-[#302992]"}`}><Icon className="h-6 w-6" /></span><span className="min-w-0 flex-1"><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{isPaid ? statusText.paid : text.viewBill}</span></span></button>;
           })}
+        </div>
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (
@@ -114,13 +142,14 @@ export function BillPaymentScenarioPage() {
             subscriptionNumber: statements[state.selectedBill.type].subscriptionNumber,
             billReference: statements[state.selectedBill.type].referenceNumber,
           }}
-          finishLabel={text.finish}
-          startAgainLabel={text.startAgain}
-          setupPath="/scenario/online-bill-payment/setup"
-          onStartAgain={() => sessionStorage.removeItem(BILL_SETUP_STORAGE_KEY)}
+          thanksTitle={text.thanks.replace("{name}", setup.firstName)}
+          confirmationMessage={text.paidSuccess.replace("{bill}", billLabel(state.selectedBill.type).toLowerCase()).replace("{amount}", formatAmount(state.selectedBill.amount))}
+          onPayAnother={() => { setReceiptVisible(false); dispatch({ type: "PAY_ANOTHER_BILL" }); }}
+          onReceiptVisibilityChange={setReceiptVisible}
         />
       )}
     </BillScenarioShell>
+    </div>
   );
 }
 
@@ -178,7 +207,7 @@ function CardPaymentStep({ amount, cardholderName, systemError, text, onBack, on
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
         <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", value.replace(/[^A-Za-z '-]/g, "").toUpperCase())} onFocus={() => setHintField("cardholderName")} name="scenario-copy-holder" />
-        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder={text.digits16} />
+        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
         <div className="grid grid-cols-2 gap-3">
           <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setHintField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
           <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setHintField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
