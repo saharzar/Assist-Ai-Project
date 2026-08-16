@@ -60,6 +60,7 @@ export function BillPaymentScenarioPage() {
   const currency = language === "tr" ? "TRY" : "EUR";
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
   const formatAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  const formatSpokenAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "name", maximumFractionDigits: 0 }).format(amount);
   const formatDueDate = (date: Date) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
   const statements = useMemo(() => Object.fromEntries(
     billDefinitions.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
@@ -86,7 +87,7 @@ export function BillPaymentScenarioPage() {
     : assistantStep === "bill-selection"
     ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
     : assistantStep === "bill-details" && state.selectedBill
-      ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatAmount(state.selectedBill.amount))
+      ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatSpokenAmount(state.selectedBill.amount))
     : assistantText.messages[assistantStep];
 
   const resetInactivityTimer = useCallback(() => {
