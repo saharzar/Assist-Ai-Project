@@ -29,20 +29,44 @@ const baseBillPaymentTranslations: Record<LanguageCode, BillPaymentText> = {
   },
 };
 
-const saferScenarioWarnings: Record<LanguageCode, string> = {
-  en: "Use only made-up details for this scenario. Do not use a real account or card.",
-  es: "Usa solo datos inventados para este escenario. No uses una cuenta ni una tarjeta real.",
-  de: "Verwenden Sie für dieses Szenario nur erfundene Daten. Nutzen Sie kein echtes Konto und keine echte Karte.",
-  tr: "Bu senaryoda yalnızca örnek bilgiler kullanın. Gerçek bir hesap veya kart kullanmayın.",
-  pt: "Use apenas dados inventados neste cenário. Não use uma conta nem um cartão real.",
-  fr: "Utilisez uniquement des données fictives pour ce scénario. N’utilisez ni compte ni carte réels.",
+const realisticCopyOverrides: Record<LanguageCode, BillPaymentText> = {
+  en: {
+    intro: "Learn how to create an account, review unpaid bills, make a guided card payment, and save an electronic receipt.", whatYouDo: "How online bill payment works",
+    introStep1: "Create your account", introBody1: "Enter your name and choose a username and password.", introStep2: "Log in securely", introBody2: "Use your new username and password to access your bills.", introStep3: "Review your bills", introBody3: "Check which bills are unpaid, then review the amount and due date.", introStep4: "Pay by credit card", introBody4: "Follow the voice assistant and use visual hints to copy the card details.", introStep5: "Get confirmation", introBody5: "Confirm the payment, save a PDF receipt, or continue with another bill.",
+    safety: "Use only made-up account and card details. Do not use a real account or card.", backScenarios: "Back to services", setupScenario: "Create your account", setupTitle: "Create your bill-payment account", setupSubtitle: "Enter the account details you will use to log in.", progressLabel: "Payment progress", loginSubtitle: "Use the username and password you created.", cardSubtitle: "Copy the details shown on the card. Do not use a real card.", previewHint: "The card details appear here as you enter them.", finish: "Finish and leave",
+  },
+  es: {
+    intro: "Aprende a crear una cuenta, revisar facturas pendientes, realizar un pago guiado con tarjeta y guardar un recibo electrónico.", whatYouDo: "Cómo funciona el pago de facturas",
+    introStep1: "Crea tu cuenta", introBody1: "Introduce tu nombre y elige un usuario y una contraseña.", introStep2: "Inicia sesión", introBody2: "Usa tu nuevo usuario y contraseña para acceder a tus facturas.", introStep3: "Revisa tus facturas", introBody3: "Comprueba cuáles están pendientes y revisa el importe y la fecha límite.", introStep4: "Paga con tarjeta", introBody4: "Sigue al asistente de voz y usa las pistas visuales para copiar los datos.", introStep5: "Obtén la confirmación", introBody5: "Confirma el pago, guarda un recibo PDF o paga otra factura.",
+    safety: "Usa únicamente datos inventados de cuenta y tarjeta. No uses una cuenta ni una tarjeta real.", backScenarios: "Volver a los servicios", setupScenario: "Crear tu cuenta", setupTitle: "Crea tu cuenta de pago", setupSubtitle: "Introduce los datos de la cuenta que usarás para iniciar sesión.", progressLabel: "Progreso del pago", loginSubtitle: "Usa el usuario y la contraseña que creaste.", cardSubtitle: "Copia los datos mostrados en la tarjeta. No uses una tarjeta real.", previewHint: "Los datos de la tarjeta aparecen aquí mientras los introduces.", finish: "Finalizar y salir",
+  },
+  de: {
+    intro: "Lernen Sie, ein Konto zu erstellen, unbezahlte Rechnungen zu prüfen, eine geführte Kartenzahlung durchzuführen und einen elektronischen Beleg zu speichern.", whatYouDo: "So funktioniert die Online-Rechnungszahlung",
+    introStep1: "Konto erstellen", introBody1: "Geben Sie Ihren Namen ein und wählen Sie Benutzername und Passwort.", introStep2: "Anmelden", introBody2: "Melden Sie sich mit Ihren neuen Zugangsdaten an.", introStep3: "Rechnungen prüfen", introBody3: "Prüfen Sie unbezahlte Rechnungen, Betrag und Zahlungsfrist.", introStep4: "Mit Karte bezahlen", introBody4: "Folgen Sie dem Sprachassistenten und nutzen Sie visuelle Hinweise für die Kartendaten.", introStep5: "Bestätigung erhalten", introBody5: "Bestätigen Sie die Zahlung, speichern Sie den PDF-Beleg oder bezahlen Sie eine weitere Rechnung.",
+    safety: "Verwenden Sie nur erfundene Konto- und Kartendaten. Nutzen Sie kein echtes Konto und keine echte Karte.", backScenarios: "Zurück zu den Diensten", setupScenario: "Konto erstellen", setupTitle: "Konto für Rechnungszahlungen erstellen", setupSubtitle: "Geben Sie die Kontodaten ein, mit denen Sie sich anmelden werden.", progressLabel: "Zahlungsfortschritt", loginSubtitle: "Verwenden Sie den erstellten Benutzernamen und das Passwort.", cardSubtitle: "Übertragen Sie die angezeigten Kartendaten. Verwenden Sie keine echte Karte.", previewHint: "Die Kartendaten werden während der Eingabe hier angezeigt.", finish: "Beenden und verlassen",
+  },
+  tr: {
+    intro: "Hesap oluşturmayı, ödenmemiş faturaları incelemeyi, yönlendirmeli kart ödemesi yapmayı ve elektronik makbuz kaydetmeyi öğrenin.", whatYouDo: "İnternetten fatura ödeme nasıl çalışır?",
+    introStep1: "Hesabını oluştur", introBody1: "Adınızı girin, bir kullanıcı adı ve parola belirleyin.", introStep2: "Giriş yap", introBody2: "Faturalarınıza erişmek için yeni kullanıcı adınızı ve parolanızı kullanın.", introStep3: "Faturalarını incele", introBody3: "Ödenmemiş faturaları, tutarı ve son ödeme tarihini kontrol edin.", introStep4: "Kredi kartıyla öde", introBody4: "Sesli asistanı takip edin ve kart bilgileri için görsel ipuçlarını kullanın.", introStep5: "Ödeme onayını al", introBody5: "Ödemeyi onaylayın, PDF makbuzu kaydedin veya başka bir fatura ödeyin.",
+    safety: "Yalnızca oluşturulmuş hesap ve kart bilgilerini kullanın. Gerçek hesap veya kart kullanmayın.", backScenarios: "Hizmetlere dön", setupScenario: "Hesabını oluştur", setupTitle: "Fatura ödeme hesabını oluştur", setupSubtitle: "Giriş yapmak için kullanacağınız hesap bilgilerini girin.", progressLabel: "Ödeme ilerlemesi", loginSubtitle: "Oluşturduğunuz kullanıcı adı ve parolayı kullanın.", cardSubtitle: "Kartta gösterilen bilgileri kopyalayın. Gerçek kart kullanmayın.", previewHint: "Girdiğiniz kart bilgileri burada görünür.", finish: "Bitir ve ayrıl",
+  },
+  pt: {
+    intro: "Aprenda a criar uma conta, consultar faturas por pagar, efetuar um pagamento guiado com cartão e guardar um recibo eletrónico.", whatYouDo: "Como funciona o pagamento de faturas",
+    introStep1: "Criar a sua conta", introBody1: "Introduza o seu nome e escolha um utilizador e uma palavra-passe.", introStep2: "Iniciar sessão", introBody2: "Use os novos dados de acesso para consultar as suas faturas.", introStep3: "Consultar faturas", introBody3: "Verifique as faturas por pagar, o montante e a data-limite.", introStep4: "Pagar com cartão", introBody4: "Siga o assistente de voz e use as dicas visuais para copiar os dados.", introStep5: "Receber confirmação", introBody5: "Confirme o pagamento, guarde o recibo PDF ou pague outra fatura.",
+    safety: "Use apenas dados de conta e cartão inventados. Não use uma conta nem um cartão real.", backScenarios: "Voltar aos serviços", setupScenario: "Criar a sua conta", setupTitle: "Crie a sua conta de pagamento", setupSubtitle: "Introduza os dados da conta que utilizará para iniciar sessão.", progressLabel: "Progresso do pagamento", loginSubtitle: "Use o utilizador e a palavra-passe que criou.", cardSubtitle: "Copie os dados apresentados no cartão. Não use um cartão real.", previewHint: "Os dados do cartão aparecem aqui à medida que os introduz.", finish: "Terminar e sair",
+  },
+  fr: {
+    intro: "Apprenez à créer un compte, consulter les factures impayées, effectuer un paiement guidé par carte et enregistrer un reçu électronique.", whatYouDo: "Comment fonctionne le paiement de factures",
+    introStep1: "Créer votre compte", introBody1: "Saisissez votre nom et choisissez un identifiant et un mot de passe.", introStep2: "Se connecter", introBody2: "Utilisez vos nouveaux identifiants pour accéder à vos factures.", introStep3: "Consulter les factures", introBody3: "Vérifiez les factures impayées, le montant et la date limite.", introStep4: "Payer par carte", introBody4: "Suivez l’assistant vocal et utilisez les indices visuels pour recopier les données.", introStep5: "Obtenir la confirmation", introBody5: "Confirmez le paiement, enregistrez le reçu PDF ou payez une autre facture.",
+    safety: "Utilisez uniquement des données de compte et de carte inventées. N’utilisez ni compte ni carte réels.", backScenarios: "Retour aux services", setupScenario: "Créer votre compte", setupTitle: "Créez votre compte de paiement", setupSubtitle: "Saisissez les informations du compte que vous utiliserez pour vous connecter.", progressLabel: "Progression du paiement", loginSubtitle: "Utilisez l’identifiant et le mot de passe que vous avez créés.", cardSubtitle: "Recopiez les données affichées sur la carte. N’utilisez pas de vraie carte.", previewHint: "Les données de la carte apparaissent ici pendant la saisie.", finish: "Terminer et quitter",
+  },
 };
 
 export const billPaymentTranslations: Record<LanguageCode, BillPaymentText> = {
-  en: { ...baseBillPaymentTranslations.en, safety: saferScenarioWarnings.en },
-  es: { ...baseBillPaymentTranslations.es, safety: saferScenarioWarnings.es },
-  de: { ...baseBillPaymentTranslations.de, safety: saferScenarioWarnings.de },
-  tr: { ...baseBillPaymentTranslations.tr, safety: saferScenarioWarnings.tr },
-  pt: { ...baseBillPaymentTranslations.pt, safety: saferScenarioWarnings.pt },
-  fr: { ...baseBillPaymentTranslations.fr, safety: saferScenarioWarnings.fr },
+  en: { ...baseBillPaymentTranslations.en, ...realisticCopyOverrides.en },
+  es: { ...baseBillPaymentTranslations.es, ...realisticCopyOverrides.es },
+  de: { ...baseBillPaymentTranslations.de, ...realisticCopyOverrides.de },
+  tr: { ...baseBillPaymentTranslations.tr, ...realisticCopyOverrides.tr },
+  pt: { ...baseBillPaymentTranslations.pt, ...realisticCopyOverrides.pt },
+  fr: { ...baseBillPaymentTranslations.fr, ...realisticCopyOverrides.fr },
 };

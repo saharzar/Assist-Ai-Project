@@ -22,11 +22,26 @@ export const billDefinitions: BillDefinition[] = [
   { type: "internet", label: "Internet", amount: 52 },
 ];
 
+export function createRandomBillDefinitions(
+  currency: "TRY" | "EUR",
+  random: () => number = Math.random,
+): BillDefinition[] {
+  const [minimum, maximum] = currency === "TRY" ? [100, 500] : [30, 120];
+  return billDefinitions.map((bill) => {
+    const safeRandom = Math.min(Math.max(random(), 0), 0.999999999);
+    return {
+      ...bill,
+      amount: minimum + Math.floor(safeRandom * (maximum - minimum + 1)),
+    };
+  });
+}
+
 export type BillPaymentStep = "login" | "bill-selection" | "bill-details" | "card-payment" | "success";
 
 export type BillPaymentState = {
   step: BillPaymentStep;
   selectedBill: BillDefinition | null;
+  paidBillTypes: BillType[];
   paymentAttempts: number;
   systemError: boolean;
 };
@@ -37,11 +52,13 @@ export type BillPaymentAction =
   | { type: "PAY_BY_CARD" }
   | { type: "PAYMENT_SYSTEM_ERROR" }
   | { type: "PAYMENT_SUCCESS" }
+  | { type: "PAY_ANOTHER_BILL" }
   | { type: "BACK_TO_BILLS" };
 
 export const initialBillPaymentState: BillPaymentState = {
   step: "login",
   selectedBill: null,
+  paidBillTypes: [],
   paymentAttempts: 0,
   systemError: false,
 };
@@ -67,7 +84,17 @@ export function billPaymentReducer(state: BillPaymentState, action: BillPaymentA
     case "PAYMENT_SYSTEM_ERROR":
       return { ...state, paymentAttempts: state.paymentAttempts + 1, systemError: true };
     case "PAYMENT_SUCCESS":
-      return { ...state, paymentAttempts: state.paymentAttempts + 1, systemError: false, step: "success" };
+      return {
+        ...state,
+        paymentAttempts: state.paymentAttempts + 1,
+        systemError: false,
+        step: "success",
+        paidBillTypes: state.selectedBill && !state.paidBillTypes.includes(state.selectedBill.type)
+          ? [...state.paidBillTypes, state.selectedBill.type]
+          : state.paidBillTypes,
+      };
+    case "PAY_ANOTHER_BILL":
+      return { ...state, selectedBill: null, step: "bill-selection", systemError: false };
     case "BACK_TO_BILLS":
       return { ...state, selectedBill: null, step: "bill-selection", systemError: false };
     default:

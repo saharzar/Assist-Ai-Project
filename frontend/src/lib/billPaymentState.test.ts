@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { billDefinitions, billPaymentReducer, initialBillPaymentState, isValidCardExpiry } from "./billPaymentState";
+import { billDefinitions, billPaymentReducer, createRandomBillDefinitions, initialBillPaymentState, isValidCardExpiry } from "./billPaymentState";
 
 describe("bill payment scenario state", () => {
   it("moves from login through bill selection and card payment", () => {
@@ -26,6 +26,20 @@ describe("bill payment scenario state", () => {
     expect(failed.paymentAttempts).toBe(1);
     expect(completed.step).toBe("success");
     expect(completed.paymentAttempts).toBe(2);
+    expect(completed.paidBillTypes).toEqual(["water"]);
+  });
+
+  it("keeps a paid bill marked when the user chooses another bill", () => {
+    const selected = billPaymentReducer(
+      { ...initialBillPaymentState, step: "bill-selection" },
+      { type: "SELECT_BILL", bill: billDefinitions[0] },
+    );
+    const completed = billPaymentReducer(selected, { type: "PAYMENT_SUCCESS" });
+    const anotherBill = billPaymentReducer(completed, { type: "PAY_ANOTHER_BILL" });
+
+    expect(anotherBill.step).toBe("bill-selection");
+    expect(anotherBill.selectedBill).toBeNull();
+    expect(anotherBill.paidBillTypes).toEqual(["electricity"]);
   });
 
   it("returns to bill selection without retaining the selected bill", () => {
@@ -46,5 +60,17 @@ describe("bill payment scenario state", () => {
     expect(isValidCardExpiry("08/26", referenceDate)).toBe(true);
     expect(isValidCardExpiry("01/27", referenceDate)).toBe(true);
     expect(isValidCardExpiry("13/27", referenceDate)).toBe(false);
+  });
+
+  it("creates bill amounts within the currency-specific ranges", () => {
+    const lowestLiraBills = createRandomBillDefinitions("TRY", () => 0);
+    const highestLiraBills = createRandomBillDefinitions("TRY", () => 0.999999);
+    const lowestEuroBills = createRandomBillDefinitions("EUR", () => 0);
+    const highestEuroBills = createRandomBillDefinitions("EUR", () => 0.999999);
+
+    expect(lowestLiraBills.every((bill) => bill.amount === 100)).toBe(true);
+    expect(highestLiraBills.every((bill) => bill.amount === 500)).toBe(true);
+    expect(lowestEuroBills.every((bill) => bill.amount === 30)).toBe(true);
+    expect(highestEuroBills.every((bill) => bill.amount === 120)).toBe(true);
   });
 });
