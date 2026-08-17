@@ -35,7 +35,8 @@ let activeSpeechId = 0;
 let currentBrowserUtterance: SpeechSynthesisUtterance | null = null;
 
 export function unlockAssistantAudioPlayback() {
-  if (assistantAudioUnlocked || assistantAudioUnlockPromise) return;
+  if (assistantAudioUnlocked) return Promise.resolve();
+  if (assistantAudioUnlockPromise) return assistantAudioUnlockPromise;
 
   // Use a separate one-shot element. Reusing the Soniox player here creates a
   // race where the unlock cleanup pauses a fast cached message that has just
@@ -54,6 +55,7 @@ export function unlockAssistantAudioPlayback() {
     .finally(() => {
       assistantAudioUnlockPromise = null;
     });
+  return assistantAudioUnlockPromise;
 }
 
 export function isSpeechSynthesisSupported() {

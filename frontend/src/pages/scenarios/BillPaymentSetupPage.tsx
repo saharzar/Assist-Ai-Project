@@ -1,11 +1,13 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { useTranslation } from "../../i18n";
 import { BILL_SETUP_STORAGE_KEY, type BillSetupDetails } from "../../lib/billPaymentState";
+import { billAssistantTranslations } from "../../lib/billAssistantTranslations";
 import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
+import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 const namePattern = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
 const usernamePattern = /^[A-Za-z0-9._-]{3,24}$/;
@@ -20,10 +22,15 @@ export function BillPaymentSetupPage() {
   const valid = namePattern.test(details.firstName.trim()) && namePattern.test(details.lastName.trim()) && usernamePattern.test(details.username) && details.password.length >= 6;
   const update = (field: keyof BillSetupDetails, value: string) => setDetails((current) => ({ ...current, [field]: value }));
 
+  useEffect(() => {
+    void preloadAssistantMessage(billAssistantTranslations[language].messages.login, language);
+  }, [language]);
+
   return (
     <BillScenarioShell currentStep={1} title={text.setupTitle} subtitle={text.setupSubtitle}>
-      <form autoComplete="off" onSubmit={(event) => {
+      <form autoComplete="off" onSubmit={async (event) => {
         event.preventDefault(); setSubmitted(true); if (!valid) return;
+        await unlockAssistantAudioPlayback();
         sessionStorage.setItem(BILL_SETUP_STORAGE_KEY, JSON.stringify({ ...details, firstName: details.firstName.trim(), lastName: details.lastName.trim() }));
         navigate("/scenario/online-bill-payment/run");
       }}>

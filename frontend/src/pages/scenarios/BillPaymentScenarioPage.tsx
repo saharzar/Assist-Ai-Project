@@ -1,6 +1,6 @@
-import { AlertTriangle, CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, Waves } from "lucide-react";
+import { AlertTriangle, CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LogOut, Waves } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
@@ -19,8 +19,8 @@ import { createPracticeCardDetails, matchesPracticeCard } from "../../lib/practi
 import { practiceCardTranslations } from "../../lib/practiceCardTranslations";
 import {
   BILL_SETUP_STORAGE_KEY,
-  billDefinitions,
   billPaymentReducer,
+  createRandomBillDefinitions,
   initialBillPaymentState,
   isValidCardExpiry,
   type BillSetupDetails,
@@ -58,13 +58,16 @@ export function BillPaymentScenarioPage() {
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
+  const sessionBills = useMemo(() => createRandomBillDefinitions(currency), [currency]);
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
   const formatAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  const formatSpokenAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "name", maximumFractionDigits: 0 }).format(amount);
+  const formatSpokenAmount = (amount: number) => language === "tr"
+    ? `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(amount)} Türk lirası`
+    : new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "name", maximumFractionDigits: 0 }).format(amount);
   const formatDueDate = (date: Date) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
   const statements = useMemo(() => Object.fromEntries(
-    billDefinitions.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
-  ) as Record<BillType, BillStatementMetadata>, []);
+    sessionBills.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
+  ) as Record<BillType, BillStatementMetadata>, [sessionBills]);
 
   if (!setup) return <Navigate to="/scenario/online-bill-payment/setup" replace />;
 
@@ -182,12 +185,13 @@ export function BillPaymentScenarioPage() {
         <div>
         <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          {billDefinitions.map((bill) => {
+          {sessionBills.map((bill) => {
             const Icon = billIcons[bill.type];
             const isPaid = state.paidBillTypes.includes(bill.type);
             return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-32 items-center gap-4 rounded-2xl border px-5 pb-5 pt-9 text-left focus:outline-none focus:ring-2 focus:ring-cyan-400 ${isPaid ? "cursor-not-allowed border-teal-200 bg-teal-50 opacity-80" : "border-indigo-200 bg-indigo-50/70 hover:border-cyan-400 hover:bg-cyan-50"}`}><span className={`absolute right-4 top-3 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white ${isPaid ? "bg-teal-700" : "bg-amber-600"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${isPaid ? "bg-teal-700" : "bg-[#302992]"}`}><Icon className="h-6 w-6" /></span><span className="min-w-0 flex-1"><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{isPaid ? statusText.paid : text.viewBill}</span></span></button>;
           })}
         </div>
+        <div className="mt-5 flex justify-end"><Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-400 bg-white px-5 py-3 font-bold text-slate-700 hover:border-[#302992] hover:bg-indigo-50 hover:text-[#302992]"><LogOut className="h-5 w-5" /> {statusText.leave}</Link></div>
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (

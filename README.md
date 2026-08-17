@@ -71,7 +71,7 @@ This version includes:
 - Scenario catalogue with the ATM and online bill-payment scenarios enabled
 - Realistic ATM interface with clickable controls, card/receipt/cash animations, and synchronized sound effects
 - ATM input through on-screen controls, a computer keyboard, or voice where supported
-- Step-by-step online bill-payment draft with account setup, login, bill selection, card validation, a simulated first payment failure, and successful retry
+- Step-by-step online bill-payment draft with account setup, secured login attempts, localized bill details, guided card validation, payment retry, and PDF receipts
 - Azure and Soniox speech-provider support with configurable TTS/STT priority and browser fallback
 - Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, and audit history
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
@@ -120,14 +120,19 @@ Scenario analytics include registered and guest sessions and classify outcomes a
 The online bill-payment scenario is a modular first draft that follows the same calm, step-by-step visual style:
 
 1. Read the introduction and create temporary first-name, last-name, username, and password details.
-2. Log in with the newly created username and password.
-3. Select an electricity, natural-gas, water, or internet bill and review the amount due.
-4. Choose credit-card payment and enter a cardholder name, card number, expiry date, and CVV while viewing a live card preview.
-5. Reject invalid or expired cards with a localized error message.
-6. Simulate a system failure on the first valid payment attempt, then complete the payment after the next valid attempt.
-7. Show a localized success screen confirming that the bill was paid.
+2. Log in with the newly created username and password. Three incorrect password attempts end the session and return the user to the introduction.
+3. Receive a personalized welcome and select an unpaid electricity, natural-gas, water, or internet bill. A **Leave** option returns to the scenario catalogue.
+4. Review realistic bill details such as the provider, subscription number, due date, and amount. Amounts are randomized for each new session: ₺100-₺500 in Turkish and €30-€120 in the other languages.
+5. Choose credit-card payment and copy the generated cardholder name, grouped card number, expiry date, and CVV. The card flips to reveal the CVV, and optional visual hints identify each requested field.
+6. Reject mismatched or expired card details with a localized error message.
+7. Simulate a system failure on the first valid payment attempt, then complete the payment after the next valid attempt.
+8. On success, play completion feedback and let the user view or download an electronic receipt as a PDF, pay another unpaid bill, or finish and leave.
 
-The complete flow, including validation and error messages, is available in English, Turkish, German, Spanish, Portuguese, and French. Users are instructed to enter made-up scenario details only and never use a real account or card.
+Paid bills remain visibly marked and cannot be selected again during the same session. A right-side voice assistant automatically guides each step, welcomes the user by name, and announces bill amounts using natural spoken currency names. Registered users use server speech and cached audio first with browser speech as a fallback; guest sessions use browser speech.
+
+The inactivity monitor displays and speaks warnings after 15, 30, and 45 seconds of user inactivity and ends the session after one minute. Assistant speech pauses the countdown without resetting elapsed inactivity; only user interaction resets it.
+
+The complete flow, including guidance, validation, warnings, and error messages, is available in English, Turkish, German, Spanish, Portuguese, and French. Users are instructed to use only the made-up account and card details shown in the flow, never real details.
 
 ## User Roles
 

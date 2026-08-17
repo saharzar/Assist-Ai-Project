@@ -22,6 +22,20 @@ export const billDefinitions: BillDefinition[] = [
   { type: "internet", label: "Internet", amount: 52 },
 ];
 
+export function createRandomBillDefinitions(
+  currency: "TRY" | "EUR",
+  random: () => number = Math.random,
+): BillDefinition[] {
+  const [minimum, maximum] = currency === "TRY" ? [100, 500] : [30, 120];
+  return billDefinitions.map((bill) => {
+    const safeRandom = Math.min(Math.max(random(), 0), 0.999999999);
+    return {
+      ...bill,
+      amount: minimum + Math.floor(safeRandom * (maximum - minimum + 1)),
+    };
+  });
+}
+
 export type BillPaymentStep = "login" | "bill-selection" | "bill-details" | "card-payment" | "success";
 
 export type BillPaymentState = {

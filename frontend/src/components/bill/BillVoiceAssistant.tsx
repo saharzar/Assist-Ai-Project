@@ -40,7 +40,12 @@ export function BillVoiceAssistant({ message, onMessageEnd, onSpeakingChange }: 
     speak();
   }, [language, message, soundEnabled, speak]);
 
-  useEffect(() => () => stopAssistantSpeech(), []);
+  useEffect(() => () => {
+    // React Strict Mode performs a development-only mount cleanup and remount.
+    // Reset this key so cleanup cannot permanently suppress the first message.
+    lastSpokenRef.current = "";
+    stopAssistantSpeech();
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled((current) => {
