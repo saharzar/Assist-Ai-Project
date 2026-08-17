@@ -137,7 +137,10 @@ export function BillPaymentScenarioPage() {
   useEffect(() => {
     if (!loginLocked) return;
     const soundEnabled = localStorage.getItem("assist_ai_sound_enabled") !== "false";
-    const fallbackTimer = window.setTimeout(() => navigate("/scenario/online-bill-payment", { replace: true }), soundEnabled ? 8000 : 1500);
+    // With sound enabled, handleAssistantMessageEnd redirects only after the
+    // complete security message finishes (or playback reports an error).
+    if (soundEnabled) return;
+    const fallbackTimer = window.setTimeout(() => navigate("/scenario/online-bill-payment", { replace: true }), 1500);
     return () => window.clearTimeout(fallbackTimer);
   }, [loginLocked, navigate]);
 
