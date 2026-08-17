@@ -270,12 +270,6 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
     event.preventDefault();
     if (locked) return;
     if (username === setup.username && password === setup.password) { setError(""); onSuccess(); return; }
-    if (username !== setup.username) {
-      setPassword("");
-      setError(text.loginError);
-      onFailed(text.loginError);
-      return;
-    }
     const nextAttempts = attemptsRemaining - 1;
     setAttemptsRemaining(nextAttempts);
     setPassword("");
