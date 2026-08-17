@@ -39,6 +39,8 @@ function readSetupDetails(): BillSetupDetails | null {
   }
 }
 
+type LoginFailure = { kind: "incorrect"; attemptsRemaining: number } | { kind: "locked" };
+
 export function BillPaymentScenarioPage() {
   const navigate = useNavigate();
   const setup = useMemo(readSetupDetails, []);
@@ -50,7 +52,7 @@ export function BillPaymentScenarioPage() {
   const inactivityText = billInactivityTranslations[language];
   const statusText = billStatusTranslations[language];
   const [receiptVisible, setReceiptVisible] = useState(false);
-  const [loginAssistantMessage, setLoginAssistantMessage] = useState("");
+  const [loginFailure, setLoginFailure] = useState<LoginFailure | null>(null);
   const [loginLocked, setLoginLocked] = useState(false);
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
@@ -81,6 +83,11 @@ export function BillPaymentScenarioPage() {
     : state.step === "success" && receiptVisible
       ? "receipt"
       : state.step;
+  const loginAssistantMessage = loginFailure?.kind === "locked"
+    ? loginSecurityText.locked
+    : loginFailure?.kind === "incorrect"
+      ? loginSecurityText.incorrect(loginFailure.attemptsRemaining)
+      : "";
   const assistantMessage = inactivityTimedOut
     ? inactivityText.timeoutAssistant
     : inactivityWarningRemaining !== null
@@ -130,7 +137,10 @@ export function BillPaymentScenarioPage() {
   useEffect(() => {
     if (!loginLocked) return;
     const soundEnabled = localStorage.getItem("assist_ai_sound_enabled") !== "false";
-    const fallbackTimer = window.setTimeout(() => navigate("/scenario/online-bill-payment", { replace: true }), soundEnabled ? 8000 : 1500);
+    // With sound enabled, handleAssistantMessageEnd redirects only after the
+    // complete security message finishes (or playback reports an error).
+    if (soundEnabled) return;
+    const fallbackTimer = window.setTimeout(() => navigate("/scenario/online-bill-payment", { replace: true }), 1500);
     return () => window.clearTimeout(fallbackTimer);
   }, [loginLocked, navigate]);
 
@@ -180,7 +190,7 @@ export function BillPaymentScenarioPage() {
           <div><p className="text-xs font-extrabold uppercase tracking-wide text-amber-700">{inactivityText.warningTitle}</p><p className="mt-1 font-bold">{inactivityText.warning(inactivityWarningRemaining)}</p></div>
         </div>
       )}
-      {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginAssistantMessage} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginAssistantMessage(""); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
+      {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginFailure} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginFailure(null); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
       {state.step === "bill-selection" && (
         <div>
         <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
@@ -259,30 +269,36 @@ function BillDetailItem({ label, value, mono = false, important = false }: { lab
   );
 }
 
-function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }: { setup: BillSetupDetails; text: BillPaymentText; securityText: { incorrect: (attempts: number) => string; locked: string }; onSuccess: () => void; onFailed: (message: string) => void; onLocked: () => void }) {
+function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }: { setup: BillSetupDetails; text: BillPaymentText; securityText: { incorrect: (attempts: number) => string; locked: string }; onSuccess: () => void; onFailed: (failure: LoginFailure) => void; onLocked: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [failure, setFailure] = useState<LoginFailure | null>(null);
   const [attemptsRemaining, setAttemptsRemaining] = useState(3);
   const [locked, setLocked] = useState(false);
+  const error = failure?.kind === "locked"
+    ? securityText.locked
+    : failure?.kind === "incorrect"
+      ? securityText.incorrect(failure.attemptsRemaining)
+      : "";
   return <form className="mx-auto max-w-xl space-y-5" autoComplete="off" onSubmit={(event) => {
     event.preventDefault();
     if (locked) return;
-    if (username === setup.username && password === setup.password) { setError(""); onSuccess(); return; }
+    if (username === setup.username && password === setup.password) { setFailure(null); onSuccess(); return; }
     const nextAttempts = attemptsRemaining - 1;
     setAttemptsRemaining(nextAttempts);
     setPassword("");
     if (nextAttempts <= 0) {
       setLocked(true);
-      setError(securityText.locked);
-      onFailed(securityText.locked);
+      const lockedFailure: LoginFailure = { kind: "locked" };
+      setFailure(lockedFailure);
+      onFailed(lockedFailure);
       onLocked();
       return;
     }
-    const message = securityText.incorrect(nextAttempts);
-    setError(message);
-    onFailed(message);
+    const incorrectFailure: LoginFailure = { kind: "incorrect", attemptsRemaining: nextAttempts };
+    setFailure(incorrectFailure);
+    onFailed(incorrectFailure);
   }}>
     <ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
     <label className="block text-sm font-bold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border border-slate-300 px-4 pr-12 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label>
