@@ -8,7 +8,7 @@ import { practiceCardTranslations } from "../../lib/practiceCardTranslations";
 
 export type CardPreviewDetails = PracticeCardDetails;
 
-export function BillCardPreview({ details, hintsVisible = false, hintField = "cardholderName" }: { details: CardPreviewDetails; hintsVisible?: boolean; hintField?: CardHintField }) {
+export function BillCardPreview({ details, hintsVisible = false, hintField = "cardNumber" }: { details: CardPreviewDetails; hintsVisible?: boolean; hintField?: CardHintField }) {
   const { language } = useTranslation();
   const labels = practiceCardTranslations[language];
   const hintText = cardHintTranslations[language];
@@ -29,9 +29,9 @@ export function BillCardPreview({ details, hintsVisible = false, hintField = "ca
           <span className="relative flex h-full flex-col justify-between">
             <span className="flex items-start justify-between"><span className="h-8 w-12 rounded-md bg-gradient-to-br from-amber-200 to-amber-500 shadow-inner" aria-hidden="true" /><strong className="text-base tracking-wide">ASSIST-AI BANK</strong></span>
             <strong className={`font-mono text-base tracking-[0.07em] sm:text-lg ${highlighted("cardNumber") ? "rounded-md bg-amber-300 px-2 py-1 text-slate-950 ring-4 ring-amber-200/70" : ""}`}>{visibleNumber}</strong>
-            <span className="flex items-end justify-between gap-4 text-xs uppercase tracking-wider"><span className={`min-w-0 ${highlighted("cardholderName") ? "rounded-md bg-amber-300 px-2 py-1 text-slate-950 ring-4 ring-amber-200/70" : ""}`}><span className={highlighted("cardholderName") ? "block text-slate-700" : "block text-white/60"}>{labels.holder}</span><strong className="mt-1 block truncate">{details.cardholderName}</strong></span><span className={highlighted("expiry") ? "rounded-md bg-amber-300 px-2 py-1 text-slate-950 ring-4 ring-amber-200/70" : ""}><span className={highlighted("expiry") ? "block text-slate-700" : "block text-white/60"}>{labels.expires}</span><strong className="mt-1 block">{details.expiry}</strong></span></span>
+            <span className="flex items-end justify-between gap-4 text-xs uppercase tracking-wider"><span className="min-w-0"><span className="block text-white/60">{labels.holder}</span><strong className="mt-1 block truncate">{details.cardholderName || labels.holder}</strong></span><span className={highlighted("expiry") ? "rounded-md bg-amber-300 px-2 py-1 text-slate-950 ring-4 ring-amber-200/70" : ""}><span className={highlighted("expiry") ? "block text-slate-700" : "block text-white/60"}>{labels.expires}</span><strong className="mt-1 block">{details.expiry}</strong></span></span>
           </span>
-          {hintsVisible && hintField !== "cvv" && <HintMarker text={hintText.fields[hintField]} position={hintField === "cardNumber" ? "left-1/2 top-[16%] -translate-x-1/2" : hintField === "expiry" ? "right-2 top-[54%]" : "left-2 top-[54%]"} />}
+          {hintsVisible && hintField !== "cvv" && <HintMarker text={hintText.fields[hintField]} position={hintField === "cardNumber" ? "left-1/2 top-[16%] -translate-x-1/2" : "right-2 top-[54%]"} />}
         </span>
 
         <span className="absolute inset-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#111b55] via-[#173d93] to-[#159fb5] py-4 text-white shadow-2xl [backface-visibility:hidden] [transform:rotateY(180deg)]">

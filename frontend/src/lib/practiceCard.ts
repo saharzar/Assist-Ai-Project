@@ -45,6 +45,5 @@ export function createPracticeCardDetails(
 export function matchesPracticeCard(entered: PracticeCardDetails, expected: PracticeCardDetails) {
   return entered.cardNumber === expected.cardNumber
     && entered.expiry === expected.expiry
-    && entered.cvv === expected.cvv
-    && entered.cardholderName.trim().toUpperCase() === expected.cardholderName;
+    && entered.cvv === expected.cvv;
 }
