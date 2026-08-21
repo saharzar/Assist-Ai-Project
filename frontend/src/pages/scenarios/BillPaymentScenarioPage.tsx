@@ -8,6 +8,7 @@ import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, type BillAssistantStep } from "../../lib/billAssistantTranslations";
+import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billAccountValidation";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
 import { billLoginSecurityTranslations } from "../../lib/billLoginSecurityTranslations";
 import { billInactivityTranslations } from "../../lib/billInactivityTranslations";
@@ -232,7 +233,6 @@ export function BillPaymentScenarioPage() {
       {state.step === "card-payment" && state.selectedBill && (
         <CardPaymentStep
           amount={formatAmount(state.selectedBill.amount)}
-          cardholderName={customerName}
           systemError={state.systemError}
           text={text}
           onBack={() => dispatch({ type: "BACK_TO_BILLS" })}
@@ -307,22 +307,23 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
   </form>;
 }
 
-function CardPaymentStep({ amount, cardholderName, systemError, text, onBack, onSubmit }: { amount: string; cardholderName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
+function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amount: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
   const { language } = useTranslation();
   const practiceText = practiceCardTranslations[language];
   const hintText = cardHintTranslations[language];
-  const expectedCard = useMemo(() => createPracticeCardDetails(cardholderName), [cardholderName]);
+  const expectedCard = useMemo(() => createPracticeCardDetails(""), []);
   const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
   const [submitted, setSubmitted] = useState(false);
   const [hintsVisible, setHintsVisible] = useState(false);
-  const [hintField, setHintField] = useState<CardHintField>("cardholderName");
+  const [hintField, setHintField] = useState<CardHintField>("cardNumber");
   const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
   const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
+  const cardholderValid = isValidBillAccountName(details.cardholderName);
   const cardMatches = matchesPracticeCard(details, expectedCard);
   const update = (field: keyof typeof details, value: string) => setDetails((current) => ({ ...current, [field]: value }));
   const submitPayment = () => {
     setSubmitted(true);
-    if (!cardMatches) return;
+    if (!cardholderValid || !cardMatches) return;
     onSubmit();
     if (!systemError) {
       setDetails({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
@@ -338,7 +339,7 @@ function CardPaymentStep({ amount, cardholderName, systemError, text, onBack, on
       </div>
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
-        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", value.replace(/[^A-Za-z '-]/g, "").toUpperCase())} onFocus={() => setHintField("cardholderName")} name="scenario-copy-holder" />
+        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} name="scenario-copy-holder" />
         <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
         <div className="grid grid-cols-2 gap-3">
           <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setHintField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
@@ -346,11 +347,12 @@ function CardPaymentStep({ amount, cardholderName, systemError, text, onBack, on
         </div>
       </div>
       {submitted && cardExpired && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.expiredError}</p>}
-      {submitted && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
+      {submitted && !cardholderValid && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.cardError}</p>}
+      {submitted && cardholderValid && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
       <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
     </div>
     <aside className="lg:sticky lg:top-8">
-      <BillCardPreview details={expectedCard} hintsVisible={hintsVisible} hintField={hintField} />
+      <BillCardPreview details={{ ...expectedCard, cardholderName: details.cardholderName.trim().toUpperCase() }} hintsVisible={hintsVisible} hintField={hintField} />
       <p className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-center text-sm font-semibold leading-5 text-[#1d1a5e]">{hintText.stuckMessage}</p>
     </aside>
   </div>;

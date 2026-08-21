@@ -17,6 +17,7 @@ describe("practice payment card", () => {
     const card = createPracticeCardDetails("Sahar Zar", new Date(2026, 7, 16), () => 0.25);
 
     expect(matchesPracticeCard({ ...card }, card)).toBe(true);
+    expect(matchesPracticeCard({ ...card, cardholderName: "ÇAĞLA MÜLLER" }, card)).toBe(true);
     expect(matchesPracticeCard({ ...card, cvv: "999" }, card)).toBe(false);
     expect(matchesPracticeCard({ ...card, cardNumber: card.cardNumber.replace(/^./, "4") }, card)).toBe(false);
   });

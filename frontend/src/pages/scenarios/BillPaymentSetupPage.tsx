@@ -4,13 +4,16 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { useTranslation } from "../../i18n";
+import {
+  isValidBillAccountName,
+  isValidBillAccountUsername,
+  sanitizeBillAccountName,
+  sanitizeBillAccountUsername,
+} from "../../lib/billAccountValidation";
 import { BILL_SETUP_STORAGE_KEY, type BillSetupDetails } from "../../lib/billPaymentState";
 import { billAssistantTranslations } from "../../lib/billAssistantTranslations";
 import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
-
-const namePattern = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
-const usernamePattern = /^[A-Za-z0-9._-]{3,24}$/;
 
 export function BillPaymentSetupPage() {
   const navigate = useNavigate();
@@ -19,7 +22,7 @@ export function BillPaymentSetupPage() {
   const [details, setDetails] = useState<BillSetupDetails>({ firstName: "", lastName: "", username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const valid = namePattern.test(details.firstName.trim()) && namePattern.test(details.lastName.trim()) && usernamePattern.test(details.username) && details.password.length >= 6;
+  const valid = isValidBillAccountName(details.firstName) && isValidBillAccountName(details.lastName) && isValidBillAccountUsername(details.username) && details.password.length >= 6;
   const update = (field: keyof BillSetupDetails, value: string) => setDetails((current) => ({ ...current, [field]: value }));
 
   useEffect(() => {
@@ -35,9 +38,9 @@ export function BillPaymentSetupPage() {
         navigate("/scenario/online-bill-payment/run");
       }}>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label={text.firstName} fieldName="first-name" value={details.firstName} onChange={(value) => update("firstName", value.replace(/[^A-Za-z '-]/g, ""))} />
-          <Field label={text.lastName} fieldName="last-name" value={details.lastName} onChange={(value) => update("lastName", value.replace(/[^A-Za-z '-]/g, ""))} />
-          <Field label={text.username} fieldName="username" value={details.username} onChange={(value) => update("username", value.replace(/[^A-Za-z0-9._-]/g, ""))} hint={text.usernameHint} />
+          <Field label={text.firstName} fieldName="first-name" value={details.firstName} onChange={(value) => update("firstName", sanitizeBillAccountName(value))} />
+          <Field label={text.lastName} fieldName="last-name" value={details.lastName} onChange={(value) => update("lastName", sanitizeBillAccountName(value))} />
+          <Field label={text.username} fieldName="username" value={details.username} onChange={(value) => update("username", sanitizeBillAccountUsername(value))} hint={text.usernameHint} />
           <label className="text-sm font-bold text-slate-800">{text.password}
             <div className="relative mt-2">
               <input value={details.password} onChange={(event) => update("password", event.target.value)} type={showPassword ? "text" : "password"} name="bill-scenario-new-password" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border border-slate-300 px-4 pr-12 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" />
