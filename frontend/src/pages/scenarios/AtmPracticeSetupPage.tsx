@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Mic } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
+import { atmSetupTranslations } from "../../lib/atmSetupTranslations";
 import { atmTranslations } from "../../lib/atmTranslations";
 import { createSpeechRecognizer, isSpeechRecognitionSupported } from "../../services/speechRecognitionService";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
@@ -17,13 +18,16 @@ export function AtmPracticeSetupPage() {
   const [voiceError, setVoiceError] = useState("");
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const { language } = useTranslation();
+  const setupText = atmSetupTranslations[language];
+  const atmText = atmTranslations[language];
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     void preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language);
   }, [language]);
 
-  const nameIsValid = /^[A-Za-z]+(?: [A-Za-z]+)*$/.test(fullName.trim());
+  const sanitizeName = (value: string) => value.replace(/[^\p{L}\p{M} '\u2019-]/gu, "").replace(/\s+/g, " ");
+  const nameIsValid = /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)+$/u.test(fullName.trim());
   const pinIsValid = /^\d{4}$/.test(pin);
   const canStart = nameIsValid && pinIsValid;
 
@@ -33,7 +37,7 @@ export function AtmPracticeSetupPage() {
     setListeningFor(mode);
     recognizerRef.current = createSpeechRecognizer({
       onResult: (result) => {
-        if (mode === "name") setFullName(result.replace(/[^A-Za-z ]/g, "").replace(/\s+/g, " "));
+        if (mode === "name") setFullName(sanitizeName(result));
         else setPin(result.replace(/\D/g, "").slice(0, 4));
       },
       onError: (message) => setVoiceError(message),
@@ -41,7 +45,17 @@ export function AtmPracticeSetupPage() {
         recognizerRef.current = null;
         setListeningFor(null);
       },
-    }, mode, language);
+    }, mode, language, {
+      microphoneBlocked: atmText.speechMicBlocked,
+      problem: atmText.speechProblem,
+      browserFallback: atmText.speechBrowserFallback,
+      noSpeech: atmText.speechNoMatch,
+      limitReached: atmText.speechLimitReached,
+      sessionExpired: atmText.speechSessionExpired,
+      providerUnavailable: atmText.speechProviderUnavailable,
+      networkError: atmText.speechNetworkError,
+      busy: atmText.speechBusy,
+    });
     recognizerRef.current?.start();
   };
 
@@ -63,20 +77,20 @@ export function AtmPracticeSetupPage() {
 
   return (
     <section className="mx-auto w-full max-w-2xl rounded-3xl border border-cyan-200/80 bg-white/95 p-6 shadow-soft sm:p-9">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">ATM setup</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">Set up your ATM session</h1>
+      <p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">{setupText.eyebrow}</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#1d1a5e]">{setupText.title}</h1>
       <p className="mt-3 leading-7 text-slate-600">
-        Enter your name and create a four-digit PIN. This information is used only for your current ATM session.
+        {setupText.description}
       </p>
 
       <form className="mt-8 space-y-6" autoComplete="off" onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="atm-full-name" className="block text-sm font-bold text-slate-800">Full name</label>
+          <label htmlFor="atm-full-name" className="block text-sm font-bold text-slate-800">{setupText.fullName}</label>
           <input
             id="atm-full-name"
             name="atm-session-name-not-username"
             value={fullName}
-            onChange={(event) => setFullName(event.target.value.replace(/[^A-Za-z ]/g, "").replace(/\s+/g, " "))}
+            onChange={(event) => setFullName(sanitizeName(event.target.value))}
             onFocus={() => setNameInputUnlocked(true)}
             onPointerDown={() => setNameInputUnlocked(true)}
             type="text"
@@ -84,15 +98,15 @@ export function AtmPracticeSetupPage() {
             readOnly={!nameInputUnlocked}
             data-lpignore="true"
             data-1p-ignore="true"
-            placeholder="Enter your full name"
+            placeholder={setupText.fullNamePlaceholder}
             className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-400"
           />
-          {isSpeechRecognitionSupported() && <button type="button" aria-label="Hold to say your name" onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("name"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "name" ? "Listening…" : "Hold to say your name"}</button>}
-          {submitted && !nameIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">Please enter your full name.</p>}
+          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdName} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("name"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "name" ? setupText.listening : setupText.holdName}</button>}
+          {submitted && !nameIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">{setupText.nameError}</p>}
         </div>
 
         <div>
-          <label htmlFor="atm-practice-pin" className="block text-sm font-bold text-slate-800">Create a 4-digit PIN</label>
+          <label htmlFor="atm-practice-pin" className="block text-sm font-bold text-slate-800">{setupText.pinLabel}</label>
           <div className="relative mt-2">
             <input
               id="atm-practice-pin"
@@ -114,25 +128,25 @@ export function AtmPracticeSetupPage() {
             <button
               type="button"
               onClick={() => setShowPin((current) => !current)}
-              aria-label={showPin ? "Hide PIN" : "Show PIN"}
+              aria-label={showPin ? setupText.hidePin : setupText.showPin}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-[#302992] focus:outline-none focus:ring-2 focus:ring-cyan-400"
             >
               {showPin ? <Eye className="h-5 w-5" aria-hidden="true" /> : <EyeOff className="h-5 w-5" aria-hidden="true" />}
             </button>
           </div>
-          {isSpeechRecognitionSupported() && <button type="button" aria-label="Hold to say your PIN" onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("pin"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "pin" ? "Listening…" : "Hold to say your PIN"}</button>}
-          <p className="mt-2 text-sm text-slate-600">Use exactly four numbers.</p>
-          {submitted && !pinIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">Your PIN must contain exactly four numbers.</p>}
+          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdPin} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("pin"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "pin" ? setupText.listening : setupText.holdPin}</button>}
+          <p className="mt-2 text-sm text-slate-600">{setupText.pinHint}</p>
+          {submitted && !pinIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">{setupText.pinError}</p>}
         </div>
 
         {voiceError && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{voiceError}</p>}
 
         <button type="submit" className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">
-          Start ATM session
+          {setupText.start}
         </button>
       </form>
 
-      <Link to="/scenario/atm-withdrawal" className="mt-5 inline-flex font-bold text-[#302992] hover:underline">Back to introduction</Link>
+      <Link to="/scenario/atm-withdrawal" className="mt-5 inline-flex font-bold text-[#302992] hover:underline">{setupText.back}</Link>
     </section>
   );
 }
