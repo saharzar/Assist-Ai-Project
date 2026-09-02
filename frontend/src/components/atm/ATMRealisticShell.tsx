@@ -32,7 +32,7 @@ function findFirstAudibleSecond(buffer: AudioBuffer) {
   return 0;
 }
 
-function playAtmButtonBeep() {
+export function playAtmButtonBeep() {
   if (
     localStorage.getItem(SOUND_STORAGE_KEY) === "false" ||
     !atmButtonAudioContext
@@ -186,7 +186,8 @@ export function ATMRealisticShell({
       if (event.key !== "Enter" || event.repeat) return;
 
       const target = event.target as HTMLElement | null;
-      if (target?.closest('button[aria-label="Enter"]')) return;
+      // Let a focused on-screen button handle its own Enter key action.
+      if (target?.closest("button")) return;
 
       event.preventDefault();
       event.stopPropagation();

@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { playAtmButtonBeep } from "./ATMRealisticShell";
+
 const PRESET_AMOUNTS = [100, 200, 300, 500, 750, 1000];
 
 export function AtmWithdrawalScreen({
@@ -15,6 +17,7 @@ export function AtmWithdrawalScreen({
   onPresetSelect,
   onVoiceStart,
   onVoiceStop,
+  onEnter,
   onBackToMenu,
   formatAmount,
 }: {
@@ -36,12 +39,14 @@ export function AtmWithdrawalScreen({
     voiceHint: string;
     listening: string;
     preparing: string;
+    enter: string;
     backToMenu: string;
   };
   onAmountChange: (value: string) => void;
   onPresetSelect: (amount: number) => void;
   onVoiceStart: () => void;
   onVoiceStop: () => void;
+  onEnter: () => void;
   onBackToMenu: () => void;
   formatAmount: (amount: number) => string;
 }) {
@@ -94,10 +99,12 @@ export function AtmWithdrawalScreen({
         />
       </label>
 
-      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-2">
+      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)] gap-2">
         <button
           type="button"
           disabled={!isVoiceSupported}
+          aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
           onPointerDown={(event) => {
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -105,14 +112,29 @@ export function AtmWithdrawalScreen({
           }}
           onPointerUp={onVoiceStop}
           onPointerCancel={onVoiceStop}
-          className="flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-[#302992] px-2 text-xs font-bold leading-tight text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300"
+          className={`flex min-h-9 items-center justify-center rounded-md bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
         >
           <Mic className="h-4 w-4" aria-hidden="true" />
-          {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onEnter}
+          onPointerDown={playAtmButtonBeep}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
+          }}
+          className="min-h-9 rounded-md bg-emerald-600 px-2 text-xs font-extrabold leading-tight text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+        >
+          {labels.enter}
         </button>
         <button
           type="button"
           onClick={onBackToMenu}
+          onPointerDown={playAtmButtonBeep}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
+          }}
           className="min-h-9 rounded-md border-2 border-[#302992] bg-white px-2 text-xs font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {labels.backToMenu}
@@ -140,6 +162,8 @@ export function AtmWithdrawalConfirmScreen({
   labels,
   onVoiceStart,
   onVoiceStop,
+  onEnter,
+  onBack,
   formatAmount,
 }: {
   amount: number;
@@ -155,9 +179,13 @@ export function AtmWithdrawalConfirmScreen({
     voiceHint: string;
     listening: string;
     preparing: string;
+    enter: string;
+    goBack: string;
   };
   onVoiceStart: () => void;
   onVoiceStop: () => void;
+  onEnter: () => void;
+  onBack: () => void;
   formatAmount: (amount: number) => string;
 }) {
   return (
@@ -168,21 +196,47 @@ export function AtmWithdrawalConfirmScreen({
         <p className="mt-1 text-3xl font-bold text-[#302992]">{formatAmount(amount)}</p>
       </div>
       <p className="text-xs font-semibold text-slate-600">{labels.hint}</p>
-      <button
-        type="button"
-        disabled={!isVoiceSupported}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          onVoiceStart();
-        }}
-        onPointerUp={onVoiceStop}
-        onPointerCancel={onVoiceStop}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300"
-      >
-        <Mic className="h-4 w-4" aria-hidden="true" />
-        {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
-      </button>
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-3">
+        <button
+          type="button"
+          disabled={!isVoiceSupported}
+          aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            onVoiceStart();
+          }}
+          onPointerUp={onVoiceStop}
+          onPointerCancel={onVoiceStop}
+          className={`flex min-h-11 items-center justify-center rounded-lg bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
+        >
+          <Mic className="h-5 w-5" aria-hidden="true" />
+          <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
+        </button>
+        <button
+          type="button"
+          onPointerDown={playAtmButtonBeep}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
+          }}
+          onClick={onEnter}
+          className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+        >
+          {labels.enter}
+        </button>
+        <button
+          type="button"
+          onPointerDown={playAtmButtonBeep}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
+          }}
+          onClick={onBack}
+          className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+        >
+          {labels.goBack}
+        </button>
+      </div>
       <p className="text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
       {speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
     </div>

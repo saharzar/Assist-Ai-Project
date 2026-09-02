@@ -199,6 +199,16 @@ export function AtmScenarioPage() {
       maximumFractionDigits: 0,
     }).format(amount);
   }, [language]);
+  const formatSpokenCurrencyAmount = useCallback((amount: number) => {
+    if (language === "tr") return `${amount} Türk lirası`;
+    const localeByLanguage = { en: "en-IE", es: "es-ES", de: "de-DE", pt: "pt-PT", fr: "fr-FR" } as const;
+    return new Intl.NumberFormat(localeByLanguage[language], {
+      style: "currency",
+      currency: "EUR",
+      currencyDisplay: "name",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }, [language]);
   const formattedAccountBalance = useMemo(
     () => formatCurrencyAmount(state.accountBalance),
     [formatCurrencyAmount, state.accountBalance],
@@ -401,11 +411,11 @@ export function AtmScenarioPage() {
     }
     if (state.status === "withdrawal") {
       return state.errorMessage === ATM_ERROR.insufficientFunds
-        ? text.insufficientFundsAssistant(formatCurrencyAmount(state.accountBalance))
-        : text.withdrawalAssistant(formatCurrencyAmount(state.accountBalance));
+        ? text.insufficientFundsAssistant(formatSpokenCurrencyAmount(state.accountBalance))
+        : text.withdrawalAssistant(formatSpokenCurrencyAmount(state.accountBalance));
     }
     if (state.status === "withdrawal_confirm") {
-      return text.withdrawalConfirmAssistant(formatCurrencyAmount(state.withdrawnAmount));
+      return text.withdrawalConfirmAssistant(formatSpokenCurrencyAmount(state.withdrawnAmount));
     }
     if (state.status === "receipt_prompt") return text.receiptAssistant;
     if (state.status === "cash_dispensing") return text.cashDispensingAssistant;
@@ -413,8 +423,8 @@ export function AtmScenarioPage() {
     if (state.status === "card_return") return text.cardReturnAssistant;
     if (state.status === "withdrawal_result") {
       return text.withdrawalResultAssistant(
-        formatCurrencyAmount(state.withdrawnAmount),
-        formatCurrencyAmount(state.remainingBalance),
+        formatSpokenCurrencyAmount(state.withdrawnAmount),
+        formatSpokenCurrencyAmount(state.remainingBalance),
       );
     }
     if (state.status === "security_message") return text.securityMessage;
@@ -468,6 +478,7 @@ export function AtmScenarioPage() {
     pinVerified,
     formattedAccountBalance,
     formatCurrencyAmount,
+    formatSpokenCurrencyAmount,
     showAccountInformation,
     pinSessionEnded,
     securityCardCollected,
@@ -1887,6 +1898,7 @@ export function AtmScenarioPage() {
               listening: text.listening,
               preparing: text.preparingVoice,
               backToMenu: text.backToMenu,
+              enter: text.enterButton,
             }}
             onAmountChange={(value) => dispatch({ type: "WITHDRAWAL_REPLACE", value })}
             onPresetSelect={(amount) => {
@@ -1898,6 +1910,10 @@ export function AtmScenarioPage() {
               void startAmountListening();
             }}
             onVoiceStop={stopListening}
+            onEnter={() => {
+              stopSpeech();
+              dispatch({ type: "WITHDRAWAL_SUBMIT" });
+            }}
             onBackToMenu={() => {
               stopSpeech();
               stopListening();
@@ -1923,12 +1939,16 @@ export function AtmScenarioPage() {
               voiceHint: text.withdrawalConfirmVoiceHint,
               listening: text.listening,
               preparing: text.preparingVoice,
+              enter: text.enterButton,
+              goBack: text.goBackButton,
             }}
             onVoiceStart={() => {
               spaceIsHeldRef.current = true;
               void startWithdrawalConfirmationListening();
             }}
             onVoiceStop={stopListening}
+            onEnter={() => completeWithdrawalConfirmation(true)}
+            onBack={() => completeWithdrawalConfirmation(false)}
           />
         );
 

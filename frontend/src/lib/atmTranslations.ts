@@ -74,6 +74,8 @@ type AtmTranslation = {
   withdrawalConfirmTitle: string;
   withdrawalConfirmQuestion: string;
   withdrawalConfirmHint: string;
+  enterButton: string;
+  goBackButton: string;
   withdrawalConfirmVoiceButton: string;
   withdrawalConfirmVoiceHint: string;
   withdrawalConfirmUnclear: string;
@@ -255,6 +257,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Confirm withdrawal",
     withdrawalConfirmQuestion: "Is this the amount you want to withdraw?",
     withdrawalConfirmHint: "Press ENTER for yes, or Back, Clear, or Cancel for no.",
+    enterButton: "Enter",
+    goBackButton: "Go back",
     withdrawalConfirmVoiceButton: "Hold to say yes or no",
     withdrawalConfirmVoiceHint: "You can confirm or reject the amount by voice.",
     withdrawalConfirmUnclear: "Please say yes to confirm or no to choose another amount.",
@@ -434,6 +438,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Confirmar retiro",
     withdrawalConfirmQuestion: "¿Es esta la cantidad que quieres retirar?",
     withdrawalConfirmHint: "Pulsa ENTER para sí, o Back, Clear o Cancel para no.",
+    enterButton: "Confirmar",
+    goBackButton: "Volver",
     withdrawalConfirmVoiceButton: "Mantén pulsado para decir sí o no",
     withdrawalConfirmVoiceHint: "Puedes confirmar o rechazar la cantidad por voz.",
     withdrawalConfirmUnclear: "Di sí para confirmar o no para elegir otra cantidad.",
@@ -613,6 +619,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Auszahlung bestätigen",
     withdrawalConfirmQuestion: "Möchtest du diesen Betrag abheben?",
     withdrawalConfirmHint: "Drücke ENTER für Ja oder Back, Clear oder Cancel für Nein.",
+    enterButton: "Bestätigen",
+    goBackButton: "Zurück",
     withdrawalConfirmVoiceButton: "Gedrückt halten und Ja oder Nein sagen",
     withdrawalConfirmVoiceHint: "Du kannst den Betrag per Sprache bestätigen oder ablehnen.",
     withdrawalConfirmUnclear: "Sage Ja zum Bestätigen oder Nein, um einen anderen Betrag zu wählen.",
@@ -792,6 +800,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Para çekmeyi onayla",
     withdrawalConfirmQuestion: "Bu tutarı çekmek istediğinden emin misin?",
     withdrawalConfirmHint: "Evet için ENTER'a; hayır için Back, Clear veya Cancel'a bas.",
+    enterButton: "Onayla",
+    goBackButton: "Geri dön",
     withdrawalConfirmVoiceButton: "Evet veya hayır demek için basılı tut",
     withdrawalConfirmVoiceHint: "Tutarı sesli olarak onaylayabilir veya reddedebilirsin.",
     withdrawalConfirmUnclear: "Onaylamak için evet, başka bir tutar seçmek için hayır de.",
@@ -971,6 +981,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Confirmar levantamento",
     withdrawalConfirmQuestion: "É este o valor que pretende levantar?",
     withdrawalConfirmHint: "Pressione ENTER para sim ou Back, Clear ou Cancel para não.",
+    enterButton: "Confirmar",
+    goBackButton: "Voltar",
     withdrawalConfirmVoiceButton: "Mantenha premido para dizer sim ou não",
     withdrawalConfirmVoiceHint: "Pode confirmar ou rejeitar o valor por voz.",
     withdrawalConfirmUnclear: "Diga sim para confirmar ou não para escolher outro valor.",
@@ -1150,6 +1162,8 @@ export const atmTranslations: Record<LanguageCode, AtmTranslation> = {
     withdrawalConfirmTitle: "Confirmer le retrait",
     withdrawalConfirmQuestion: "Est-ce le montant que tu veux retirer ?",
     withdrawalConfirmHint: "Appuie sur ENTER pour oui, ou sur Back, Clear ou Cancel pour non.",
+    enterButton: "Confirmer",
+    goBackButton: "Retour",
     withdrawalConfirmVoiceButton: "Maintenir pour dire oui ou non",
     withdrawalConfirmVoiceHint: "Tu peux confirmer ou refuser le montant par la voix.",
     withdrawalConfirmUnclear: "Dis oui pour confirmer ou non pour choisir un autre montant.",
