@@ -1,7 +1,5 @@
 import { useState } from "react";
 
-import { playAtmButtonBeep } from "./ATMRealisticShell";
-
 const PRESET_AMOUNTS = [100, 200, 300, 500, 750, 1000];
 
 export function AtmWithdrawalScreen({
@@ -34,9 +32,7 @@ export function AtmWithdrawalScreen({
     chooseAmount: string;
     customAmount: string;
     amountPlaceholder: string;
-    pressEnter: string;
     voiceButton: string;
-    voiceHint: string;
     listening: string;
     preparing: string;
     enter: string;
@@ -53,8 +49,8 @@ export function AtmWithdrawalScreen({
   const [amountInputUnlocked, setAmountInputUnlocked] = useState(false);
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-end justify-between gap-3 border-b border-indigo-100 pb-1">
+    <div className="space-y-2">
+      <div className="flex items-end justify-between gap-3 border-b border-indigo-100 pb-1.5">
         <div>
           <h1 className="text-lg font-bold leading-tight text-[#171452]">{labels.title}</h1>
           <p className="text-[11px] font-semibold leading-tight text-slate-600">{labels.availableBalance}</p>
@@ -64,14 +60,14 @@ export function AtmWithdrawalScreen({
 
       <div>
         <p className="text-[11px] font-bold uppercase leading-tight text-slate-600">{labels.chooseAmount}</p>
-        <div className="mt-1 grid grid-cols-3 gap-1.5">
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
           {PRESET_AMOUNTS.map((amount) => (
             <button
               key={amount}
               type="button"
               aria-label={`${labels.chooseAmount}: ${formatAmount(amount)}`}
               onClick={() => onPresetSelect(amount)}
-              className="min-h-8 rounded-md border border-indigo-200 bg-[#f4f3ff] px-2 text-xs font-bold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="min-h-11 rounded-lg border border-indigo-200 bg-[#f4f3ff] px-3 text-sm font-extrabold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             >
               {formatAmount(amount)}
             </button>
@@ -95,11 +91,11 @@ export function AtmWithdrawalScreen({
           data-lpignore="true"
           data-1p-ignore="true"
           placeholder={labels.amountPlaceholder}
-          className="mt-0.5 min-h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-base font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+          className="mt-1 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-lg font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
       </label>
 
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
         <button
           type="button"
           disabled={!isVoiceSupported}
@@ -112,7 +108,7 @@ export function AtmWithdrawalScreen({
           }}
           onPointerUp={onVoiceStop}
           onPointerCancel={onVoiceStop}
-          className={`flex min-h-9 items-center justify-center rounded-md bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
+          className={`flex min-h-12 items-center justify-center rounded-lg bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
         >
           <Mic className="h-4 w-4" aria-hidden="true" />
           <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
@@ -120,35 +116,28 @@ export function AtmWithdrawalScreen({
         <button
           type="button"
           onClick={onEnter}
-          onPointerDown={playAtmButtonBeep}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
-          }}
-          className="min-h-9 rounded-md bg-emerald-600 px-2 text-xs font-extrabold leading-tight text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          className="min-h-12 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold leading-tight text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         >
           {labels.enter}
         </button>
         <button
           type="button"
           onClick={onBackToMenu}
-          onPointerDown={playAtmButtonBeep}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
-          }}
-          className="min-h-9 rounded-md border-2 border-[#302992] bg-white px-2 text-xs font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="min-h-12 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {labels.backToMenu}
         </button>
       </div>
-      <p className="text-[10px] font-semibold leading-tight text-slate-600">{labels.voiceHint}</p>
-      {speechError && <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-1.5 text-[10px] font-semibold leading-tight text-amber-900">{speechError}</div>}
-
-      {errorMessage && (
-        <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 p-1.5 text-[10px] font-semibold leading-tight text-rose-900">
-          {errorMessage}
-        </div>
-      )}
-      <p className="text-[10px] font-semibold leading-tight text-[#302992]">{labels.pressEnter}</p>
+      <div className="min-h-8" aria-live="polite">
+        {(speechError || errorMessage) && (
+          <div
+            role="alert"
+            className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold leading-tight ${speechError ? "border-amber-300 bg-amber-50 text-amber-900" : "border-rose-300 bg-rose-50 text-rose-900"}`}
+          >
+            {speechError || errorMessage}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -216,10 +205,6 @@ export function AtmWithdrawalConfirmScreen({
         </button>
         <button
           type="button"
-          onPointerDown={playAtmButtonBeep}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
-          }}
           onClick={onEnter}
           className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         >
@@ -227,10 +212,6 @@ export function AtmWithdrawalConfirmScreen({
         </button>
         <button
           type="button"
-          onPointerDown={playAtmButtonBeep}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") playAtmButtonBeep();
-          }}
           onClick={onBack}
           className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >

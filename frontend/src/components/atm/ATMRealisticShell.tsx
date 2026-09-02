@@ -252,6 +252,7 @@ export function ATMRealisticShell({
             {!cardInserted && (
               <button
                 type="button"
+                data-atm-button-sound="none"
                 aria-label="Insert credit card"
                 onClick={onCardInsert}
                 className="absolute inset-0 rounded-lg border-2 border-cyan-300/0 bg-cyan-300/0 transition hover:border-cyan-300/70 hover:bg-cyan-300/20 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300"
@@ -280,6 +281,7 @@ export function ATMRealisticShell({
             {cardEjecting && (
               <button
                 type="button"
+                data-atm-button-sound="none"
                 aria-label="Collect credit card"
                 disabled={!cardCollectible}
                 onClick={onCardCollect}
@@ -309,6 +311,7 @@ export function ATMRealisticShell({
           <div className={`absolute left-[13%] top-[69%] h-[18%] w-[43%] overflow-hidden ${cashCollectible ? "pointer-events-auto" : "pointer-events-none"}`}>
             <button
               type="button"
+              data-atm-button-sound="none"
               aria-label="Collect cash"
               disabled={!cashCollectible}
               onClick={onCashCollect}
@@ -408,6 +411,7 @@ function OverlayButton({
   return (
     <button
       type="button"
+      data-atm-button-sound="self"
       aria-label={label}
       onPointerDown={() => {
         playAtmButtonBeep();

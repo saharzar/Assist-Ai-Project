@@ -7,6 +7,7 @@ import atmCashDispenseSound from "../../assets/atm-cash-dispense.mp3";
 import atmCardRemoveSound from "../../assets/atm-card-remove.mp3";
 
 import { AtmAssistantMessage } from "../../components/atm/AtmAssistantMessage";
+import { playAtmButtonBeep } from "../../components/atm/ATMRealisticShell";
 import { AtmConfirmNameScreen } from "../../components/atm/AtmConfirmNameScreen";
 import { AtmFrame } from "../../components/atm/AtmFrame";
 import { AtmLetterCheckScreen } from "../../components/atm/AtmLetterCheckScreen";
@@ -410,9 +411,11 @@ export function AtmScenarioPage() {
       return text.successAssistant;
     }
     if (state.status === "withdrawal") {
-      return state.errorMessage === ATM_ERROR.insufficientFunds
-        ? text.insufficientFundsAssistant(formatSpokenCurrencyAmount(state.accountBalance))
-        : text.withdrawalAssistant(formatSpokenCurrencyAmount(state.accountBalance));
+      if (state.errorMessage === ATM_ERROR.insufficientFunds) {
+        return text.insufficientFundsAssistant(formatSpokenCurrencyAmount(state.accountBalance));
+      }
+      if (state.errorMessage) return text.invalidAmountError;
+      return text.withdrawalAssistant(formatSpokenCurrencyAmount(state.accountBalance));
     }
     if (state.status === "withdrawal_confirm") {
       return text.withdrawalConfirmAssistant(formatSpokenCurrencyAmount(state.withdrawnAmount));
@@ -734,22 +737,23 @@ export function AtmScenarioPage() {
   }, [isListening, isPreparingVoice, resetInactivityTimer]);
 
   useEffect(() => {
-    const timerActive =
+    const inactivitySessionActive =
       pinVerified &&
       !pinSessionEnded &&
       !inactivityTimedOut &&
-      !isPreparingVoice &&
-      !isListening &&
-      !receiptAnimating &&
       !["cash_dispensing", "card_return", "success", "security_terminated", "lockout"].includes(state.status);
 
-    if (!timerActive) {
+    if (!inactivitySessionActive) {
       if (!inactivityTimedOut) {
         setInactivitySeconds(0);
         setInactivityWarningRemaining(null);
       }
       return;
     }
+
+    // Assistant speech and other active audio/input moments pause the timer at
+    // its current value. Only real user interaction resets it to zero.
+    if (isSpeaking || isPreparingVoice || isListening || receiptAnimating) return;
 
     const timer = window.setInterval(() => {
       setInactivitySeconds((current) => {
@@ -764,7 +768,7 @@ export function AtmScenarioPage() {
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [inactivityTimedOut, isListening, isPreparingVoice, pinSessionEnded, pinVerified, receiptAnimating, state.status]);
+  }, [inactivityTimedOut, isListening, isPreparingVoice, isSpeaking, pinSessionEnded, pinVerified, receiptAnimating, state.status]);
 
   useEffect(() => {
     if (inactivityWarningRemaining === null) return;
@@ -1547,6 +1551,60 @@ export function AtmScenarioPage() {
     });
   };
 
+  const submitInitialCardPin = () => {
+    stopSpeech();
+    if (entryPin.length !== 4) {
+      setEntryPinError("incomplete");
+      return;
+    }
+    if (entryPin !== setupPinRef.current) {
+      const nextAttempts = entryPinAttempts + 1;
+      enqueueAnalytics((sessionId) =>
+        recordAtmAnalyticsEvent(sessionId, {
+          client_event_id: crypto.randomUUID(),
+          event_type: "card_pin_submission",
+          pin_outcome: "incorrect",
+          final_step_reached: nextAttempts >= 3 ? "security_terminated" : "card_pin",
+        }),
+      );
+      setEntryPin("");
+      setEntryPinAttempts(nextAttempts);
+      if (nextAttempts >= 3) {
+        latestStatusRef.current = "security_terminated";
+        setEntryPinError("");
+        setPinSessionEnded(true);
+        enqueueAnalytics(async (sessionId) => {
+          await terminateAtmAnalyticsSession(sessionId, "card_pin_failed");
+          if (analyticsSessionIdRef.current === sessionId) {
+            analyticsSessionIdRef.current = null;
+            analyticsStartRef.current = null;
+          }
+        });
+      } else {
+        setEntryPinError("incorrect");
+      }
+      return;
+    }
+    enqueueAnalytics((sessionId) =>
+      recordAtmAnalyticsEvent(sessionId, {
+        client_event_id: crypto.randomUUID(),
+        event_type: "card_pin_submission",
+        pin_outcome: "success",
+        final_step_reached: "menu",
+      }),
+    );
+    setEntryPinError("");
+    setPinVerified(true);
+  };
+
+  const leaveAtmFromPin = () => {
+    stopSpeech();
+    stopListening();
+    setShowAccountInformation(false);
+    setLeaveFromMenu(true);
+    dispatch({ type: "LEAVE_ATM" });
+  };
+
   const keypadMode =
     inactivityTimedOut || inactivityWarningRemaining !== null
       ? "none"
@@ -1618,6 +1676,7 @@ export function AtmScenarioPage() {
             {entryPin ? "•".repeat(entryPin.length) : "----"}
           </div>
           <p className="mt-3 text-sm font-semibold text-slate-600">{text.cardPinContinue}</p>
+          <div className="mt-3 grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-3">
           {speechRecognitionSupported && (
             <button
               type="button"
@@ -1631,12 +1690,28 @@ export function AtmScenarioPage() {
               onPointerUp={stopListening}
               onPointerCancel={stopListening}
               onPointerLeave={stopListening}
-              className="mt-3 inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#302992] text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
             >
               <Mic className="h-4 w-4" aria-hidden="true" />
-              {isPreparingVoice ? text.preparingVoice : isListening ? text.listening : text.cardPinVoiceButton}
+              <span className="sr-only">{isPreparingVoice ? text.preparingVoice : isListening ? text.listening : text.cardPinVoiceButton}</span>
             </button>
           )}
+          {!speechRecognitionSupported && <div aria-hidden="true" />}
+          <button
+            type="button"
+            onClick={submitInitialCardPin}
+            className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          >
+            {text.enterButton}
+          </button>
+          <button
+            type="button"
+            onClick={leaveAtmFromPin}
+            className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          >
+            {text.leaveAtmMenu}
+          </button>
+          </div>
           {speechError && <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">{speechError}</p>}
           {pinError && <p role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">{pinError}</p>}
         </div>
@@ -1892,9 +1967,7 @@ export function AtmScenarioPage() {
               chooseAmount: text.chooseAmount,
               customAmount: text.customAmount,
               amountPlaceholder: text.amountPlaceholder,
-              pressEnter: text.withdrawalPressEnter,
               voiceButton: text.amountVoiceButton,
-              voiceHint: text.amountVoiceHint,
               listening: text.listening,
               preparing: text.preparingVoice,
               backToMenu: text.backToMenu,
@@ -2053,11 +2126,22 @@ export function AtmScenarioPage() {
 
   return (
     <div
-      onPointerDownCapture={() => {
+      onPointerDownCapture={(event) => {
         unlockAssistantAudioPlayback();
         resetInactivityTimer();
+        const button = (event.target as Element | null)?.closest<HTMLButtonElement>("button");
+        if (button && !button.disabled && !button.dataset.atmButtonSound) {
+          playAtmButtonBeep();
+        }
       }}
-      onKeyDownCapture={resetInactivityTimer}
+      onKeyDownCapture={(event) => {
+        resetInactivityTimer();
+        if ((event.key !== "Enter" && event.key !== " ") || event.repeat) return;
+        const button = (event.target as Element | null)?.closest<HTMLButtonElement>("button");
+        if (button && !button.disabled && !button.dataset.atmButtonSound) {
+          playAtmButtonBeep();
+        }
+      }}
     >
     <AtmFrame
       labels={{
@@ -2103,6 +2187,7 @@ export function AtmScenarioPage() {
           navigate("/scenarios");
         } else if (pinSessionEnded) {
           setSecurityCardCollected(true);
+          navigate("/scenario/atm-withdrawal", { replace: true });
         } else if (state.status === "card_return") {
           if (leaveFromMenu) {
             setLeaveFromMenu(false);
@@ -2202,49 +2287,7 @@ export function AtmScenarioPage() {
       }}
       onEnter={() => {
         if (state.status === "welcome" && cardInsertionComplete && !pinVerified) {
-          stopSpeech();
-          if (entryPin.length !== 4) {
-            setEntryPinError("incomplete");
-            return;
-          }
-          if (entryPin !== setupPinRef.current) {
-            const nextAttempts = entryPinAttempts + 1;
-            enqueueAnalytics((sessionId) =>
-              recordAtmAnalyticsEvent(sessionId, {
-                client_event_id: crypto.randomUUID(),
-                event_type: "card_pin_submission",
-                pin_outcome: "incorrect",
-                final_step_reached: nextAttempts >= 3 ? "security_terminated" : "card_pin",
-              }),
-            );
-            setEntryPin("");
-            setEntryPinAttempts(nextAttempts);
-            if (nextAttempts >= 3) {
-              latestStatusRef.current = "security_terminated";
-              setEntryPinError("");
-              setPinSessionEnded(true);
-              enqueueAnalytics(async (sessionId) => {
-                await terminateAtmAnalyticsSession(sessionId, "card_pin_failed");
-                if (analyticsSessionIdRef.current === sessionId) {
-                  analyticsSessionIdRef.current = null;
-                  analyticsStartRef.current = null;
-                }
-              });
-            } else {
-              setEntryPinError("incorrect");
-            }
-            return;
-          }
-          enqueueAnalytics((sessionId) =>
-            recordAtmAnalyticsEvent(sessionId, {
-              client_event_id: crypto.randomUUID(),
-              event_type: "card_pin_submission",
-              pin_outcome: "success",
-              final_step_reached: "menu",
-            }),
-          );
-          setEntryPinError("");
-          setPinVerified(true);
+          submitInitialCardPin();
           return;
         }
         if (state.status === "confirm_name") {
