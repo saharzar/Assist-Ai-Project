@@ -6,6 +6,7 @@ import {
   speakAssistantMessage,
   stopAssistantSpeech,
   stopSuccessSound,
+  unlockAssistantAudioPlayback,
 } from "../../services/speechSynthesisService";
 import { AtmAssistantMessage } from "./AtmAssistantMessage";
 import { SoundToggle } from "./SoundToggle";
@@ -28,24 +29,31 @@ export function AtmSetupVoiceAssistant({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsError, setTtsError] = useState("");
   const lastSpokenRef = useRef("");
+  const speechRequestRef = useRef(0);
 
   const stopSpeech = useCallback(() => {
+    speechRequestRef.current += 1;
     stopAssistantSpeech();
     setIsSpeaking(false);
   }, []);
 
   const speak = useCallback(() => {
     if (!soundEnabled || !message.trim()) return;
+    const requestId = speechRequestRef.current + 1;
+    speechRequestRef.current = requestId;
     setTtsError("");
-    speakAssistantMessage(message, {
-      allowBrowserFallback: true,
-      onStart: () => setIsSpeaking(true),
-      onEnd: () => setIsSpeaking(false),
-      onError: () => {
-        setIsSpeaking(false);
-        setTtsError(text.assistantVoiceProblem);
-      },
-    }, language);
+    void unlockAssistantAudioPlayback().then(() => {
+      if (speechRequestRef.current !== requestId) return;
+      speakAssistantMessage(message, {
+        allowBrowserFallback: true,
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => {
+          setIsSpeaking(false);
+          setTtsError(text.assistantVoiceProblem);
+        },
+      }, language);
+    });
   }, [language, message, soundEnabled, text.assistantVoiceProblem]);
 
   useEffect(() => {
@@ -56,6 +64,7 @@ export function AtmSetupVoiceAssistant({
   }, [language, message, soundEnabled, speak, speechRequestId]);
 
   useEffect(() => () => {
+    speechRequestRef.current += 1;
     lastSpokenRef.current = "";
     stopAssistantSpeech();
   }, []);

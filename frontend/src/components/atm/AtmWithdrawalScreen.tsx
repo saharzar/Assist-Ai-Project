@@ -49,8 +49,8 @@ export function AtmWithdrawalScreen({
   const [amountInputUnlocked, setAmountInputUnlocked] = useState(false);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-end justify-between gap-3 border-b border-indigo-100 pb-1.5">
+    <div className="space-y-1.5">
+      <div className="flex items-end justify-between gap-3 border-b border-indigo-100 pb-1">
         <div>
           <h1 className="text-lg font-bold leading-tight text-[#171452]">{labels.title}</h1>
           <p className="text-[11px] font-semibold leading-tight text-slate-600">{labels.availableBalance}</p>
@@ -60,14 +60,14 @@ export function AtmWithdrawalScreen({
 
       <div>
         <p className="text-[11px] font-bold uppercase leading-tight text-slate-600">{labels.chooseAmount}</p>
-        <div className="mt-1.5 grid grid-cols-3 gap-2">
+        <div className="mt-1 grid grid-cols-3 gap-1.5">
           {PRESET_AMOUNTS.map((amount) => (
             <button
               key={amount}
               type="button"
               aria-label={`${labels.chooseAmount}: ${formatAmount(amount)}`}
               onClick={() => onPresetSelect(amount)}
-              className="min-h-11 rounded-lg border border-indigo-200 bg-[#f4f3ff] px-3 text-sm font-extrabold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="min-h-9 rounded-lg border border-indigo-200 bg-[#f4f3ff] px-3 text-sm font-extrabold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             >
               {formatAmount(amount)}
             </button>
@@ -91,44 +91,11 @@ export function AtmWithdrawalScreen({
           data-lpignore="true"
           data-1p-ignore="true"
           placeholder={labels.amountPlaceholder}
-          className="mt-1 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-lg font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+          className="mt-0.5 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-lg font-bold text-slate-950 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
       </label>
 
-      <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
-        <button
-          type="button"
-          disabled={!isVoiceSupported}
-          aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
-          title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            onVoiceStart();
-          }}
-          onPointerUp={onVoiceStop}
-          onPointerCancel={onVoiceStop}
-          className={`flex min-h-12 items-center justify-center rounded-lg bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
-        >
-          <Mic className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
-        </button>
-        <button
-          type="button"
-          onClick={onEnter}
-          className="min-h-12 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold leading-tight text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-        >
-          {labels.enter}
-        </button>
-        <button
-          type="button"
-          onClick={onBackToMenu}
-          className="min-h-12 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-        >
-          {labels.backToMenu}
-        </button>
-      </div>
-      <div className="min-h-8" aria-live="polite">
+      <div className="min-h-7" aria-live="polite">
         {(speechError || errorMessage) && (
           <div
             role="alert"
@@ -137,6 +104,34 @@ export function AtmWithdrawalScreen({
             {speechError || errorMessage}
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
+        <button
+          type="button"
+          disabled={!isVoiceSupported}
+          aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+          onClick={() => { if (isListening || isPreparingVoice) onVoiceStop(); else onVoiceStart(); }}
+          className={`flex min-h-11 items-center justify-center rounded-lg text-white outline-none focus:ring-2 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 hover:bg-rose-700 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
+        >
+          {isListening || isPreparingVoice ? <Square className="h-4 w-4 fill-current" aria-hidden="true" /> : <Mic className="h-4 w-4" aria-hidden="true" />}
+          <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onEnter}
+          className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold leading-tight text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+        >
+          {labels.enter}
+        </button>
+        <button
+          type="button"
+          onClick={onBackToMenu}
+          className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold leading-tight text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+        >
+          {labels.backToMenu}
+        </button>
       </div>
     </div>
   );
@@ -178,48 +173,40 @@ export function AtmWithdrawalConfirmScreen({
   formatAmount: (amount: number) => string;
 }) {
   return (
-    <div className="flex h-full flex-col justify-center space-y-3">
-      <h1 className="text-xl font-bold text-[#171452]">{labels.title}</h1>
-      <div className="rounded-lg border border-indigo-200 bg-[#f4f3ff] p-4">
-        <p className="text-sm font-semibold text-slate-700">{labels.question}</p>
-        <p className="mt-1 text-3xl font-bold text-[#302992]">{formatAmount(amount)}</p>
+    <div className="flex h-full flex-col justify-center space-y-4">
+      <h1 className="text-2xl font-bold text-[#171452]">{labels.title}</h1>
+      <div className="rounded-xl border border-indigo-200 bg-[#f4f3ff] p-5">
+        <p className="text-base font-semibold text-slate-700">{labels.question}</p>
+        <p className="mt-2 text-4xl font-bold text-[#302992]">{formatAmount(amount)}</p>
       </div>
-      <p className="text-xs font-semibold text-slate-600">{labels.hint}</p>
       <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-3">
         <button
           type="button"
           disabled={!isVoiceSupported}
           aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
           title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            onVoiceStart();
-          }}
-          onPointerUp={onVoiceStop}
-          onPointerCancel={onVoiceStop}
-          className={`flex min-h-11 items-center justify-center rounded-lg bg-[#302992] text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse ring-2 ring-cyan-300" : ""}`}
+          onClick={() => { if (isListening || isPreparingVoice) onVoiceStop(); else onVoiceStart(); }}
+          className={`flex min-h-14 items-center justify-center rounded-xl text-white outline-none focus:ring-2 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 hover:bg-rose-700 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
         >
-          <Mic className="h-5 w-5" aria-hidden="true" />
+          {isListening || isPreparingVoice ? <Square className="h-5 w-5 fill-current" aria-hidden="true" /> : <Mic className="h-5 w-5" aria-hidden="true" />}
           <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
         </button>
         <button
           type="button"
           onClick={onEnter}
-          className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          className="min-h-14 rounded-xl bg-emerald-600 px-4 text-base font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         >
           {labels.enter}
         </button>
         <button
           type="button"
           onClick={onBack}
-          className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-4 text-base font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
         >
           {labels.goBack}
         </button>
       </div>
-      <p className="text-xs font-semibold text-slate-600">{labels.voiceHint}</p>
-      {speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
+      <div className="min-h-10" aria-live="polite">{speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs font-semibold text-amber-900">{speechError}</div>}</div>
     </div>
   );
 }
@@ -371,35 +358,35 @@ export function AtmWithdrawalResultScreen({
   onVoiceStop: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col justify-center">
-      <h1 className="text-2xl font-bold text-[#171452]">{labels.title}</h1>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-[#f4f3ff] p-4">
+    <div className="flex min-h-full flex-col justify-start py-0.5">
+      <h1 className="text-xl font-bold leading-tight text-[#171452]">{labels.title}</h1>
+      <div className="mt-2 grid grid-cols-2 gap-2.5">
+        <div className="rounded-lg bg-[#f4f3ff] p-3">
           <p className="text-xs font-bold uppercase text-slate-600">{labels.withdrawnAmount}</p>
-          <p className="mt-1 text-2xl font-bold text-[#302992]">{formatAmount(withdrawnAmount)}</p>
+          <p className="mt-0.5 text-xl font-bold text-[#302992]">{formatAmount(withdrawnAmount)}</p>
         </div>
-        <div className="rounded-lg bg-cyan-50 p-4">
+        <div className="rounded-lg bg-cyan-50 p-3">
           <p className="text-xs font-bold uppercase text-slate-600">{labels.remainingBalance}</p>
-          <p className="mt-1 text-2xl font-bold text-[#087f8c]">{formatAmount(remainingBalance)}</p>
+          <p className="mt-0.5 text-xl font-bold text-[#087f8c]">{formatAmount(remainingBalance)}</p>
         </div>
       </div>
-      <p className="mt-4 text-base font-bold text-slate-800">{labels.question}</p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <button type="button" onClick={onAnotherTransaction} className="min-h-11 rounded-lg bg-[#302992] px-4 font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.anotherTransaction}</button>
-        <button type="button" onClick={onFinish} className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-4 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.finish}</button>
+      <p className="mt-2.5 text-sm font-bold text-slate-800">{labels.question}</p>
+      <div className="mt-2 grid grid-cols-2 gap-2.5">
+        <button type="button" onClick={onAnotherTransaction} className="min-h-10 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.anotherTransaction}</button>
+        <button type="button" onClick={onFinish} className="min-h-10 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.finish}</button>
       </div>
       <button
         type="button"
         disabled={!isVoiceSupported}
-        onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); onVoiceStart(); }}
-        onPointerUp={onVoiceStop}
-        onPointerCancel={onVoiceStop}
-        className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white disabled:bg-slate-300"
+        aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+        title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+        onClick={() => { if (isListening || isPreparingVoice) onVoiceStop(); else onVoiceStart(); }}
+        className={`mt-2 flex h-11 w-12 items-center justify-center rounded-lg text-white outline-none focus:ring-2 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
       >
-        <Mic className="h-4 w-4" aria-hidden="true" />
-        {isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+        {isListening || isPreparingVoice ? <Square className="h-4 w-4 fill-current" aria-hidden="true" /> : <Mic className="h-4 w-4" aria-hidden="true" />}
+        <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
       </button>
-      {speechError && <div role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}
+      <div className="mt-1.5 min-h-8" aria-live="polite">{speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}</div>
     </div>
   );
 }
@@ -421,4 +408,4 @@ export function AtmCardReturnScreen({ title, message }: { title: string; message
   );
 }
 
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";

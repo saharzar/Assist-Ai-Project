@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
 import atmReceiptPrintSound from "../../assets/atm-receipt-print.mp3";
 import atmCashDispenseSound from "../../assets/atm-cash-dispense.mp3";
@@ -1544,6 +1544,11 @@ export function AtmScenarioPage() {
     }
   }, [state.status]);
 
+  useEffect(() => {
+    // A microphone error belongs only to the screen where it occurred.
+    setSpeechError("");
+  }, [cardInsertionComplete, pinSessionEnded, pinVerified, showAccountInformation, state.status]);
+
   const emitNameInputEvent = (event: AtmNameInputEventPayload) => {
     setNameInputEvent({
       ...event,
@@ -1672,27 +1677,24 @@ export function AtmScenarioPage() {
         <div className="flex h-full flex-col justify-center">
           <p className="text-xs font-bold uppercase tracking-wide text-[#3730a3]">PIN</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">{text.cardPinPrompt}</h1>
-          <div aria-label="PIN entered" className="mt-5 flex min-h-14 items-center rounded-lg border border-slate-300 bg-white px-4 text-2xl font-bold tracking-[0.6em] text-slate-950">
+          <div aria-label="PIN entered" className="mt-5 flex min-h-16 items-center rounded-xl border border-slate-300 bg-white px-5 text-3xl font-bold tracking-[0.6em] text-slate-950">
             {entryPin ? "•".repeat(entryPin.length) : "----"}
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-600">{text.cardPinContinue}</p>
-          <div className="mt-3 grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-3">
+          <div className="mt-4 grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-3">
           {speechRecognitionSupported && (
             <button
               type="button"
               aria-label={text.cardPinVoiceButton}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.currentTarget.setPointerCapture(event.pointerId);
-                spaceIsHeldRef.current = true;
-                void startPinListening();
+              onClick={() => {
+                if (isListening || isPreparingVoice) stopListening();
+                else {
+                  spaceIsHeldRef.current = true;
+                  void startPinListening();
+                }
               }}
-              onPointerUp={stopListening}
-              onPointerCancel={stopListening}
-              onPointerLeave={stopListening}
-              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#302992] text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
+              className={`inline-flex min-h-14 items-center justify-center rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 hover:bg-rose-700 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
             >
-              <Mic className="h-4 w-4" aria-hidden="true" />
+              {isListening || isPreparingVoice ? <Square className="h-4 w-4 fill-current" aria-hidden="true" /> : <Mic className="h-4 w-4" aria-hidden="true" />}
               <span className="sr-only">{isPreparingVoice ? text.preparingVoice : isListening ? text.listening : text.cardPinVoiceButton}</span>
             </button>
           )}
@@ -1700,20 +1702,19 @@ export function AtmScenarioPage() {
           <button
             type="button"
             onClick={submitInitialCardPin}
-            className="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            className="min-h-14 rounded-xl bg-emerald-600 px-4 text-base font-extrabold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
           >
             {text.enterButton}
           </button>
           <button
             type="button"
             onClick={leaveAtmFromPin}
-            className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-4 text-base font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
           >
             {text.leaveAtmMenu}
           </button>
           </div>
-          {speechError && <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">{speechError}</p>}
-          {pinError && <p role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">{pinError}</p>}
+          <div className="mt-3 min-h-11" aria-live="polite">{(speechError || pinError) && <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">{speechError || pinError}</p>}</div>
         </div>
       );
     }

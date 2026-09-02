@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Mic } from "lucide-react";
+import { Eye, EyeOff, Mic, Square } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
@@ -26,7 +26,6 @@ export function AtmPracticeSetupPage() {
   const [assistantValidationMessage, setAssistantValidationMessage] = useState("");
 
   useEffect(() => {
-    void preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language);
     setAssistantValidationMessage("");
   }, [language]);
 
@@ -73,7 +72,7 @@ export function AtmPracticeSetupPage() {
     recognizerRef.current?.stop();
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
     if (!canStart) {
@@ -81,7 +80,10 @@ export function AtmPracticeSetupPage() {
       setAssistantSpeechRequestId((current) => current + 1);
     }
     if (canStart) {
-      unlockAssistantAudioPlayback();
+      await Promise.all([
+        unlockAssistantAudioPlayback(),
+        preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language),
+      ]);
       sessionStorage.setItem("assist_ai_atm_name", fullName.trim());
       sessionStorage.setItem("assist_ai_atm_pin", pin);
       navigate("/scenario/atm-withdrawal/practice");
@@ -115,7 +117,7 @@ export function AtmPracticeSetupPage() {
             placeholder={setupText.fullNamePlaceholder}
             className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-400"
           />
-          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdName} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("name"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "name" ? setupText.listening : setupText.holdName}</button>}
+          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdName} onClick={() => { if (listeningFor === "name") stopVoiceInput(); else startVoiceInput("name"); }} className={`mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-white ${listeningFor === "name" ? "animate-pulse bg-rose-600 ring-2 ring-rose-300" : "bg-[#302992]"}`}>{listeningFor === "name" ? <Square className="h-4 w-4 fill-current" /> : <Mic className="h-4 w-4" />}{listeningFor === "name" ? setupText.listening : setupText.holdName}</button>}
           {submitted && !nameIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">{setupText.nameError}</p>}
         </div>
 
@@ -148,7 +150,7 @@ export function AtmPracticeSetupPage() {
               {showPin ? <Eye className="h-5 w-5" aria-hidden="true" /> : <EyeOff className="h-5 w-5" aria-hidden="true" />}
             </button>
           </div>
-          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdPin} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); startVoiceInput("pin"); }} onPointerUp={stopVoiceInput} onPointerCancel={stopVoiceInput} onPointerLeave={stopVoiceInput} className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#302992] px-3 py-2 text-sm font-bold text-white"><Mic className="h-4 w-4" />{listeningFor === "pin" ? setupText.listening : setupText.holdPin}</button>}
+          {isSpeechRecognitionSupported() && <button type="button" aria-label={setupText.holdPin} onClick={() => { if (listeningFor === "pin") stopVoiceInput(); else startVoiceInput("pin"); }} className={`mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-white ${listeningFor === "pin" ? "animate-pulse bg-rose-600 ring-2 ring-rose-300" : "bg-[#302992]"}`}>{listeningFor === "pin" ? <Square className="h-4 w-4 fill-current" /> : <Mic className="h-4 w-4" />}{listeningFor === "pin" ? setupText.listening : setupText.holdPin}</button>}
           <p className="mt-2 text-sm text-slate-600">{setupText.pinHint}</p>
           {submitted && !pinIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">{setupText.pinError}</p>}
         </div>

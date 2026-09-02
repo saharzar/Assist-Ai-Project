@@ -243,7 +243,7 @@ export function ATMRealisticShell({
           draggable={false}
         />
 
-        <div className="absolute left-[12.2%] top-[10.9%] h-[50.3%] w-[59%] overflow-hidden rounded-[0.7%] bg-[#f8f9ff]/95 p-[1.2%] text-[#171452] shadow-inner">
+        <div className="absolute left-[12.2%] top-[10.9%] h-[50.3%] w-[59%] overflow-x-hidden overflow-y-auto overscroll-contain rounded-[0.7%] bg-[#f8f9ff]/95 p-[1.2%] text-[#171452] shadow-inner [scrollbar-width:thin]">
           {children}
         </div>
 
