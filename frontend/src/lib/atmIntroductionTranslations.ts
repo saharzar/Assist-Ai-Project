@@ -1,6 +1,10 @@
 import type { LanguageCode } from "../i18n";
 
 export type AtmIntroductionText = {
+  simpleTitle: string;
+  simpleSubtitle: string;
+  assistantMode: string;
+  assistantMessage: string;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -21,6 +25,10 @@ export type AtmIntroductionText = {
 
 export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionText> = {
   en: {
+    simpleTitle: "Welcome to the ATM",
+    simpleSubtitle: "Listen to the assistant, then select Start when you are ready.",
+    assistantMode: "ATM introduction",
+    assistantMessage: "Welcome. In this activity, you will use an ATM to check your account or withdraw money. The assistant will guide you step by step. You can use the microphone, the ATM keypad, or your computer keyboard. Select Start when you are ready.",
     eyebrow: "Before you begin",
     title: "How the ATM scenario works",
     subtitle: "Follow a complete ATM journey, from creating your session details to safely collecting your cash and card.",
@@ -45,6 +53,10 @@ export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionTe
     atmPreviewAlt: "Preview of the ASSIST-AI ATM",
   },
   es: {
+    simpleTitle: "Te damos la bienvenida al cajero",
+    simpleSubtitle: "Escucha al asistente y selecciona Iniciar cuando estés preparado.",
+    assistantMode: "Introducción al cajero",
+    assistantMessage: "Te damos la bienvenida. En esta actividad usarás un cajero para consultar tu cuenta o retirar dinero. El asistente te guiará paso a paso. Puedes usar el micrófono, el teclado del cajero o el teclado del ordenador. Selecciona Iniciar cuando estés preparado.",
     eyebrow: "Antes de empezar",
     title: "Cómo funciona el escenario del cajero",
     subtitle: "Sigue una experiencia completa en el cajero, desde la creación de los datos de la sesión hasta la recogida segura del dinero y la tarjeta.",
@@ -69,6 +81,10 @@ export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionTe
     atmPreviewAlt: "Vista previa del cajero ASSIST-AI",
   },
   de: {
+    simpleTitle: "Willkommen am Geldautomaten",
+    simpleSubtitle: "Höre dem Assistenten zu und wähle Start, wenn du bereit bist.",
+    assistantMode: "Einführung zum Geldautomaten",
+    assistantMessage: "Willkommen. In dieser Aktivität benutzt du einen Geldautomaten, um dein Konto anzusehen oder Geld abzuheben. Der Assistent führt dich Schritt für Schritt. Du kannst das Mikrofon, die Geldautomaten-Tastatur oder deine Computertastatur verwenden. Wähle Start, wenn du bereit bist.",
     eyebrow: "Bevor du beginnst",
     title: "So funktioniert das Geldautomaten-Szenario",
     subtitle: "Durchlaufe einen vollständigen Geldautomaten-Vorgang – vom Erstellen deiner Sitzungsdaten bis zur sicheren Entnahme von Bargeld und Karte.",
@@ -93,6 +109,10 @@ export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionTe
     atmPreviewAlt: "Vorschau des ASSIST-AI Geldautomaten",
   },
   tr: {
+    simpleTitle: "ATM'ye hoş geldiniz",
+    simpleSubtitle: "Asistanı dinleyin ve hazır olduğunuzda Başlat düğmesine basın.",
+    assistantMode: "ATM tanıtımı",
+    assistantMessage: "Hoş geldiniz. Bu etkinlikte hesap bilgilerinizi kontrol etmek veya para çekmek için ATM kullanacaksınız. Asistan size adım adım yardımcı olacak. Mikrofonu, ATM tuş takımını veya bilgisayar klavyenizi kullanabilirsiniz. Hazır olduğunuzda Başlat düğmesine basın.",
     eyebrow: "Başlamadan önce",
     title: "ATM senaryosu nasıl çalışır?",
     subtitle: "Oturum bilgilerini oluşturmaktan paranı ve kartını güvenle almaya kadar eksiksiz bir ATM işlemini tamamla.",
@@ -117,6 +137,10 @@ export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionTe
     atmPreviewAlt: "ASSIST-AI ATM'sinin ön izlemesi",
   },
   pt: {
+    simpleTitle: "Bem-vindo ao caixa eletrônico",
+    simpleSubtitle: "Ouça o assistente e selecione Iniciar quando estiver pronto.",
+    assistantMode: "Introdução ao caixa eletrônico",
+    assistantMessage: "Bem-vindo. Nesta atividade, irá utilizar um caixa eletrônico para consultar a sua conta ou levantar dinheiro. O assistente irá orientá-lo passo a passo. Pode utilizar o microfone, o teclado do caixa eletrônico ou o teclado do computador. Selecione Iniciar quando estiver pronto.",
     eyebrow: "Antes de começar",
     title: "Como funciona o cenário do caixa eletrônico",
     subtitle: "Siga uma experiência completa no caixa eletrônico, desde a criação dos dados da sessão até à recolha segura do dinheiro e do cartão.",
@@ -141,6 +165,10 @@ export const atmIntroductionTranslations: Record<LanguageCode, AtmIntroductionTe
     atmPreviewAlt: "Pré-visualização do caixa eletrônico ASSIST-AI",
   },
   fr: {
+    simpleTitle: "Bienvenue au distributeur",
+    simpleSubtitle: "Écoute l'assistant, puis sélectionne Commencer lorsque tu es prêt.",
+    assistantMode: "Présentation du distributeur",
+    assistantMessage: "Bienvenue. Dans cette activité, tu vas utiliser un distributeur pour consulter ton compte ou retirer de l'argent. L'assistant te guidera étape par étape. Tu peux utiliser le microphone, le clavier du distributeur ou le clavier de ton ordinateur. Sélectionne Commencer lorsque tu es prêt.",
     eyebrow: "Avant de commencer",
     title: "Comment fonctionne le scénario au distributeur",
     subtitle: "Suis un parcours complet au distributeur, de la création des informations de session jusqu'à la récupération sécurisée de l'argent et de la carte.",

@@ -97,7 +97,7 @@ export function AtmNameScreen({
   }, [inputEvent, onSubmit]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-slate-950">
           {labels.title}
@@ -113,11 +113,11 @@ export function AtmNameScreen({
             setFullName(event.target.value);
           }}
           placeholder={labels.placeholder}
-          className="mt-1 min-h-[40px] w-full rounded-lg border border-indigo-200 px-3 text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
+          className="min-h-14 w-full rounded-xl border border-indigo-200 px-4 text-lg font-semibold outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
         />
       </label>
 
-      <div className="space-y-1 rounded-lg border border-slate-200 bg-white p-2">
+      <div>
         {!isVoiceSupported && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
             {labels.voiceUnsupported}
@@ -128,23 +128,12 @@ export function AtmNameScreen({
             <button
               type="button"
               aria-label={labels.voiceButton}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.currentTarget.setPointerCapture(event.pointerId);
-                onVoiceStart();
-              }}
-              onPointerUp={onVoiceStop}
-              onPointerCancel={onVoiceStop}
-              onKeyDown={(event) => {
-                if ((event.key === "Enter" || event.key === " ") && !event.repeat) onVoiceStart();
-              }}
-              onKeyUp={(event) => {
-                if (event.key === "Enter" || event.key === " ") onVoiceStop();
-              }}
-              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white outline-none hover:bg-[#211c72] focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 active:bg-[#171452]"
+              title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
+              onClick={() => { if (isListening || isPreparingVoice) onVoiceStop(); else onVoiceStart(); }}
+              className={`flex h-12 w-14 items-center justify-center rounded-xl text-white outline-none focus:ring-2 focus:ring-offset-2 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 hover:bg-rose-700 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400 active:bg-[#171452]"}`}
             >
-              <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
+              {isListening || isPreparingVoice ? <Square className="h-4 w-4 shrink-0 fill-current" aria-hidden="true" /> : <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />}
+              <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
             </button>
           </>
         )}
@@ -154,23 +143,9 @@ export function AtmNameScreen({
             <p className="text-sm font-bold text-slate-950">{transcript}</p>
           </div>
         )}
-        {speechError && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
-            {speechError}
-          </div>
-        )}
       </div>
-
-      {errorMessage && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">
-          {errorMessage}
-        </div>
-      )}
-
-      <p className="rounded-lg border border-cyan-200 bg-cyan-50 p-2 text-xs font-bold text-[#302992]">
-        {labels.pressEnter}
-      </p>
+      <div className="min-h-10" aria-live="polite">{(speechError || errorMessage) && <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs font-semibold text-amber-900">{speechError || errorMessage}</div>}</div>
     </div>
   );
 }
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";
