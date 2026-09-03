@@ -1,8 +1,8 @@
-import { AlertTriangle, CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LogOut, Waves } from "lucide-react";
+import { AlertTriangle, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LogOut, Waves } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
+import { BillCardPreview, type ActiveCardField, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
@@ -12,7 +12,6 @@ import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billA
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
 import { billLoginSecurityTranslations } from "../../lib/billLoginSecurityTranslations";
 import { billInactivityTranslations } from "../../lib/billInactivityTranslations";
-import { cardHintTranslations, type CardHintField } from "../../lib/cardHintTranslations";
 import { createBillStatementMetadata, type BillStatementMetadata } from "../../lib/billStatement";
 import { billStatementTranslations } from "../../lib/billStatementTranslations";
 import { billStatusTranslations } from "../../lib/billStatusTranslations";
@@ -64,9 +63,6 @@ export function BillPaymentScenarioPage() {
   const sessionBills = useMemo(() => createRandomBillDefinitions(currency), [currency]);
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
   const formatAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  const formatSpokenAmount = (amount: number) => language === "tr"
-    ? `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(amount)} Türk lirası`
-    : new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "name", maximumFractionDigits: 0 }).format(amount);
   const formatDueDate = (date: Date) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
   const statements = useMemo(() => Object.fromEntries(
     sessionBills.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
@@ -98,7 +94,7 @@ export function BillPaymentScenarioPage() {
     : assistantStep === "bill-selection"
     ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
     : assistantStep === "bill-details" && state.selectedBill
-      ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatSpokenAmount(state.selectedBill.amount))
+      ? assistantText.reviewBill(billLabel(state.selectedBill.type))
     : assistantText.messages[assistantStep];
 
   const resetInactivityTimer = useCallback(() => {
@@ -213,15 +209,11 @@ export function BillPaymentScenarioPage() {
               <div className="text-right"><span className="block text-xs font-semibold text-slate-600">{text.amountDue}</span><strong className="text-3xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
             </div>
             <div className="p-4 sm:px-5">
-              <p className="rounded-lg border border-cyan-200 bg-cyan-50/70 p-3 text-sm font-semibold leading-6 text-[#1d1a5e]">{statementText.summary.replace("{name}", customerName).replace("{amount}", formatAmount(state.selectedBill.amount)).replace("{bill}", billLabel(state.selectedBill.type).toLowerCase()).replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+              <dl className="grid gap-2 sm:grid-cols-3">
                 <BillDetailItem label={statementText.customer} value={customerName} />
-                <BillDetailItem label={statementText.provider} value={billLabel(state.selectedBill.type)} />
                 <BillDetailItem label={statementText.subscriptionNumber} value={statements[state.selectedBill.type].subscriptionNumber} mono />
-                <BillDetailItem label={statementText.referenceNumber} value={statements[state.selectedBill.type].referenceNumber} mono />
                 <BillDetailItem label={statementText.dueDate} value={formatDueDate(statements[state.selectedBill.type].dueDate)} important />
               </dl>
-              <p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm font-bold text-amber-950"><CalendarDays className="h-4 w-4 shrink-0" /> {statementText.deadlineNotice.replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -233,10 +225,11 @@ export function BillPaymentScenarioPage() {
       {state.step === "card-payment" && state.selectedBill && (
         <CardPaymentStep
           amount={formatAmount(state.selectedBill.amount)}
+          customerName={customerName}
           systemError={state.systemError}
           text={text}
           onBack={() => dispatch({ type: "BACK_TO_BILLS" })}
-          onSubmit={() => dispatch({ type: state.paymentAttempts === 0 ? "PAYMENT_SYSTEM_ERROR" : "PAYMENT_SUCCESS" })}
+          onSubmit={() => dispatch({ type: "PAYMENT_SUCCESS" })}
         />
       )}
       {state.step === "success" && state.selectedBill && (
@@ -307,15 +300,13 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
   </form>;
 }
 
-function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amount: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
+function CardPaymentStep({ amount, customerName, systemError, text, onBack, onSubmit }: { amount: string; customerName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
   const { language } = useTranslation();
   const practiceText = practiceCardTranslations[language];
-  const hintText = cardHintTranslations[language];
-  const expectedCard = useMemo(() => createPracticeCardDetails(""), []);
-  const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
+  const expectedCard = useMemo(() => createPracticeCardDetails(customerName), [customerName]);
+  const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: customerName, cvv: "" });
   const [submitted, setSubmitted] = useState(false);
-  const [hintsVisible, setHintsVisible] = useState(false);
-  const [hintField, setHintField] = useState<CardHintField>("cardNumber");
+  const [activeField, setActiveField] = useState<ActiveCardField | null>(null);
   const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
   const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
   const cardholderValid = isValidBillAccountName(details.cardholderName);
@@ -333,17 +324,14 @@ function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amou
   return <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
     <div role="group" aria-label={text.cardTitle} data-form-type="other">
       <div className="rounded-xl bg-indigo-50 px-4 py-2.5"><span className="text-sm font-semibold text-slate-600">{text.paymentAmount}</span><strong className="ml-3 text-xl text-[#302992]">{amount}</strong></div>
-      <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><strong className="text-base text-[#1d1a5e]">{practiceText.instructionTitle}</strong><p className="mt-1 text-sm leading-5 text-slate-700">{practiceText.instruction}</p></div><button type="button" aria-expanded={hintsVisible} onClick={() => setHintsVisible((current) => !current)} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-[#302992] bg-white px-3 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50"><CircleHelp className="h-5 w-5" /> {hintsVisible ? hintText.hide : hintText.show}</button></div>
-        {hintsVisible && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950">{hintText.help}</p>}
-      </div>
+      <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3"><strong className="text-base text-[#1d1a5e]">{practiceText.instructionTitle}</strong></div>
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
-        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} name="scenario-copy-holder" />
-        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
+        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} onFocus={() => setActiveField("cardholderName")} name="scenario-copy-holder" />
+        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setActiveField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
         <div className="grid grid-cols-2 gap-3">
-          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setHintField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
-          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setHintField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
+          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setActiveField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
+          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setActiveField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
         </div>
       </div>
       {submitted && cardExpired && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.expiredError}</p>}
@@ -352,8 +340,7 @@ function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amou
       <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
     </div>
     <aside className="lg:sticky lg:top-8">
-      <BillCardPreview details={{ ...expectedCard, cardholderName: details.cardholderName.trim().toUpperCase() }} hintsVisible={hintsVisible} hintField={hintField} />
-      <p className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-center text-sm font-semibold leading-5 text-[#1d1a5e]">{hintText.stuckMessage}</p>
+      <BillCardPreview details={expectedCard} activeField={activeField} />
     </aside>
   </div>;
 }
