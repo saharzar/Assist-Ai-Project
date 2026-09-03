@@ -27,6 +27,7 @@ export function AtmPracticeSetupPage() {
 
   useEffect(() => {
     setAssistantValidationMessage("");
+    setVoiceError("");
   }, [language]);
 
   useEffect(() => {
@@ -46,6 +47,12 @@ export function AtmPracticeSetupPage() {
   ].filter(Boolean).join(" ");
   const setupAssistantMessage = assistantValidationMessage || setupText.assistantMessage;
 
+  const reportVoiceError = (message: string) => {
+    setVoiceError(message);
+    setAssistantValidationMessage(message);
+    setAssistantSpeechRequestId((current) => current + 1);
+  };
+
   const startVoiceInput = (mode: "name" | "pin") => {
     if (!isSpeechRecognitionSupported() || recognizerRef.current) return;
     setVoiceError("");
@@ -55,7 +62,7 @@ export function AtmPracticeSetupPage() {
         if (mode === "name") setFullName(sanitizeName(result));
         else setPin(result.replace(/\D/g, "").slice(0, 4));
       },
-      onError: (message) => setVoiceError(message),
+      onError: reportVoiceError,
       onEnd: () => {
         recognizerRef.current = null;
         setListeningFor(null);

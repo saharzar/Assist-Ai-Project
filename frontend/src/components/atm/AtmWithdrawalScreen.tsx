@@ -358,19 +358,19 @@ export function AtmWithdrawalResultScreen({
   onVoiceStop: () => void;
 }) {
   return (
-    <div className="flex min-h-full flex-col justify-start py-0.5">
-      <h1 className="text-xl font-bold leading-tight text-[#171452]">{labels.title}</h1>
-      <div className="mt-2 grid grid-cols-2 gap-2.5">
-        <div className="rounded-lg bg-[#f4f3ff] p-3">
-          <p className="text-xs font-bold uppercase text-slate-600">{labels.withdrawnAmount}</p>
-          <p className="mt-0.5 text-xl font-bold text-[#302992]">{formatAmount(withdrawnAmount)}</p>
+    <div className="flex min-h-full flex-col justify-start px-2 py-1">
+      <h1 className="text-2xl font-bold leading-tight text-[#171452]">{labels.title}</h1>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <div className="flex min-h-[5.5rem] flex-col justify-center rounded-xl bg-[#f4f3ff] p-4">
+          <p className="text-sm font-bold uppercase text-slate-600">{labels.withdrawnAmount}</p>
+          <p className="mt-0.5 text-2xl font-bold text-[#302992]">{formatAmount(withdrawnAmount)}</p>
         </div>
-        <div className="rounded-lg bg-cyan-50 p-3">
-          <p className="text-xs font-bold uppercase text-slate-600">{labels.remainingBalance}</p>
-          <p className="mt-0.5 text-xl font-bold text-[#087f8c]">{formatAmount(remainingBalance)}</p>
+        <div className="flex min-h-[5.5rem] flex-col justify-center rounded-xl bg-cyan-50 p-4">
+          <p className="text-sm font-bold uppercase text-slate-600">{labels.remainingBalance}</p>
+          <p className="mt-0.5 text-2xl font-bold text-[#087f8c]">{formatAmount(remainingBalance)}</p>
         </div>
       </div>
-      <p className="mt-2.5 text-sm font-bold text-slate-800">{labels.question}</p>
+      <p className="mt-3 text-lg font-bold leading-tight text-slate-800">{labels.question}</p>
       <div className="mt-2 grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
         <button
           type="button"
@@ -378,15 +378,15 @@ export function AtmWithdrawalResultScreen({
           aria-label={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
           title={isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}
           onClick={() => { if (isListening || isPreparingVoice) onVoiceStop(); else onVoiceStart(); }}
-          className={`flex min-h-11 items-center justify-center rounded-lg text-white outline-none focus:ring-2 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
+          className={`flex min-h-14 items-center justify-center rounded-xl text-white outline-none focus:ring-2 disabled:bg-slate-300 ${isListening || isPreparingVoice ? "animate-pulse bg-rose-600 ring-2 ring-rose-300 focus:ring-rose-400" : "bg-[#302992] hover:bg-[#211c72] focus:ring-cyan-400"}`}
         >
           {isListening || isPreparingVoice ? <Square className="h-4 w-4 fill-current" aria-hidden="true" /> : <Mic className="h-4 w-4" aria-hidden="true" />}
           <span className="sr-only">{isPreparingVoice ? labels.preparing : isListening ? labels.listening : labels.voiceButton}</span>
         </button>
-        <button type="button" onClick={onAnotherTransaction} className="min-h-11 rounded-lg bg-[#302992] px-3 text-sm font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.anotherTransaction}</button>
-        <button type="button" onClick={onFinish} className="min-h-11 rounded-lg border-2 border-[#302992] bg-white px-3 text-sm font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.finish}</button>
+        <button type="button" onClick={onAnotherTransaction} className="min-h-14 rounded-xl bg-[#302992] px-3 text-base font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.anotherTransaction}</button>
+        <button type="button" onClick={onFinish} className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-3 text-base font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">{labels.finish}</button>
       </div>
-      <div className="mt-1.5 min-h-8" aria-live="polite">{speechError && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{speechError}</div>}</div>
+      <div className="mt-2 min-h-14" aria-live="polite">{speechError && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-sm font-semibold leading-5 text-amber-900">{speechError}</div>}</div>
     </div>
   );
 }

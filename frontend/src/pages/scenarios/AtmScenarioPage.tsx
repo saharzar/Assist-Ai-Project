@@ -171,6 +171,46 @@ function getRemainingAttempts(errorMessage: string) {
   return Number.isFinite(attempts) ? Math.max(0, attempts) : 0;
 }
 
+type AtmTranslation = (typeof atmTranslations)["en"];
+
+const localizedSpeechErrorKeys: Array<keyof AtmTranslation> = [
+  "speechMicBlocked",
+  "speechProblem",
+  "speechSessionExpired",
+  "speechProviderUnavailable",
+  "speechNetworkError",
+  "speechBusy",
+  "speechBrowserFallback",
+  "speechNoMatch",
+  "speechLimitReached",
+  "speechNameUnsupported",
+  "speechNameStartError",
+  "speechPinUnsupported",
+  "speechPinStartError",
+  "voiceUnsupportedLetters",
+  "confirmUnclear",
+  "withdrawalConfirmUnclear",
+  "anotherTransactionUnclear",
+];
+
+function localizeStoredSpeechError(message: string, language: keyof typeof atmTranslations) {
+  if (!message) return message;
+  const selectedText = atmTranslations[language];
+
+  for (const key of localizedSpeechErrorKeys) {
+    const matchesKnownTranslation = Object.values(atmTranslations).some((translation) => {
+      const candidate = translation[key];
+      return typeof candidate === "string" && candidate === message;
+    });
+    if (!matchesKnownTranslation) continue;
+
+    const localizedMessage = selectedText[key];
+    return typeof localizedMessage === "string" ? localizedMessage : message;
+  }
+
+  return message;
+}
+
 export function AtmScenarioPage() {
   const navigate = useNavigate();
   const { token, guestSessionToken } = useAuth();
@@ -235,6 +275,11 @@ export function AtmScenarioPage() {
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
+
+  useEffect(() => {
+    setSpeechError((current) => localizeStoredSpeechError(current, language));
+  }, [language]);
+
   const recognizerRef = useRef<ReturnType<typeof createSpeechRecognizer> | null>(null);
   const sttUsageRef = useRef<SttUsage | null>(null);
   const listeningStartedAtRef = useRef<number | null>(null);
@@ -250,6 +295,7 @@ export function AtmScenarioPage() {
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
+  const lastSpokenSpeechErrorRef = useRef("");
   const lastAutoSpeechRef = useRef({
     status: "",
     language: "",
@@ -596,6 +642,28 @@ export function AtmScenarioPage() {
     stopAssistantSpeech();
     setIsSpeaking(false);
   }, []);
+
+  useEffect(() => {
+    if (!speechError) {
+      lastSpokenSpeechErrorRef.current = "";
+      return;
+    }
+    if (!soundEnabled || isListening || isPreparingVoice) return;
+
+    const speechKey = `${language}:${speechError}`;
+    if (lastSpokenSpeechErrorRef.current === speechKey) return;
+    lastSpokenSpeechErrorRef.current = speechKey;
+    setTtsError("");
+    speakAssistantMessage(speechError, {
+      allowBrowserFallback: true,
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => {
+        setIsSpeaking(false);
+        setTtsError(text.assistantVoiceProblem);
+      },
+    }, language);
+  }, [isListening, isPreparingVoice, language, soundEnabled, speechError, text.assistantVoiceProblem]);
 
   const toggleSound = () => {
     setSoundEnabled((current) => {
