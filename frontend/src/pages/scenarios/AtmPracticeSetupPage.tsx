@@ -29,6 +29,13 @@ export function AtmPracticeSetupPage() {
     setAssistantValidationMessage("");
   }, [language]);
 
+  useEffect(() => {
+    // Prepare the Soniox card-insertion prompt while the user completes the
+    // form. The submit click can then navigate immediately without losing the
+    // browser's user-initiated audio permission while waiting on the network.
+    void preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language);
+  }, [language]);
+
   const sanitizeName = (value: string) => value.replace(/[^\p{L}\p{M} '\u2019-]/gu, "").replace(/\s+/g, " ");
   const nameIsValid = /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)+$/u.test(fullName.trim());
   const pinIsValid = /^\d{4}$/.test(pin);
@@ -72,7 +79,7 @@ export function AtmPracticeSetupPage() {
     recognizerRef.current?.stop();
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
     if (!canStart) {
@@ -80,10 +87,7 @@ export function AtmPracticeSetupPage() {
       setAssistantSpeechRequestId((current) => current + 1);
     }
     if (canStart) {
-      await Promise.all([
-        unlockAssistantAudioPlayback(),
-        preloadAssistantMessage(atmTranslations[language].cardInsertPrompt, language),
-      ]);
+      void unlockAssistantAudioPlayback();
       sessionStorage.setItem("assist_ai_atm_name", fullName.trim());
       sessionStorage.setItem("assist_ai_atm_pin", pin);
       navigate("/scenario/atm-withdrawal/practice");

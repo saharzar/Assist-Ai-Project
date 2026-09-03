@@ -1,7 +1,8 @@
-import { ArrowLeft, ArrowRight, Banknote, CheckCircle2, KeyRound, Keyboard, Mic, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Banknote, CheckCircle2, KeyRound, Keyboard, Mic, ShieldCheck, UserRound, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import atmImageUrl from "../../assets/atm-realistic.png";
+import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
 import { useTranslation } from "../../i18n";
 import { atmIntroductionTranslations } from "../../lib/atmIntroductionTranslations";
 import { unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
@@ -26,17 +27,48 @@ export function AtmIntroductionPage() {
       <div className="pointer-events-none absolute bottom-0 left-0 -z-10 h-48 w-[30%] bg-indigo-100/55 [clip-path:polygon(0_0,100%_100%,0_100%)]" aria-hidden="true" />
 
       <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 lg:px-10">
-        <header className="mx-auto max-w-4xl border-b border-indigo-950/10 pb-8 text-center">
+        <header className="mx-auto max-w-4xl text-center">
           <span className="mx-auto mb-5 flex h-1.5 w-24 overflow-hidden rounded-full" aria-hidden="true">
             <i className="w-2/3 bg-[#3730a3]" />
             <i className="w-1/3 bg-[#2dd8d8]" />
           </span>
-          <p className="text-xs font-bold uppercase text-[#087f8c]">{text.eyebrow}</p>
-          <h1 className="landing-title-accent mx-auto mt-2 font-display text-3xl font-extrabold sm:text-4xl">{text.title}</h1>
-          <p className="mx-auto mt-3 max-w-3xl text-base leading-7 text-[#5b5a78]">{text.subtitle}</p>
+          <p className="text-xs font-bold uppercase text-[#087f8c]">ASSIST-AI ATM</p>
+          <h1 className="landing-title-accent mx-auto mt-2 font-display text-3xl font-extrabold sm:text-5xl">{text.simpleTitle}</h1>
+          <p className="mx-auto mt-3 max-w-2xl text-lg leading-7 text-[#5b5a78]">{text.simpleSubtitle}</p>
         </header>
 
-        <div className="mx-auto mt-8 max-w-6xl">
+        <div className="mx-auto mt-8 grid max-w-6xl items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex flex-col justify-center rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-white via-cyan-50/60 to-indigo-50/70 p-6 text-center shadow-[0_22px_48px_-32px_rgba(48,41,146,0.42)] sm:p-9">
+            <div className="relative mx-auto aspect-[3/2] w-full max-w-xl overflow-hidden rounded-2xl bg-[#111936] shadow-lg">
+              <img src={atmImageUrl} alt={text.atmPreviewAlt} className="absolute inset-0 h-full w-full object-contain" />
+              <div className="absolute left-[12.2%] top-[10.9%] flex h-[50.3%] w-[59%] flex-col items-center justify-center rounded-[2%] bg-gradient-to-br from-indigo-50 via-white to-cyan-50 px-[4%] text-center shadow-inner">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#302992] text-white shadow-md" aria-hidden="true">
+                  <Volume2 className="h-6 w-6" />
+                </span>
+                <p className="mt-3 font-display text-[clamp(0.8rem,2vw,1.35rem)] font-extrabold leading-tight text-[#1d1a5e]">{text.simpleTitle}</p>
+                <p className="mt-2 max-w-xs text-[clamp(0.55rem,1.15vw,0.85rem)] font-semibold leading-snug text-[#5b5a78]">{text.simpleSubtitle}</p>
+              </div>
+            </div>
+            <Link
+              to="/scenario/atm-withdrawal/setup"
+              onPointerDown={() => { void unlockAssistantAudioPlayback(); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
+              }}
+              className="mx-auto mt-6 inline-flex min-h-16 w-full max-w-xl items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-8 py-4 text-xl font-extrabold text-white shadow-lg shadow-emerald-950/20 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2"
+            >
+              {text.start} <ArrowRight className="h-6 w-6" aria-hidden="true" />
+            </Link>
+          </div>
+          <AtmSetupVoiceAssistant language={language} message={text.assistantMessage} modeLabel={text.assistantMode} speechRequestId={0} />
+        </div>
+
+        <div className="mx-auto mt-12 max-w-6xl border-t-2 border-indigo-950/10 pt-10">
+          <div className="mb-7 text-center">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">{text.eyebrow}</p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold text-[#1d1a5e] sm:text-3xl">{text.title}</h2>
+            <p className="mx-auto mt-3 max-w-3xl text-base leading-7 text-[#5b5a78]">{text.subtitle}</p>
+          </div>
           <div className="overflow-hidden rounded-3xl border border-cyan-200/80 bg-white/90 shadow-[0_22px_48px_-32px_rgba(48,41,146,0.42)] backdrop-blur-sm">
             <div className="grid items-center gap-0 lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.1fr)]">
               <div className="bg-[#111936] p-4 sm:p-6">
@@ -104,19 +136,9 @@ export function AtmIntroductionPage() {
           </section>
         </div>
 
-        <div className="mt-8 flex flex-col-reverse gap-3 border-t border-indigo-950/10 pt-6 sm:flex-row sm:justify-between">
+        <div className="mt-8 flex border-t border-indigo-950/10 pt-6">
           <Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-indigo-950/15 bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-cyan-400">
             <ArrowLeft className="h-5 w-5" aria-hidden="true" /> {text.back}
-          </Link>
-          <Link
-            to="/scenario/atm-withdrawal/setup"
-            onPointerDown={() => { void unlockAssistantAudioPlayback(); }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
-            }}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#302992] px-6 py-3 font-bold text-white shadow-lg shadow-indigo-950/15 hover:bg-[#211c72] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
-          >
-            {text.start} <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Link>
         </div>
       </div>
