@@ -68,9 +68,9 @@ describe("bill payment scenario state", () => {
     const lowestEuroBills = createRandomBillDefinitions("EUR", () => 0);
     const highestEuroBills = createRandomBillDefinitions("EUR", () => 0.999999);
 
-    expect(lowestLiraBills.every((bill) => bill.amount === 100)).toBe(true);
+    expect(lowestLiraBills.every((bill) => bill.amount === 150)).toBe(true);
     expect(highestLiraBills.every((bill) => bill.amount === 500)).toBe(true);
-    expect(lowestEuroBills.every((bill) => bill.amount === 30)).toBe(true);
-    expect(highestEuroBills.every((bill) => bill.amount === 120)).toBe(true);
+    expect(lowestEuroBills.every((bill) => bill.amount === 50)).toBe(true);
+    expect(highestEuroBills.every((bill) => bill.amount === 150)).toBe(true);
   });
 });

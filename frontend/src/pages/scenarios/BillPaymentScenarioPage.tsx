@@ -1,4 +1,4 @@
-import { AlertTriangle, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LockKeyhole, LogIn, LogOut, ShieldCheck, UserRound, Waves } from "lucide-react";
+import { AlertTriangle, ArrowRight, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LockKeyhole, LogIn, LogOut, ShieldCheck, UserRound, Waves } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
@@ -196,16 +196,21 @@ export function BillPaymentScenarioPage() {
       )}
       {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginFailure} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginFailure(null); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
       {state.step === "bill-selection" && (
-        <div>
-        <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="mx-auto max-w-5xl">
+        <div className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-6 text-white shadow-[0_22px_45px_-30px_rgba(48,41,146,0.85)] sm:px-8">
+          <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full border-[22px] border-white/10" aria-hidden="true" />
+          <div className="relative flex items-center gap-4"><span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><UserRound className="h-9 w-9" aria-hidden="true" /></span><div><h2 className="text-2xl font-extrabold sm:text-3xl">{statusText.welcome(customerName)}</h2><p className="mt-1 font-medium text-cyan-50">{text.selectSubtitle}</p></div></div>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
           {sessionBills.map((bill) => {
             const Icon = billIcons[bill.type];
             const isPaid = state.paidBillTypes.includes(bill.type);
-            return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-32 items-center gap-4 rounded-2xl border px-5 pb-5 pt-9 text-left focus:outline-none focus:ring-2 focus:ring-cyan-400 ${isPaid ? "cursor-not-allowed border-teal-200 bg-teal-50 opacity-80" : "border-indigo-200 bg-indigo-50/70 hover:border-cyan-400 hover:bg-cyan-50"}`}><span className={`absolute right-4 top-3 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white ${isPaid ? "bg-teal-700" : "bg-amber-600"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${isPaid ? "bg-teal-700" : "bg-[#302992]"}`}><Icon className="h-6 w-6" /></span><span className="min-w-0 flex-1"><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{isPaid ? statusText.paid : text.viewBill}</span></span></button>;
+            const serviceTheme = bill.type === "electricity" ? "from-amber-50 to-yellow-100/70 border-amber-200" : bill.type === "natural-gas" ? "from-orange-50 to-rose-100/60 border-orange-200" : bill.type === "water" ? "from-cyan-50 to-blue-100/70 border-cyan-200" : "from-violet-50 to-indigo-100/70 border-violet-200";
+            const iconTheme = bill.type === "electricity" ? "bg-amber-500" : bill.type === "natural-gas" ? "bg-orange-600" : bill.type === "water" ? "bg-cyan-600" : "bg-violet-700";
+            return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-40 items-center gap-5 overflow-hidden rounded-3xl border-2 bg-gradient-to-br px-6 pb-6 pt-11 text-left shadow-sm transition focus:outline-none focus:ring-4 focus:ring-cyan-300 ${isPaid ? "cursor-not-allowed border-emerald-200 from-emerald-50 to-teal-100/70 opacity-80" : `${serviceTheme} hover:-translate-y-1 hover:shadow-xl`}`}><span className="absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-white/40" aria-hidden="true" /><span className={`absolute right-5 top-4 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white shadow-sm ${isPaid ? "bg-emerald-700" : "bg-amber-700"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${isPaid ? "bg-emerald-700" : iconTheme}`}><Icon className="h-9 w-9" /></span><span className="relative min-w-0 flex-1"><strong className="block text-2xl font-extrabold text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className={`mt-2 inline-flex items-center gap-2 text-base font-bold ${isPaid ? "text-emerald-800" : "text-[#302992]"}`}>{isPaid ? statusText.paid : text.viewBill}{!isPaid && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />}</span></span></button>;
           })}
         </div>
-        <div className="mt-5 flex justify-end"><Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-400 bg-white px-5 py-3 font-bold text-slate-700 hover:border-[#302992] hover:bg-indigo-50 hover:text-[#302992]"><LogOut className="h-5 w-5" /> {statusText.leave}</Link></div>
+        <div className="mt-6 flex justify-center sm:justify-end"><Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-slate-400 bg-white px-6 py-3 font-extrabold text-slate-700 shadow-sm hover:border-[#302992] hover:bg-indigo-50 hover:text-[#302992]"><LogOut className="h-5 w-5" /> {statusText.leave}</Link></div>
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (
@@ -372,17 +377,17 @@ function CardPaymentStep({ amount, customerName, systemError, text, onBack, onVa
       <div className="rounded-xl border-l-4 border-cyan-500 bg-cyan-50 px-4 py-3"><strong className="text-lg text-[#1d1a5e]">{practiceText.instructionTitle}</strong></div>
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
-        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} onFocus={() => setActiveField("cardholderName")} name="scenario-copy-holder" />
-        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setActiveField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
+        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} onFocus={() => setActiveField("cardholderName")} name="scenario-copy-holder" autoComplete="new-password" />
+        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setActiveField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" autoComplete="one-time-code" />
         <div className="grid grid-cols-2 gap-3">
-          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setActiveField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
-          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setActiveField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
+          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setActiveField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" autoComplete="one-time-code" />
+          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setActiveField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} autoComplete="one-time-code" />
         </div>
       </div>
       {submitted && cardExpired && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.expiredError}</p>}
       {submitted && !cardholderValid && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.cardError}</p>}
       {submitted && cardholderValid && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#079c6b] px-4 py-2 text-sm font-extrabold text-white shadow-md shadow-emerald-950/15 hover:bg-[#057a55]">{text.confirmPayment}</button></div>
     </div>
     <aside className="rounded-2xl border border-indigo-100 bg-white/70 p-3 shadow-sm lg:sticky lg:top-8">
       <BillCardPreview details={expectedCard} activeField={activeField} />
@@ -391,6 +396,6 @@ function CardPaymentStep({ amount, customerName, systemError, text, onBack, onVa
   </div>;
 }
 
-function ScenarioInput({ label, value, onChange, onFocus, name, inputMode, placeholder, password = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; onFocus?: () => void; name: string; inputMode?: "numeric"; placeholder?: string; password?: boolean; compact?: boolean }) {
-  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.currentTarget.value)} onFocus={onFocus} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete="off" aria-autocomplete="none" spellCheck={false} data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" className={`${compact ? "mt-1.5 min-h-11 rounded-xl px-3 text-sm" : "mt-2 min-h-12 rounded-xl px-4"} w-full border border-slate-300 bg-white text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300`} /></label>;
+function ScenarioInput({ label, value, onChange, onFocus, name, inputMode, placeholder, autoComplete = "off", password = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; onFocus?: () => void; name: string; inputMode?: "numeric"; placeholder?: string; autoComplete?: "off" | "new-password" | "one-time-code"; password?: boolean; compact?: boolean }) {
+  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.currentTarget.value)} onFocus={onFocus} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete={autoComplete} aria-autocomplete="none" spellCheck={false} data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" className={`${compact ? "mt-1.5 min-h-11 rounded-xl px-3 text-sm" : "mt-2 min-h-12 rounded-xl px-4"} w-full border border-slate-300 bg-white text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300`} /></label>;
 }

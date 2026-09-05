@@ -26,7 +26,7 @@ export function createRandomBillDefinitions(
   currency: "TRY" | "EUR",
   random: () => number = Math.random,
 ): BillDefinition[] {
-  const [minimum, maximum] = currency === "TRY" ? [100, 500] : [30, 120];
+  const [minimum, maximum] = currency === "TRY" ? [150, 500] : [50, 150];
   return billDefinitions.map((bill) => {
     const safeRandom = Math.min(Math.max(random(), 0), 0.999999999);
     return {
