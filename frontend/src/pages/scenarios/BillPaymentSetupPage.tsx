@@ -12,7 +12,6 @@ import {
   sanitizeBillAccountUsername,
 } from "../../lib/billAccountValidation";
 import { BILL_SETUP_STORAGE_KEY, type BillSetupDetails } from "../../lib/billPaymentState";
-import { billAssistantTranslations } from "../../lib/billAssistantTranslations";
 import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
@@ -37,10 +36,12 @@ export function BillPaymentSetupPage() {
   const update = (field: keyof BillSetupDetails, value: string) => setDetails((current) => ({ ...current, [field]: value }));
 
   useEffect(() => {
-    void preloadAssistantMessage(billAssistantTranslations[language].messages.login, language);
+    // Prepare the message spoken on this page through the configured backend
+    // provider (Soniox first for authenticated users, browser only as fallback).
+    void preloadAssistantMessage(text.setupAssistantMessage, language);
     setValidationSpeechMessage("");
     setSubmitted(false);
-  }, [language]);
+  }, [language, text.setupAssistantMessage]);
 
   return (
     <BillScenarioShell

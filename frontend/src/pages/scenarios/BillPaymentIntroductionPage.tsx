@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, FileText, LogIn, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Droplets, FileText, Flame, Lightbulb, LogIn, Mic2, UserRound, Wifi } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
@@ -30,13 +30,22 @@ export function BillPaymentIntroductionPage() {
         </header>
 
         <div className="mt-9 grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="flex flex-col justify-center rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-white via-cyan-50/70 to-indigo-50/70 p-6 shadow-[0_22px_48px_-34px_rgba(48,41,146,0.42)] sm:p-9">
-            <div className="mx-auto grid w-full max-w-2xl grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 rounded-3xl border border-indigo-100 bg-white/90 p-6 shadow-inner sm:p-8">
-              <span className="flex aspect-square items-center justify-center rounded-2xl bg-indigo-100 text-[#302992]"><FileText className="h-9 w-9" aria-hidden="true" /></span>
-              <ArrowRight className="h-6 w-6 text-cyan-500" aria-hidden="true" />
-              <span className="flex aspect-square items-center justify-center rounded-2xl bg-cyan-100 text-[#087f8c]"><CreditCard className="h-9 w-9" aria-hidden="true" /></span>
-              <ArrowRight className="h-6 w-6 text-cyan-500" aria-hidden="true" />
-              <span className="flex aspect-square items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-9 w-9" aria-hidden="true" /></span>
+          <section className="overflow-hidden rounded-3xl border border-indigo-200/80 bg-white shadow-[0_28px_60px_-34px_rgba(30,27,100,0.55)]">
+            <div className="bg-gradient-to-br from-[#171856] via-[#29237f] to-[#087f8c] p-6 text-white sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">ASSIST-AI</p><h2 className="mt-1 text-2xl font-extrabold">{text.introPreviewTitle}</h2></div>
+                <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-amber-950">{text.introUnpaidBills}</span>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <BillPreview icon={Lightbulb} label={text.electricity} />
+                <BillPreview icon={Flame} label={text.naturalGas} />
+                <BillPreview icon={Droplets} label={text.water} />
+                <BillPreview icon={Wifi} label={text.internet} />
+              </div>
+              <div className="mt-5 flex items-start gap-3 rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-300 text-[#171856]"><Mic2 className="h-6 w-6" aria-hidden="true" /></span>
+                <div><strong className="block text-sm">{text.introHelpTitle}</strong><p className="mt-1 text-sm leading-6 text-cyan-50/90">{text.introHelpBody}</p></div>
+              </div>
             </div>
             <Link
               to="/scenario/online-bill-payment/setup"
@@ -44,9 +53,9 @@ export function BillPaymentIntroductionPage() {
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
               }}
-              className="mx-auto mt-7 inline-flex min-h-16 w-full max-w-2xl items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-8 py-4 text-xl font-extrabold text-white shadow-lg shadow-emerald-950/20 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2"
+              className="m-6 inline-flex min-h-16 w-[calc(100%-3rem)] items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-8 py-4 text-xl font-extrabold text-white shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2 sm:m-8 sm:w-[calc(100%-4rem)]"
             >
-              {text.setupScenario} <ArrowRight className="h-6 w-6" aria-hidden="true" />
+              {text.introStartButton} <ArrowRight className="h-6 w-6" aria-hidden="true" />
             </Link>
           </section>
           <BillVoiceAssistant message={text.introAssistantMessage} />
@@ -73,4 +82,8 @@ export function BillPaymentIntroductionPage() {
       </div>
     </section>
   );
+}
+
+function BillPreview({ icon: Icon, label }: { icon: typeof Lightbulb; label: string }) {
+  return <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/95 p-3 text-[#1d1a5e] shadow-lg"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-[#302992]"><Icon className="h-5 w-5" aria-hidden="true" /></span><span className="min-w-0 flex-1 font-bold">{label}</span><span className="h-3 w-3 rounded-full bg-amber-400 ring-4 ring-amber-100" aria-hidden="true" /></div>;
 }

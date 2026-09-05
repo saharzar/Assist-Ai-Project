@@ -22,7 +22,7 @@ export function BillPaymentReceipt({ details, thanksTitle, confirmationMessage, 
 }) {
   const { language } = useTranslation();
   const text = billReceiptTranslations[language];
-  const [showReceipt, setShowReceipt] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(true);
   const [saved, setSaved] = useState(false);
   const transaction = useMemo(() => `TXN-${Date.now().toString().slice(-10)}`, []);
   const paymentDate = useMemo(() => new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : language, { dateStyle: "long", timeStyle: "short" }).format(new Date()), [language]);

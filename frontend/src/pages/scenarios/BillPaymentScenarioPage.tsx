@@ -7,7 +7,7 @@ import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useTranslation } from "../../i18n";
-import { billAssistantTranslations, type BillAssistantStep } from "../../lib/billAssistantTranslations";
+import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billAccountValidation";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
 import { billLoginSecurityTranslations } from "../../lib/billLoginSecurityTranslations";
@@ -52,6 +52,8 @@ export function BillPaymentScenarioPage() {
   const inactivityText = billInactivityTranslations[language];
   const statusText = billStatusTranslations[language];
   const [receiptVisible, setReceiptVisible] = useState(false);
+  const [cardValidationMessage, setCardValidationMessage] = useState("");
+  const [cardValidationSpeechRequestId, setCardValidationSpeechRequestId] = useState(0);
   const [loginFailure, setLoginFailure] = useState<LoginFailure | null>(null);
   const [loginLocked, setLoginLocked] = useState(false);
   const [, setInactivitySeconds] = useState(0);
@@ -89,12 +91,16 @@ export function BillPaymentScenarioPage() {
     ? inactivityText.timeoutAssistant
     : inactivityWarningRemaining !== null
       ? inactivityText.warning(inactivityWarningRemaining)
+    : state.step === "card-payment" && cardValidationMessage
+    ? cardValidationMessage
     : state.step === "login" && loginAssistantMessage
     ? loginAssistantMessage
     : assistantStep === "bill-selection"
     ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
     : assistantStep === "bill-details" && state.selectedBill
       ? assistantText.reviewBill(billLabel(state.selectedBill.type))
+    : assistantStep === "card-payment"
+      ? billCardPaymentGuidance[language]
     : assistantText.messages[assistantStep];
 
   const resetInactivityTimer = useCallback(() => {
@@ -173,7 +179,7 @@ export function BillPaymentScenarioPage() {
 
   return (
     <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
       {inactivityTimedOut ? (
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />
@@ -228,8 +234,19 @@ export function BillPaymentScenarioPage() {
           customerName={customerName}
           systemError={state.systemError}
           text={text}
-          onBack={() => dispatch({ type: "BACK_TO_BILLS" })}
-          onSubmit={() => dispatch({ type: "PAYMENT_SUCCESS" })}
+          onBack={() => {
+            setCardValidationMessage("");
+            dispatch({ type: "BACK_TO_BILLS" });
+          }}
+          onValidationError={(message) => {
+            setCardValidationMessage(message);
+            setCardValidationSpeechRequestId((current) => current + 1);
+          }}
+          onSubmit={() => {
+            setCardValidationMessage("");
+            setReceiptVisible(true);
+            dispatch({ type: "PAYMENT_SUCCESS" });
+          }}
         />
       )}
       {state.step === "success" && state.selectedBill && (
@@ -300,21 +317,33 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
   </form>;
 }
 
-function CardPaymentStep({ amount, customerName, systemError, text, onBack, onSubmit }: { amount: string; customerName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
+function CardPaymentStep({ amount, customerName, systemError, text, onBack, onValidationError, onSubmit }: { amount: string; customerName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onValidationError: (message: string) => void; onSubmit: () => void }) {
   const { language } = useTranslation();
   const practiceText = practiceCardTranslations[language];
   const expectedCard = useMemo(() => createPracticeCardDetails(customerName), [customerName]);
-  const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: customerName, cvv: "" });
+  const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
   const [submitted, setSubmitted] = useState(false);
   const [activeField, setActiveField] = useState<ActiveCardField | null>(null);
   const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
   const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
-  const cardholderValid = isValidBillAccountName(details.cardholderName);
+  const cardholderValid = isValidBillAccountName(details.cardholderName)
+    && details.cardholderName.trim().toUpperCase() === expectedCard.cardholderName;
   const cardMatches = matchesPracticeCard(details, expectedCard);
   const update = (field: keyof typeof details, value: string) => setDetails((current) => ({ ...current, [field]: value }));
   const submitPayment = () => {
     setSubmitted(true);
-    if (!cardholderValid || !cardMatches) return;
+    if (cardExpired) {
+      onValidationError(text.expiredError);
+      return;
+    }
+    if (!cardholderValid) {
+      onValidationError(text.cardError);
+      return;
+    }
+    if (!cardMatches) {
+      onValidationError(practiceText.mismatchError);
+      return;
+    }
     onSubmit();
     if (!systemError) {
       setDetails({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
