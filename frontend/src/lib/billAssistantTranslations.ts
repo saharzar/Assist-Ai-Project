@@ -27,10 +27,10 @@ export const billAssistantTranslations: Record<LanguageCode, BillAssistantText> 
 };
 
 export const billCardPaymentGuidance: Record<LanguageCode, string> = {
-  en: "Copy the information shown on the card into the matching fields. Selecting a field highlights where to find it, and selecting CVV turns the card over automatically.",
-  es: "Copia la información de la tarjeta en los campos correspondientes. Al seleccionar un campo se resaltará dónde encontrarlo, y al seleccionar CVV la tarjeta se girará automáticamente.",
-  de: "Übertragen Sie die angezeigten Kartendaten in die passenden Felder. Beim Auswählen eines Feldes wird die entsprechende Stelle markiert; beim CVV-Feld dreht sich die Karte automatisch um.",
-  tr: "Kartta gösterilen bilgileri eşleşen alanlara yazın. Bir alanı seçtiğinizde ilgili bilgi kart üzerinde vurgulanır; CVV alanını seçtiğinizde kart otomatik olarak çevrilir.",
-  pt: "Copie as informações apresentadas no cartão para os campos correspondentes. Ao selecionar um campo, a respetiva informação será destacada; ao selecionar CVV, o cartão vira automaticamente.",
-  fr: "Recopiez les informations affichées sur la carte dans les champs correspondants. La zone associée est mise en évidence lorsque vous sélectionnez un champ, et la carte se retourne automatiquement lorsque vous sélectionnez le CVV.",
+  en: "This is your credit card for paying the bill. Enter the information shown on the card to complete your payment.",
+  es: "Esta es tu tarjeta de crédito para pagar la factura. Introduce la información que aparece en la tarjeta para completar el pago.",
+  de: "Dies ist Ihre Kreditkarte zum Bezahlen der Rechnung. Geben Sie die auf der Karte angezeigten Daten ein, um die Zahlung abzuschließen.",
+  tr: "Fatura ödemenizi tamamlamak için kredi kartında yer alan bilgileri ilgili alanlara girin.",
+  pt: "Este é o seu cartão de crédito para pagar a fatura. Introduza os dados apresentados no cartão para concluir o pagamento.",
+  fr: "Voici votre carte de crédit pour régler la facture. Saisissez les informations affichées sur la carte pour effectuer le paiement.",
 };

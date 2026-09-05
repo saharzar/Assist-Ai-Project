@@ -13,7 +13,11 @@ export function BillPaymentIntroductionPage() {
     // Prepare the message used on this page so returning from the payment flow
     // starts with Soniox audio instead of issuing an unrelated setup request.
     void preloadAssistantMessage(text.introAssistantMessage, language);
-  }, [language, text.introAssistantMessage]);
+    // Also prepare the next page's message while the user reads the
+    // introduction. This lets the Start click play the ready Soniox audio
+    // immediately instead of falling back while generation is still pending.
+    void preloadAssistantMessage(text.setupAssistantMessage, language);
+  }, [language, text.introAssistantMessage, text.setupAssistantMessage]);
   const steps = [
     { icon: UserRound, title: text.introStep1, body: text.introBody1 }, { icon: LogIn, title: text.introStep2, body: text.introBody2 },
     { icon: FileText, title: text.introStep3, body: text.introBody3 }, { icon: CreditCard, title: text.introStep4, body: text.introBody4 },

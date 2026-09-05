@@ -1,4 +1,4 @@
-import { AlertTriangle, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LogOut, Waves } from "lucide-react";
+import { AlertTriangle, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LockKeyhole, LogIn, LogOut, ShieldCheck, UserRound, Waves } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
@@ -77,6 +77,7 @@ export function BillPaymentScenarioPage() {
   const subtitle = state.step === "login" ? text.loginSubtitle : state.step === "bill-selection" ? text.selectSubtitle : state.step === "bill-details" ? text.reviewSubtitle : state.step === "card-payment" ? text.cardSubtitle : text.completeSubtitle;
   const billLabel = (type: BillType) => text[type === "natural-gas" ? "naturalGas" : type];
   const customerName = `${setup.firstName} ${setup.lastName}`;
+  const SelectedBillIcon = state.selectedBill ? billIcons[state.selectedBill.type] : CreditCard;
   const assistantStep: BillAssistantStep = state.step === "card-payment" && state.systemError
     ? "payment-error"
     : state.step === "success" && receiptVisible
@@ -179,7 +180,7 @@ export function BillPaymentScenarioPage() {
 
   return (
     <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
       {inactivityTimedOut ? (
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />
@@ -208,23 +209,26 @@ export function BillPaymentScenarioPage() {
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (
-        <div className="mx-auto max-w-4xl">
-          <div className="overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 bg-gradient-to-br from-indigo-50 to-cyan-50 p-4 sm:px-5">
-              <div><p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">{statementText.details}</p><h2 className="mt-0.5 text-xl font-extrabold text-[#1d1a5e]">{billLabel(state.selectedBill.type)} {text.bill}</h2></div>
-              <div className="text-right"><span className="block text-xs font-semibold text-slate-600">{text.amountDue}</span><strong className="text-3xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
+        <div className="mx-auto max-w-5xl">
+          <div className="overflow-hidden rounded-3xl border-2 border-indigo-200 bg-white shadow-[0_24px_55px_-35px_rgba(48,41,146,0.65)]">
+            <div className="flex flex-wrap items-center justify-between gap-5 bg-gradient-to-br from-[#211c72] via-[#302992] to-[#087f8c] p-6 text-white sm:px-8 sm:py-7">
+              <div className="flex items-center gap-4">
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><SelectedBillIcon className="h-9 w-9" aria-hidden="true" /></span>
+                <div><p className="text-sm font-extrabold uppercase tracking-[0.12em] text-cyan-100">{statementText.details}</p><h2 className="mt-1 text-3xl font-extrabold">{billLabel(state.selectedBill.type)} {text.bill}</h2></div>
+              </div>
+              <div className="min-w-48 rounded-2xl bg-white px-5 py-3 text-right shadow-lg"><span className="block text-sm font-bold uppercase tracking-wide text-slate-500">{text.amountDue}</span><strong className="mt-1 block text-4xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
             </div>
-            <div className="p-4 sm:px-5">
-              <dl className="grid gap-2 sm:grid-cols-3">
+            <div className="p-5 sm:p-8">
+              <dl className="grid gap-4 md:grid-cols-3">
                 <BillDetailItem label={statementText.customer} value={customerName} />
                 <BillDetailItem label={statementText.subscriptionNumber} value={statements[state.selectedBill.type].subscriptionNumber} mono />
                 <BillDetailItem label={statementText.dueDate} value={formatDueDate(statements[state.selectedBill.type].dueDate)} important />
               </dl>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
-            <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]"><CreditCard className="h-5 w-5" /> {text.payCard}</button>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-6 py-4 text-lg font-extrabold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
+            <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55]"><CreditCard className="h-6 w-6" /> {text.payCard}</button>
           </div>
         </div>
       )}
@@ -272,9 +276,9 @@ export function BillPaymentScenarioPage() {
 
 function BillDetailItem({ label, value, mono = false, important = false }: { label: string; value: string; mono?: boolean; important?: boolean }) {
   return (
-    <div className={`rounded-lg border px-3 py-2 ${important ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
-      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className={`mt-0.5 text-sm font-bold ${mono ? "font-mono tracking-wide" : ""} ${important ? "text-amber-950" : "text-[#1d1a5e]"}`}>{value}</dd>
+    <div className={`min-h-28 rounded-2xl border-2 px-5 py-4 ${important ? "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50" : "border-indigo-100 bg-gradient-to-br from-slate-50 to-indigo-50/70"}`}>
+      <dt className={`text-sm font-extrabold uppercase tracking-wide ${important ? "text-amber-700" : "text-slate-500"}`}>{label}</dt>
+      <dd className={`mt-3 break-words text-xl font-extrabold ${mono ? "font-mono tracking-wide" : ""} ${important ? "text-amber-950" : "text-[#1d1a5e]"}`}>{value}</dd>
     </div>
   );
 }
@@ -291,7 +295,12 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
     : failure?.kind === "incorrect"
       ? securityText.incorrect(failure.attemptsRemaining)
       : "";
-  return <form className="mx-auto max-w-xl space-y-5" autoComplete="off" onSubmit={(event) => {
+  return <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/70 shadow-[0_24px_55px_-40px_rgba(48,41,146,0.7)]">
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-5 text-white sm:px-8">
+      <div className="absolute -right-8 -top-12 h-36 w-36 rounded-full border-[18px] border-white/10" aria-hidden="true" />
+      <div className="relative flex items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><LockKeyhole className="h-8 w-8" aria-hidden="true" /></span><div><h2 className="text-xl font-extrabold sm:text-2xl">{text.loginTitle}</h2><p className="mt-1 text-sm font-medium text-cyan-50 sm:text-base">{text.loginSubtitle}</p></div></div>
+    </div>
+  <form className="space-y-5 p-5 sm:p-8" autoComplete="off" onSubmit={(event) => {
     event.preventDefault();
     if (locked) return;
     if (username === setup.username && password === setup.password) { setFailure(null); onSuccess(); return; }
@@ -310,11 +319,14 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
     setFailure(incorrectFailure);
     onFailed(incorrectFailure);
   }}>
-    <ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
-    <label className="block text-sm font-bold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border border-slate-300 px-4 pr-12 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label>
+    <div className="rounded-2xl border border-indigo-100 bg-white/90 p-5 shadow-sm sm:p-6">
+      <div className="mb-5 flex items-center gap-3 text-[#1d1a5e]"><UserRound className="h-6 w-6" aria-hidden="true" /><ShieldCheck className="h-5 w-5 text-cyan-700" aria-hidden="true" /></div>
+      <div className="space-y-5"><ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
+      <label className="block text-sm font-extrabold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 pr-12 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label></div>
+    </div>
     {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</p>}
-    <button type="submit" disabled={locked} className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72] disabled:cursor-not-allowed disabled:opacity-60">{text.loginButton}</button>
-  </form>;
+    <button type="submit" disabled={locked} className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-5 py-3 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55] disabled:cursor-not-allowed disabled:opacity-60"><LogIn className="h-6 w-6" aria-hidden="true" />{text.loginButton}</button>
+  </form></div>;
 }
 
 function CardPaymentStep({ amount, customerName, systemError, text, onBack, onValidationError, onSubmit }: { amount: string; customerName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onValidationError: (message: string) => void; onSubmit: () => void }) {
@@ -350,10 +362,14 @@ function CardPaymentStep({ amount, customerName, systemError, text, onBack, onVa
       setSubmitted(false);
     }
   };
-  return <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-    <div role="group" aria-label={text.cardTitle} data-form-type="other">
-      <div className="rounded-xl bg-indigo-50 px-4 py-2.5"><span className="text-sm font-semibold text-slate-600">{text.paymentAmount}</span><strong className="ml-3 text-xl text-[#302992]">{amount}</strong></div>
-      <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3"><strong className="text-base text-[#1d1a5e]">{practiceText.instructionTitle}</strong></div>
+  return <div className="overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/35 to-cyan-50/60 p-4 shadow-[0_24px_55px_-38px_rgba(48,41,146,0.7)] sm:p-6">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-5 py-4 text-white shadow-lg">
+      <div className="flex items-center gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25"><CreditCard className="h-7 w-7" aria-hidden="true" /></span><strong className="text-xl sm:text-2xl">{text.cardTitle}</strong></div>
+      <div className="rounded-xl bg-white px-4 py-2 text-right text-[#1d1a5e]"><span className="block text-xs font-bold uppercase tracking-wide text-slate-500">{text.paymentAmount}</span><strong className="text-2xl">{amount}</strong></div>
+    </div>
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+    <div role="group" aria-label={text.cardTitle} data-form-type="other" className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm sm:p-5">
+      <div className="rounded-xl border-l-4 border-cyan-500 bg-cyan-50 px-4 py-3"><strong className="text-lg text-[#1d1a5e]">{practiceText.instructionTitle}</strong></div>
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
         <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} onFocus={() => setActiveField("cardholderName")} name="scenario-copy-holder" />
@@ -368,9 +384,10 @@ function CardPaymentStep({ amount, customerName, systemError, text, onBack, onVa
       {submitted && cardholderValid && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
       <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
     </div>
-    <aside className="lg:sticky lg:top-8">
+    <aside className="rounded-2xl border border-indigo-100 bg-white/70 p-3 shadow-sm lg:sticky lg:top-8">
       <BillCardPreview details={expectedCard} activeField={activeField} />
     </aside>
+    </div>
   </div>;
 }
 
