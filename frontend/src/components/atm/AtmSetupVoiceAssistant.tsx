@@ -18,11 +18,13 @@ export function AtmSetupVoiceAssistant({
   message,
   modeLabel,
   speechRequestId,
+  stopRequestId = 0,
 }: {
   language: LanguageCode;
   message: string;
   modeLabel: string;
   speechRequestId: number;
+  stopRequestId?: number;
 }) {
   const text = atmTranslations[language];
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_STORAGE_KEY) !== "false");
@@ -30,6 +32,7 @@ export function AtmSetupVoiceAssistant({
   const [ttsError, setTtsError] = useState("");
   const lastSpokenRef = useRef("");
   const speechRequestRef = useRef(0);
+  const lastStopRequestRef = useRef(stopRequestId);
 
   const stopSpeech = useCallback(() => {
     speechRequestRef.current += 1;
@@ -62,6 +65,12 @@ export function AtmSetupVoiceAssistant({
     lastSpokenRef.current = speechKey;
     speak();
   }, [language, message, soundEnabled, speak, speechRequestId]);
+
+  useEffect(() => {
+    if (stopRequestId === lastStopRequestRef.current) return;
+    lastStopRequestRef.current = stopRequestId;
+    stopSpeech();
+  }, [stopRequestId, stopSpeech]);
 
   useEffect(() => () => {
     speechRequestRef.current += 1;

@@ -14,6 +14,7 @@ const atmButtonAudioContext = AudioContextConstructor
   ? new AudioContextConstructor()
   : null;
 let activeButtonBeep: AudioBufferSourceNode | null = null;
+let buttonBeepRequestId = 0;
 const atmButtonBeepBuffer = atmButtonAudioContext
   ? fetch(atmButtonBeepUrl)
       .then((response) => response.arrayBuffer())
@@ -38,9 +39,10 @@ export function playAtmButtonBeep() {
     !atmButtonAudioContext
   )
     return;
+  const requestId = ++buttonBeepRequestId;
   void Promise.all([atmButtonAudioContext.resume(), atmButtonBeepBuffer])
     .then(([, buffer]) => {
-      if (!buffer) return;
+      if (!buffer || requestId !== buttonBeepRequestId) return;
       activeButtonBeep?.stop();
       const source = atmButtonAudioContext.createBufferSource();
       const gain = atmButtonAudioContext.createGain();
@@ -59,6 +61,16 @@ export function playAtmButtonBeep() {
       );
     })
     .catch(() => undefined);
+}
+
+export function stopAtmButtonBeep() {
+  buttonBeepRequestId += 1;
+  try {
+    activeButtonBeep?.stop();
+  } catch {
+    // The short source may already have ended.
+  }
+  activeButtonBeep = null;
 }
 
 type KeypadMode = "none" | "numeric" | "letters" | "confirm";
