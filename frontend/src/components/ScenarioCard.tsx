@@ -18,6 +18,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import type { Scenario } from "../types/scenario";
+import { unlockAssistantAudioPlayback } from "../services/speechSynthesisService";
 
 type ScenarioCardProps = {
   scenario: Scenario;
@@ -89,6 +90,10 @@ export function ScenarioCard({ scenario, isAvailable }: ScenarioCardProps) {
         <Link
           to={isAuthenticated || isGuest ? `/scenario/${scenario.slug}` : "/login"}
           state={isAuthenticated || isGuest ? undefined : { from: `/scenario/${scenario.slug}` }}
+          onPointerDown={() => { void unlockAssistantAudioPlayback(); }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
+          }}
           className="landing-primary-action group/action mt-auto inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2"
         >
           {t("openScenario")} <ArrowRight className="h-4 w-4 transition-transform group-hover/action:translate-x-1" aria-hidden="true" />

@@ -8,7 +8,7 @@ import { speakAssistantMessage, stopAssistantSpeech, stopSuccessSound } from "..
 
 const SOUND_STORAGE_KEY = "assist_ai_sound_enabled";
 
-export function BillVoiceAssistant({ message, onMessageEnd, onSpeakingChange }: { message: string; onMessageEnd?: () => void; onSpeakingChange?: (speaking: boolean) => void }) {
+export function BillVoiceAssistant({ message, speechRequestId = 0, onMessageEnd, onSpeakingChange }: { message: string; speechRequestId?: number; onMessageEnd?: () => void; onSpeakingChange?: (speaking: boolean) => void }) {
   const { language } = useTranslation();
   const text = billAssistantTranslations[language];
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_STORAGE_KEY) !== "false");
@@ -34,11 +34,11 @@ export function BillVoiceAssistant({ message, onMessageEnd, onSpeakingChange }: 
   }, [language, message, onMessageEnd, onSpeakingChange, soundEnabled, text.voiceError]);
 
   useEffect(() => {
-    const speechKey = `${language}:${message}`;
+    const speechKey = `${language}:${speechRequestId}:${message}`;
     if (!soundEnabled || lastSpokenRef.current === speechKey) return;
     lastSpokenRef.current = speechKey;
     speak();
-  }, [language, message, soundEnabled, speak]);
+  }, [language, message, soundEnabled, speak, speechRequestId]);
 
   useEffect(() => () => {
     // React Strict Mode performs a development-only mount cleanup and remount.

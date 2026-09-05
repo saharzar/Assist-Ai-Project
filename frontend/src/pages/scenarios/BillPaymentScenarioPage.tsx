@@ -1,18 +1,17 @@
-import { AlertTriangle, CalendarDays, CircleHelp, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LogOut, Waves } from "lucide-react";
+import { AlertTriangle, ArrowRight, CreditCard, Eye, EyeOff, Flame, Globe2, Lightbulb, LockKeyhole, LogIn, LogOut, ShieldCheck, UserRound, Waves } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-import { BillCardPreview, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
+import { BillCardPreview, type ActiveCardField, type CardPreviewDetails } from "../../components/bill/BillCardPreview";
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useTranslation } from "../../i18n";
-import { billAssistantTranslations, type BillAssistantStep } from "../../lib/billAssistantTranslations";
+import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billAccountValidation";
 import { billPaymentTranslations, type BillPaymentText } from "../../lib/billPaymentTranslations";
 import { billLoginSecurityTranslations } from "../../lib/billLoginSecurityTranslations";
 import { billInactivityTranslations } from "../../lib/billInactivityTranslations";
-import { cardHintTranslations, type CardHintField } from "../../lib/cardHintTranslations";
 import { createBillStatementMetadata, type BillStatementMetadata } from "../../lib/billStatement";
 import { billStatementTranslations } from "../../lib/billStatementTranslations";
 import { billStatusTranslations } from "../../lib/billStatusTranslations";
@@ -53,6 +52,8 @@ export function BillPaymentScenarioPage() {
   const inactivityText = billInactivityTranslations[language];
   const statusText = billStatusTranslations[language];
   const [receiptVisible, setReceiptVisible] = useState(false);
+  const [cardValidationMessage, setCardValidationMessage] = useState("");
+  const [cardValidationSpeechRequestId, setCardValidationSpeechRequestId] = useState(0);
   const [loginFailure, setLoginFailure] = useState<LoginFailure | null>(null);
   const [loginLocked, setLoginLocked] = useState(false);
   const [, setInactivitySeconds] = useState(0);
@@ -64,9 +65,6 @@ export function BillPaymentScenarioPage() {
   const sessionBills = useMemo(() => createRandomBillDefinitions(currency), [currency]);
   const locale = ({ en: "en-IE", es: "es-ES", de: "de-DE", tr: "tr-TR", pt: "pt-PT", fr: "fr-FR" } as const)[language];
   const formatAmount = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  const formatSpokenAmount = (amount: number) => language === "tr"
-    ? `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(amount)} Türk lirası`
-    : new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "name", maximumFractionDigits: 0 }).format(amount);
   const formatDueDate = (date: Date) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
   const statements = useMemo(() => Object.fromEntries(
     sessionBills.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
@@ -79,6 +77,7 @@ export function BillPaymentScenarioPage() {
   const subtitle = state.step === "login" ? text.loginSubtitle : state.step === "bill-selection" ? text.selectSubtitle : state.step === "bill-details" ? text.reviewSubtitle : state.step === "card-payment" ? text.cardSubtitle : text.completeSubtitle;
   const billLabel = (type: BillType) => text[type === "natural-gas" ? "naturalGas" : type];
   const customerName = `${setup.firstName} ${setup.lastName}`;
+  const SelectedBillIcon = state.selectedBill ? billIcons[state.selectedBill.type] : CreditCard;
   const assistantStep: BillAssistantStep = state.step === "card-payment" && state.systemError
     ? "payment-error"
     : state.step === "success" && receiptVisible
@@ -93,12 +92,16 @@ export function BillPaymentScenarioPage() {
     ? inactivityText.timeoutAssistant
     : inactivityWarningRemaining !== null
       ? inactivityText.warning(inactivityWarningRemaining)
+    : state.step === "card-payment" && cardValidationMessage
+    ? cardValidationMessage
     : state.step === "login" && loginAssistantMessage
     ? loginAssistantMessage
     : assistantStep === "bill-selection"
     ? `${statusText.welcome(customerName)}. ${assistantText.messages[assistantStep]}`
     : assistantStep === "bill-details" && state.selectedBill
-      ? assistantText.reviewBill(billLabel(state.selectedBill.type), formatSpokenAmount(state.selectedBill.amount))
+      ? assistantText.reviewBill(billLabel(state.selectedBill.type))
+    : assistantStep === "card-payment"
+      ? billCardPaymentGuidance[language]
     : assistantText.messages[assistantStep];
 
   const resetInactivityTimer = useCallback(() => {
@@ -177,7 +180,7 @@ export function BillPaymentScenarioPage() {
 
   return (
     <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "bill-details" || state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
       {inactivityTimedOut ? (
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />
@@ -193,50 +196,66 @@ export function BillPaymentScenarioPage() {
       )}
       {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginFailure} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginFailure(null); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
       {state.step === "bill-selection" && (
-        <div>
-        <h2 className="mb-5 text-2xl font-extrabold text-[#1d1a5e]">{statusText.welcome(customerName)}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="mx-auto max-w-5xl">
+        <div className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-6 text-white shadow-[0_22px_45px_-30px_rgba(48,41,146,0.85)] sm:px-8">
+          <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full border-[22px] border-white/10" aria-hidden="true" />
+          <div className="relative flex items-center gap-4"><span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><UserRound className="h-9 w-9" aria-hidden="true" /></span><div><h2 className="text-2xl font-extrabold sm:text-3xl">{statusText.welcome(customerName)}</h2><p className="mt-1 font-medium text-cyan-50">{text.selectSubtitle}</p></div></div>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
           {sessionBills.map((bill) => {
             const Icon = billIcons[bill.type];
             const isPaid = state.paidBillTypes.includes(bill.type);
-            return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-32 items-center gap-4 rounded-2xl border px-5 pb-5 pt-9 text-left focus:outline-none focus:ring-2 focus:ring-cyan-400 ${isPaid ? "cursor-not-allowed border-teal-200 bg-teal-50 opacity-80" : "border-indigo-200 bg-indigo-50/70 hover:border-cyan-400 hover:bg-cyan-50"}`}><span className={`absolute right-4 top-3 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white ${isPaid ? "bg-teal-700" : "bg-amber-600"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${isPaid ? "bg-teal-700" : "bg-[#302992]"}`}><Icon className="h-6 w-6" /></span><span className="min-w-0 flex-1"><strong className="block text-lg text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className="mt-1 block text-sm text-slate-600">{isPaid ? statusText.paid : text.viewBill}</span></span></button>;
+            const serviceTheme = bill.type === "electricity" ? "from-amber-50 to-yellow-100/70 border-amber-200" : bill.type === "natural-gas" ? "from-orange-50 to-rose-100/60 border-orange-200" : bill.type === "water" ? "from-cyan-50 to-blue-100/70 border-cyan-200" : "from-violet-50 to-indigo-100/70 border-violet-200";
+            const iconTheme = bill.type === "electricity" ? "bg-amber-500" : bill.type === "natural-gas" ? "bg-orange-600" : bill.type === "water" ? "bg-cyan-600" : "bg-violet-700";
+            return <button key={bill.type} type="button" disabled={isPaid} onClick={() => dispatch({ type: "SELECT_BILL", bill })} className={`group relative flex min-h-40 items-center gap-5 overflow-hidden rounded-3xl border-2 bg-gradient-to-br px-6 pb-6 pt-11 text-left shadow-sm transition focus:outline-none focus:ring-4 focus:ring-cyan-300 ${isPaid ? "cursor-not-allowed border-emerald-200 from-emerald-50 to-teal-100/70 opacity-80" : `${serviceTheme} hover:-translate-y-1 hover:shadow-xl`}`}><span className="absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-white/40" aria-hidden="true" /><span className={`absolute right-5 top-4 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white shadow-sm ${isPaid ? "bg-emerald-700" : "bg-amber-700"}`}>{isPaid ? statusText.paid : statusText.unpaid}</span><span className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${isPaid ? "bg-emerald-700" : iconTheme}`}><Icon className="h-9 w-9" /></span><span className="relative min-w-0 flex-1"><strong className="block text-2xl font-extrabold text-[#1d1a5e]">{billLabel(bill.type)}</strong><span className={`mt-2 inline-flex items-center gap-2 text-base font-bold ${isPaid ? "text-emerald-800" : "text-[#302992]"}`}>{isPaid ? statusText.paid : text.viewBill}{!isPaid && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />}</span></span></button>;
           })}
         </div>
-        <div className="mt-5 flex justify-end"><Link to="/scenarios" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-400 bg-white px-5 py-3 font-bold text-slate-700 hover:border-[#302992] hover:bg-indigo-50 hover:text-[#302992]"><LogOut className="h-5 w-5" /> {statusText.leave}</Link></div>
+        <div className="mt-6 flex justify-center sm:justify-end"><Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-slate-400 bg-white px-6 py-3 font-extrabold text-slate-700 shadow-sm hover:border-[#302992] hover:bg-indigo-50 hover:text-[#302992]"><LogOut className="h-5 w-5" /> {statusText.leave}</Link></div>
         </div>
       )}
       {state.step === "bill-details" && state.selectedBill && (
-        <div className="mx-auto max-w-4xl">
-          <div className="overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 bg-gradient-to-br from-indigo-50 to-cyan-50 p-4 sm:px-5">
-              <div><p className="text-xs font-bold uppercase tracking-wide text-[#087f8c]">{statementText.details}</p><h2 className="mt-0.5 text-xl font-extrabold text-[#1d1a5e]">{billLabel(state.selectedBill.type)} {text.bill}</h2></div>
-              <div className="text-right"><span className="block text-xs font-semibold text-slate-600">{text.amountDue}</span><strong className="text-3xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
+        <div className="mx-auto max-w-5xl">
+          <div className="overflow-hidden rounded-3xl border-2 border-indigo-200 bg-white shadow-[0_24px_55px_-35px_rgba(48,41,146,0.65)]">
+            <div className="flex flex-wrap items-center justify-between gap-5 bg-gradient-to-br from-[#211c72] via-[#302992] to-[#087f8c] p-6 text-white sm:px-8 sm:py-7">
+              <div className="flex items-center gap-4">
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><SelectedBillIcon className="h-9 w-9" aria-hidden="true" /></span>
+                <div><p className="text-sm font-extrabold uppercase tracking-[0.12em] text-cyan-100">{statementText.details}</p><h2 className="mt-1 text-3xl font-extrabold">{billLabel(state.selectedBill.type)} {text.bill}</h2></div>
+              </div>
+              <div className="min-w-48 rounded-2xl bg-white px-5 py-3 text-right shadow-lg"><span className="block text-sm font-bold uppercase tracking-wide text-slate-500">{text.amountDue}</span><strong className="mt-1 block text-4xl text-[#302992]">{formatAmount(state.selectedBill.amount)}</strong></div>
             </div>
-            <div className="p-4 sm:px-5">
-              <p className="rounded-lg border border-cyan-200 bg-cyan-50/70 p-3 text-sm font-semibold leading-6 text-[#1d1a5e]">{statementText.summary.replace("{name}", customerName).replace("{amount}", formatAmount(state.selectedBill.amount)).replace("{bill}", billLabel(state.selectedBill.type).toLowerCase()).replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="p-5 sm:p-8">
+              <dl className="grid gap-4 md:grid-cols-3">
                 <BillDetailItem label={statementText.customer} value={customerName} />
-                <BillDetailItem label={statementText.provider} value={billLabel(state.selectedBill.type)} />
                 <BillDetailItem label={statementText.subscriptionNumber} value={statements[state.selectedBill.type].subscriptionNumber} mono />
-                <BillDetailItem label={statementText.referenceNumber} value={statements[state.selectedBill.type].referenceNumber} mono />
                 <BillDetailItem label={statementText.dueDate} value={formatDueDate(statements[state.selectedBill.type].dueDate)} important />
               </dl>
-              <p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm font-bold text-amber-950"><CalendarDays className="h-4 w-4 shrink-0" /> {statementText.deadlineNotice.replace("{date}", formatDueDate(statements[state.selectedBill.type].dueDate))}</p>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-12 rounded-xl border-2 border-[#302992] bg-white px-5 py-3 font-bold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
-            <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72]"><CreditCard className="h-5 w-5" /> {text.payCard}</button>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-6 py-4 text-lg font-extrabold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
+            <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55]"><CreditCard className="h-6 w-6" /> {text.payCard}</button>
           </div>
         </div>
       )}
       {state.step === "card-payment" && state.selectedBill && (
         <CardPaymentStep
           amount={formatAmount(state.selectedBill.amount)}
+          customerName={customerName}
           systemError={state.systemError}
           text={text}
-          onBack={() => dispatch({ type: "BACK_TO_BILLS" })}
-          onSubmit={() => dispatch({ type: state.paymentAttempts === 0 ? "PAYMENT_SYSTEM_ERROR" : "PAYMENT_SUCCESS" })}
+          onBack={() => {
+            setCardValidationMessage("");
+            dispatch({ type: "BACK_TO_BILLS" });
+          }}
+          onValidationError={(message) => {
+            setCardValidationMessage(message);
+            setCardValidationSpeechRequestId((current) => current + 1);
+          }}
+          onSubmit={() => {
+            setCardValidationMessage("");
+            setReceiptVisible(true);
+            dispatch({ type: "PAYMENT_SUCCESS" });
+          }}
         />
       )}
       {state.step === "success" && state.selectedBill && (
@@ -262,9 +281,9 @@ export function BillPaymentScenarioPage() {
 
 function BillDetailItem({ label, value, mono = false, important = false }: { label: string; value: string; mono?: boolean; important?: boolean }) {
   return (
-    <div className={`rounded-lg border px-3 py-2 ${important ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
-      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className={`mt-0.5 text-sm font-bold ${mono ? "font-mono tracking-wide" : ""} ${important ? "text-amber-950" : "text-[#1d1a5e]"}`}>{value}</dd>
+    <div className={`min-h-28 rounded-2xl border-2 px-5 py-4 ${important ? "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50" : "border-indigo-100 bg-gradient-to-br from-slate-50 to-indigo-50/70"}`}>
+      <dt className={`text-sm font-extrabold uppercase tracking-wide ${important ? "text-amber-700" : "text-slate-500"}`}>{label}</dt>
+      <dd className={`mt-3 break-words text-xl font-extrabold ${mono ? "font-mono tracking-wide" : ""} ${important ? "text-amber-950" : "text-[#1d1a5e]"}`}>{value}</dd>
     </div>
   );
 }
@@ -281,7 +300,12 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
     : failure?.kind === "incorrect"
       ? securityText.incorrect(failure.attemptsRemaining)
       : "";
-  return <form className="mx-auto max-w-xl space-y-5" autoComplete="off" onSubmit={(event) => {
+  return <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/70 shadow-[0_24px_55px_-40px_rgba(48,41,146,0.7)]">
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-5 text-white sm:px-8">
+      <div className="absolute -right-8 -top-12 h-36 w-36 rounded-full border-[18px] border-white/10" aria-hidden="true" />
+      <div className="relative flex items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25"><LockKeyhole className="h-8 w-8" aria-hidden="true" /></span><div><h2 className="text-xl font-extrabold sm:text-2xl">{text.loginTitle}</h2><p className="mt-1 text-sm font-medium text-cyan-50 sm:text-base">{text.loginSubtitle}</p></div></div>
+    </div>
+  <form className="space-y-5 p-5 sm:p-8" autoComplete="off" onSubmit={(event) => {
     event.preventDefault();
     if (locked) return;
     if (username === setup.username && password === setup.password) { setFailure(null); onSuccess(); return; }
@@ -300,64 +324,78 @@ function LoginStep({ setup, text, securityText, onSuccess, onFailed, onLocked }:
     setFailure(incorrectFailure);
     onFailed(incorrectFailure);
   }}>
-    <ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
-    <label className="block text-sm font-bold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border border-slate-300 px-4 pr-12 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label>
+    <div className="rounded-2xl border border-indigo-100 bg-white/90 p-5 shadow-sm sm:p-6">
+      <div className="mb-5 flex items-center gap-3 text-[#1d1a5e]"><UserRound className="h-6 w-6" aria-hidden="true" /><ShieldCheck className="h-5 w-5 text-cyan-700" aria-hidden="true" /></div>
+      <div className="space-y-5"><ScenarioInput label={text.username} value={username} onChange={setUsername} name="bill-login-scenario-user" />
+      <label className="block text-sm font-extrabold text-slate-800">{text.password}<div className="relative mt-2"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} name="bill-login-scenario-pass" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" className="min-h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 pr-12 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? text.hidePassword : text.showPassword} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">{showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div></label></div>
+    </div>
     {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</p>}
-    <button type="submit" disabled={locked} className="min-h-12 w-full rounded-xl bg-[#302992] px-5 py-3 font-bold text-white hover:bg-[#211c72] disabled:cursor-not-allowed disabled:opacity-60">{text.loginButton}</button>
-  </form>;
+    <button type="submit" disabled={locked} className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-5 py-3 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55] disabled:cursor-not-allowed disabled:opacity-60"><LogIn className="h-6 w-6" aria-hidden="true" />{text.loginButton}</button>
+  </form></div>;
 }
 
-function CardPaymentStep({ amount, systemError, text, onBack, onSubmit }: { amount: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onSubmit: () => void }) {
+function CardPaymentStep({ amount, customerName, systemError, text, onBack, onValidationError, onSubmit }: { amount: string; customerName: string; systemError: boolean; text: BillPaymentText; onBack: () => void; onValidationError: (message: string) => void; onSubmit: () => void }) {
   const { language } = useTranslation();
   const practiceText = practiceCardTranslations[language];
-  const hintText = cardHintTranslations[language];
-  const expectedCard = useMemo(() => createPracticeCardDetails(""), []);
+  const expectedCard = useMemo(() => createPracticeCardDetails(customerName), [customerName]);
   const [details, setDetails] = useState<CardPreviewDetails>({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
   const [submitted, setSubmitted] = useState(false);
-  const [hintsVisible, setHintsVisible] = useState(false);
-  const [hintField, setHintField] = useState<CardHintField>("cardNumber");
+  const [activeField, setActiveField] = useState<ActiveCardField | null>(null);
   const expiryFormatValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(details.expiry);
   const cardExpired = expiryFormatValid && !isValidCardExpiry(details.expiry);
-  const cardholderValid = isValidBillAccountName(details.cardholderName);
+  const cardholderValid = isValidBillAccountName(details.cardholderName)
+    && details.cardholderName.trim().toUpperCase() === expectedCard.cardholderName;
   const cardMatches = matchesPracticeCard(details, expectedCard);
   const update = (field: keyof typeof details, value: string) => setDetails((current) => ({ ...current, [field]: value }));
   const submitPayment = () => {
     setSubmitted(true);
-    if (!cardholderValid || !cardMatches) return;
+    if (cardExpired) {
+      onValidationError(text.expiredError);
+      return;
+    }
+    if (!cardholderValid) {
+      onValidationError(text.cardError);
+      return;
+    }
+    if (!cardMatches) {
+      onValidationError(practiceText.mismatchError);
+      return;
+    }
     onSubmit();
     if (!systemError) {
       setDetails({ cardNumber: "", expiry: "", cardholderName: "", cvv: "" });
       setSubmitted(false);
     }
   };
-  return <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-    <div role="group" aria-label={text.cardTitle} data-form-type="other">
-      <div className="rounded-xl bg-indigo-50 px-4 py-2.5"><span className="text-sm font-semibold text-slate-600">{text.paymentAmount}</span><strong className="ml-3 text-xl text-[#302992]">{amount}</strong></div>
-      <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><strong className="text-base text-[#1d1a5e]">{practiceText.instructionTitle}</strong><p className="mt-1 text-sm leading-5 text-slate-700">{practiceText.instruction}</p></div><button type="button" aria-expanded={hintsVisible} onClick={() => setHintsVisible((current) => !current)} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-[#302992] bg-white px-3 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50"><CircleHelp className="h-5 w-5" /> {hintsVisible ? hintText.hide : hintText.show}</button></div>
-        {hintsVisible && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950">{hintText.help}</p>}
-      </div>
+  return <div className="overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/35 to-cyan-50/60 p-4 shadow-[0_24px_55px_-38px_rgba(48,41,146,0.7)] sm:p-6">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-5 py-4 text-white shadow-lg">
+      <div className="flex items-center gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25"><CreditCard className="h-7 w-7" aria-hidden="true" /></span><strong className="text-xl sm:text-2xl">{text.cardTitle}</strong></div>
+      <div className="rounded-xl bg-white px-4 py-2 text-right text-[#1d1a5e]"><span className="block text-xs font-bold uppercase tracking-wide text-slate-500">{text.paymentAmount}</span><strong className="text-2xl">{amount}</strong></div>
+    </div>
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+    <div role="group" aria-label={text.cardTitle} data-form-type="other" className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm sm:p-5">
+      <div className="rounded-xl border-l-4 border-cyan-500 bg-cyan-50 px-4 py-3"><strong className="text-lg text-[#1d1a5e]">{practiceText.instructionTitle}</strong></div>
       {systemError && <div role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"><strong className="text-sm">{text.systemErrorTitle}</strong><p className="text-xs leading-5">{text.systemErrorBody}</p></div>}
       <div className="mt-3 space-y-3">
-        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} name="scenario-copy-holder" />
-        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setHintField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" />
+        <ScenarioInput compact label={text.cardholder} value={details.cardholderName} onChange={(value) => update("cardholderName", sanitizeBillAccountName(value))} onFocus={() => setActiveField("cardholderName")} name="scenario-copy-holder" autoComplete="new-password" />
+        <ScenarioInput compact label={text.cardNumber} value={details.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(value) => update("cardNumber", value.replace(/\D/g, "").slice(0, 16))} onFocus={() => setActiveField("cardNumber")} name="scenario-copy-number" inputMode="numeric" placeholder="0000 0000 0000 0000" autoComplete="one-time-code" />
         <div className="grid grid-cols-2 gap-3">
-          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setHintField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" />
-          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setHintField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} />
+          <ScenarioInput compact label={text.expiry} value={details.expiry} onChange={(value) => { const digits = value.replace(/\D/g, "").slice(0, 4); update("expiry", digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits); }} onFocus={() => setActiveField("expiry")} name="scenario-copy-date" inputMode="numeric" placeholder="MM/YY" autoComplete="one-time-code" />
+          <ScenarioInput compact label="CVV" value={details.cvv} onChange={(value) => update("cvv", value.replace(/\D/g, "").slice(0, 3))} onFocus={() => setActiveField("cvv")} name="scenario-copy-code" inputMode="numeric" placeholder={text.digits3} autoComplete="one-time-code" />
         </div>
       </div>
       {submitted && cardExpired && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.expiredError}</p>}
       {submitted && !cardholderValid && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{text.cardError}</p>}
       {submitted && cardholderValid && !cardExpired && !cardMatches && <p role="alert" className="mt-2 rounded-lg border border-rose-300 bg-rose-50 p-2 text-xs font-semibold text-rose-800">{practiceText.mismatchError}</p>}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#302992] px-4 py-2 text-sm font-bold text-white hover:bg-[#211c72]">{text.confirmPayment}</button></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-[#302992] bg-white px-4 py-2 text-sm font-bold text-[#302992] hover:bg-indigo-50">{text.cancel}</button><button type="button" onClick={submitPayment} className="min-h-11 rounded-xl bg-[#079c6b] px-4 py-2 text-sm font-extrabold text-white shadow-md shadow-emerald-950/15 hover:bg-[#057a55]">{text.confirmPayment}</button></div>
     </div>
-    <aside className="lg:sticky lg:top-8">
-      <BillCardPreview details={{ ...expectedCard, cardholderName: details.cardholderName.trim().toUpperCase() }} hintsVisible={hintsVisible} hintField={hintField} />
-      <p className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-center text-sm font-semibold leading-5 text-[#1d1a5e]">{hintText.stuckMessage}</p>
+    <aside className="rounded-2xl border border-indigo-100 bg-white/70 p-3 shadow-sm lg:sticky lg:top-8">
+      <BillCardPreview details={expectedCard} activeField={activeField} />
     </aside>
+    </div>
   </div>;
 }
 
-function ScenarioInput({ label, value, onChange, onFocus, name, inputMode, placeholder, password = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; onFocus?: () => void; name: string; inputMode?: "numeric"; placeholder?: string; password?: boolean; compact?: boolean }) {
-  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.currentTarget.value)} onFocus={onFocus} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete="off" aria-autocomplete="none" spellCheck={false} data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" className={`${compact ? "mt-1.5 min-h-11 rounded-xl px-3 text-sm" : "mt-2 min-h-12 rounded-xl px-4"} w-full border border-slate-300 bg-white text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300`} /></label>;
+function ScenarioInput({ label, value, onChange, onFocus, name, inputMode, placeholder, autoComplete = "off", password = false, compact = false }: { label: string; value: string; onChange: (value: string) => void; onFocus?: () => void; name: string; inputMode?: "numeric"; placeholder?: string; autoComplete?: "off" | "new-password" | "one-time-code"; password?: boolean; compact?: boolean }) {
+  return <label className="block text-sm font-bold text-slate-800">{label}<input value={value} onChange={(event) => onChange(event.currentTarget.value)} onFocus={onFocus} type={password ? "password" : "text"} name={name} inputMode={inputMode} placeholder={placeholder} autoComplete={autoComplete} aria-autocomplete="none" spellCheck={false} data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" className={`${compact ? "mt-1.5 min-h-11 rounded-xl px-3 text-sm" : "mt-2 min-h-12 rounded-xl px-4"} w-full border border-slate-300 bg-white text-slate-950 outline-none focus:border-[#302992] focus:ring-2 focus:ring-cyan-300`} /></label>;
 }

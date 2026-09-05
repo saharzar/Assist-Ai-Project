@@ -7,7 +7,7 @@ import atmCashDispenseSound from "../../assets/atm-cash-dispense.mp3";
 import atmCardRemoveSound from "../../assets/atm-card-remove.mp3";
 
 import { AtmAssistantMessage } from "../../components/atm/AtmAssistantMessage";
-import { playAtmButtonBeep } from "../../components/atm/ATMRealisticShell";
+import { playAtmButtonBeep, stopAtmButtonBeep } from "../../components/atm/ATMRealisticShell";
 import { AtmConfirmNameScreen } from "../../components/atm/AtmConfirmNameScreen";
 import { AtmFrame } from "../../components/atm/AtmFrame";
 import { AtmLetterCheckScreen } from "../../components/atm/AtmLetterCheckScreen";
@@ -35,6 +35,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
 import { ATM_ERROR, atmReducer, createInitialAtmState } from "../../lib/atmStateMachine";
 import { atmTranslations } from "../../lib/atmTranslations";
+import { formatTurkishNumberWords } from "../../lib/turkishNumberWords";
 import {
   abandonAtmAnalyticsSession,
   completeAtmAnalyticsSession,
@@ -102,6 +103,11 @@ function playReceiptPrintSound() {
   void receiptPrintAudio.play().catch(() => undefined);
 }
 
+function stopReceiptPrintSound() {
+  receiptPrintAudio.pause();
+  receiptPrintAudio.currentTime = 0;
+}
+
 const cashDispenseAudio = new Audio(atmCashDispenseSound);
 cashDispenseAudio.preload = "auto";
 
@@ -128,6 +134,11 @@ function playCashDispenseSound() {
   void cashDispenseAudio.play().catch(() => undefined);
 }
 
+function stopCashDispenseSound() {
+  cashDispenseAudio.pause();
+  cashDispenseAudio.currentTime = 0;
+}
+
 const cardRemoveAudio = new Audio(atmCardRemoveSound);
 cardRemoveAudio.preload = "auto";
 
@@ -143,7 +154,10 @@ function stopCardRemoveSound() {
   cardRemoveAudio.currentTime = 0;
 }
 
+let stopActiveCardInsertSound: (() => void) | null = null;
+
 function playCardInsertSound() {
+  stopActiveCardInsertSound?.();
   const audio = new Audio(atmCardInsertSound);
   audio.volume = 0.7;
   return new Promise<void>((resolve) => {
@@ -154,8 +168,11 @@ function playCardInsertSound() {
       finished = true;
       if (trimTimer !== null) window.clearTimeout(trimTimer);
       audio.pause();
+      audio.currentTime = 0;
+      if (stopActiveCardInsertSound === finish) stopActiveCardInsertSound = null;
       resolve();
     };
+    stopActiveCardInsertSound = finish;
     audio.addEventListener("loadedmetadata", () => {
       const shortenedDurationMs = Math.max(0, audio.duration - 1) * 1000;
       trimTimer = window.setTimeout(finish, shortenedDurationMs);
@@ -164,6 +181,17 @@ function playCardInsertSound() {
     audio.addEventListener("error", finish, { once: true });
     void audio.play().catch(finish);
   });
+}
+
+function stopAllAtmScenarioSounds() {
+  stopReceiptPrintSound();
+  stopCashDispenseSound();
+  stopCardRemoveSound();
+  stopActiveCardInsertSound?.();
+  stopActiveCardInsertSound = null;
+  stopAtmButtonBeep();
+  stopSuccessSound();
+  stopAssistantSpeech();
 }
 
 function getRemainingAttempts(errorMessage: string) {
@@ -241,7 +269,7 @@ export function AtmScenarioPage() {
     }).format(amount);
   }, [language]);
   const formatSpokenCurrencyAmount = useCallback((amount: number) => {
-    if (language === "tr") return `${amount} Türk lirası`;
+    if (language === "tr") return `${formatTurkishNumberWords(amount)} Türk lirası`;
     const localeByLanguage = { en: "en-IE", es: "es-ES", de: "de-DE", pt: "pt-PT", fr: "fr-FR" } as const;
     return new Intl.NumberFormat(localeByLanguage[language], {
       style: "currency",
@@ -1018,7 +1046,7 @@ export function AtmScenarioPage() {
         assistantMessage: "",
       };
       stopSpeech();
-      stopSuccessSound();
+      stopAllAtmScenarioSounds();
       if (stopListeningTimerRef.current) {
         window.clearTimeout(stopListeningTimerRef.current);
       }
@@ -1034,7 +1062,7 @@ export function AtmScenarioPage() {
   useEffect(() => {
     const stopAllScenarioAudio = () => {
       stopSpeech();
-      stopSuccessSound();
+      stopAllAtmScenarioSounds();
       recognizerRef.current?.stop();
       spaceIsHeldRef.current = false;
       finishListeningSession();

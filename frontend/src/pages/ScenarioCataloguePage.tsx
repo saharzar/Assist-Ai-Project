@@ -4,6 +4,7 @@ import { fetchScenarios } from "../api/scenarios";
 import { ScenarioCard } from "../components/ScenarioCard";
 import { useTranslation } from "../i18n";
 import { atmTranslations } from "../lib/atmTranslations";
+import { billPaymentTranslations } from "../lib/billPaymentTranslations";
 import { preloadAssistantMessage } from "../services/speechSynthesisService";
 import type { Scenario } from "../types/scenario";
 
@@ -43,6 +44,7 @@ export function ScenarioCataloguePage() {
 
   useEffect(() => {
     void preloadAssistantMessage(atmTranslations[language].welcomeAssistant, language);
+    void preloadAssistantMessage(billPaymentTranslations[language].introAssistantMessage, language);
   }, [language]);
 
   const translatedScenarios = scenarios.map(translateScenario);
