@@ -28,7 +28,7 @@ type SpeechRecognitionErrorMessages = {
 
 const BROWSER_FALLBACK_CODE = "browser-stt-fallback";
 
-type AzureSttResponse = {
+type SttResponse = {
   transcript: string;
   detected_language?: string | null;
   confidence?: number | null;
@@ -294,7 +294,7 @@ export function parseSpokenConfirmation(
   return null;
 }
 
-function mapSttUsage(response: AzureSttResponse): SttUsage {
+function mapSttUsage(response: SttResponse): SttUsage {
   return {
     limit: response.stt_limit_seconds,
     used: response.stt_used_seconds,
@@ -303,7 +303,7 @@ function mapSttUsage(response: AzureSttResponse): SttUsage {
   };
 }
 
-async function transcribeAzureSpeech(
+async function transcribeServerSpeech(
   audio: Blob,
   language: SpeechRecognitionLanguage,
   mode: SpeechRecognitionMode,
@@ -340,7 +340,7 @@ async function transcribeAzureSpeech(
     throw new ApiError(BROWSER_FALLBACK_CODE, 503);
   }
 
-  const data = (await response.json()) as AzureSttResponse;
+  const data = (await response.json()) as SttResponse;
   const provider = response.headers.get("X-Speech-Provider");
   if (provider) notifySpeechProviderUsed("stt", provider as GlobalSpeechProvider);
   notifySttUsageUpdated(mapSttUsage(data));
@@ -485,7 +485,7 @@ class BackendSpeechRecognizer {
     await this.cleanup();
 
     try {
-      const transcript = await transcribeAzureSpeech(audio, this.language, this.mode);
+      const transcript = await transcribeServerSpeech(audio, this.language, this.mode);
       const cleanedTranscript =
         this.mode === "amount"
           ? cleanSpokenAmountTranscript(transcript)

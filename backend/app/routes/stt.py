@@ -22,7 +22,6 @@ from app.services.speech_provider_manager import (
 from app.services.stt_service import (
     get_or_create_stt_usage,
     get_stt_usage_snapshot,
-    recognize_stt_with_usage,
     record_stt_seconds,
     get_wav_duration_seconds,
     SttUsageSnapshot,
@@ -121,20 +120,12 @@ async def create_stt_transcript(
             record_request_result(db, request_id, "stt", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
         try:
-            if decision.provider == "soniox":
-                seconds = get_wav_duration_seconds(audio)
-                soniox_result = recognize_soniox_stt(audio, request_id, language, mode)
-                transcript = soniox_result.transcript
-                usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else SttUsageSnapshot(0, 0, 0, date.today())
-                detected_language = soniox_result.detected_language
-                confidence = soniox_result.confidence
-            else:
-                result = recognize_stt_with_usage(db, user_id, audio, language, mode)
-                seconds = result.audio_seconds_charged
-                transcript = result.transcript
-                detected_language = result.detected_language
-                confidence = result.confidence
-                usage = result
+            seconds = get_wav_duration_seconds(audio)
+            soniox_result = recognize_soniox_stt(audio, request_id, language, mode)
+            transcript = soniox_result.transcript
+            usage = record_stt_seconds(db, user_id, seconds) if user_id is not None else SttUsageSnapshot(0, 0, 0, date.today())
+            detected_language = soniox_result.detected_language
+            confidence = soniox_result.confidence
 
             if not transcript.strip():
                 last_error = HTTPException(

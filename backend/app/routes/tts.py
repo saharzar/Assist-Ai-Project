@@ -10,7 +10,6 @@ from app.models.user import User
 from app.models.guest_session import GuestSession
 from app.schemas.tts import TtsRequest, TtsUsageResponse
 from app.services.tts_service import (
-    get_azure_voice_for_language,
     get_cached_tts_audio,
     get_or_create_tts_usage,
     synthesize_tts_with_cache,
@@ -89,11 +88,7 @@ def create_tts_audio(
             record_request_result(db, request_id, "tts", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
 
-        voice = (
-            get_soniox_tts_cache_voice()
-            if decision.provider == "soniox"
-            else get_azure_voice_for_language(payload.language)
-        )
+        voice = get_soniox_tts_cache_voice()
         cached_audio = get_cached_tts_audio(db, text, payload.language, voice)
         if cached_audio is not None:
             usage = get_or_create_tts_usage(db, user_id) if user_id is not None else None
@@ -109,7 +104,6 @@ def create_tts_audio(
                 user_id,
                 text,
                 payload.language,
-                provider=decision.provider,
                 request_id=request_id,
                 cache_voice=voice,
             )

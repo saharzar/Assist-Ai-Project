@@ -4,7 +4,6 @@ from hashlib import sha256
 from pathlib import Path
 import re
 
-import azure.cognitiveservices.speech as speechsdk
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -13,20 +12,10 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.tts_audio_cache import TtsAudioCache
 from app.models.tts_usage import UserTtsUsage
-from app.services.soniox_service import synthesize_soniox_tts
+from app.services.soniox_service import synthesize_soniox_tts, get_soniox_tts_cache_voice
 from app.services.quota_period_service import archive_usage
 from app.services.user_quota_notification_service import notify_threshold
 from app.services.quota_defaults_service import get_quota_defaults
-
-AZURE_TTS_VOICES = {
-    "en": "en-US-JennyNeural",
-    "es": "es-ES-ElviraNeural",
-    "de": "de-DE-KatjaNeural",
-    "tr": "tr-TR-EmelNeural",
-    "pt": "pt-PT-RaquelNeural",
-    "fr": "fr-FR-DeniseNeural",
-}
-
 
 @dataclass(frozen=True)
 class TtsReservation:
@@ -59,11 +48,6 @@ class TtsAudioResult:
     limit_characters: int
     reset_date: date
     cache_status: str
-
-
-def get_azure_voice_for_language(language: str) -> str:
-    settings = get_settings()
-    return AZURE_TTS_VOICES.get(language, settings.tts_default_voice)
 
 
 def get_tts_cache_key(text: str, language: str, voice: str) -> str:
@@ -169,36 +153,6 @@ def split_text_for_segment_cache(text: str) -> list[str]:
         split_segments.extend(part for part in re.split(r"(\d{4}\.?)", segment) if part)
 
     return split_segments
-
-
-def synthesize_speech_to_mp3(text: str, language: str = "en") -> bytes:
-    settings = get_settings()
-    if not settings.azure_speech_key or not settings.azure_speech_region:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Azure Speech is not configured.",
-        )
-
-    speech_config = speechsdk.SpeechConfig(
-        subscription=settings.azure_speech_key,
-        region=settings.azure_speech_region,
-    )
-    speech_config.speech_synthesis_voice_name = get_azure_voice_for_language(language)
-    speech_config.set_speech_synthesis_output_format(
-        speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3,
-    )
-
-    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
-    result = synthesizer.speak_text_async(text).get()
-
-    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        return bytes(result.audio_data)
-
-    cancellation = speechsdk.CancellationDetails(result)
-    raise HTTPException(
-        status_code=status.HTTP_502_BAD_GATEWAY,
-        detail=f"Azure Speech failed: {cancellation.reason}",
-    )
 
 
 def get_next_weekly_reset_date() -> date:
@@ -314,11 +268,10 @@ def synthesize_tts_with_cache(
     text: str,
     language: str,
     *,
-    provider: str = "azure",
     request_id: str = "assist-ai-tts",
     cache_voice: str | None = None,
 ) -> TtsAudioResult:
-    voice = cache_voice or get_azure_voice_for_language(language)
+    voice = cache_voice or get_soniox_tts_cache_voice()
     full_cached_audio = get_cached_tts_audio(db, text, language, voice)
     if full_cached_audio is not None:
         usage = get_tts_usage_snapshot(db, user_id) if user_id is not None else TtsUsageSnapshot(0, 0, 0, get_next_weekly_reset_date())
@@ -347,10 +300,7 @@ def synthesize_tts_with_cache(
 
         reservation = reserve_tts_characters(db, user_id, len(segment)) if user_id is not None else TtsReservation(len(segment), 0, 0)
         try:
-            if provider == "soniox":
-                segment_audio = synthesize_soniox_tts(segment, language, f"{request_id}-{segment_index}")
-            else:
-                segment_audio = synthesize_speech_to_mp3(segment, language)
+            segment_audio = synthesize_soniox_tts(segment, language, f"{request_id}-{segment_index}")
         except Exception:
             if user_id is not None:
                 refund_tts_characters(db, user_id, reservation.characters_used)

@@ -37,7 +37,7 @@ describe("admin API response parsing", () => {
     const dashboard = {
       estimate_notice: "Estimated usage", automatic_tts_routing_enabled: true,
       automatic_stt_routing_enabled: true, forced_tts_provider_key: null,
-      forced_stt_provider_key: null, active_tts_provider: "azure", active_stt_provider: "soniox",
+      forced_stt_provider_key: null, active_tts_provider: "soniox", active_stt_provider: "soniox",
       capabilities: [], usage_history: [], events: [],
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(dashboard)));

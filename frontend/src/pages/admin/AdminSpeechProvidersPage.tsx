@@ -239,7 +239,7 @@ function CompactHistory({ dashboard, eventTitle, emptyText, locale, language }: 
 }
 
 function UsageComparison({ dashboard, locale, language }: { dashboard: GlobalSpeechDashboard; locale: string; language: LanguageCode }) {
-  const providers = (["azure", "soniox"] as GlobalSpeechProvider[]).map((provider) => ({
+  const providers = (["soniox"] as GlobalSpeechProvider[]).map((provider) => ({
     provider,
     stt: dashboard.usage_history.filter((item) => item.provider === provider && item.service_type === "stt").reduce((sum, item) => sum + item.audio_seconds_used, 0) / 60,
     tts: dashboard.usage_history.filter((item) => item.provider === provider && item.service_type === "tts").reduce((sum, item) => sum + item.characters_used, 0),
@@ -278,7 +278,7 @@ function ProviderSection({ service, draft, labels, text, language, updateDashboa
 function History({ dashboard, title, eventTitle, locale }: { dashboard: GlobalSpeechDashboard; title: string; eventTitle: string; locale: string }) { return <div className="mt-9 grid gap-8 lg:grid-cols-2"><section><h2 className="text-xl font-bold">{title}</h2><div className="mt-3 space-y-2">{dashboard.usage_history.slice(0, 12).map((item) => <p key={`${item.billing_period}-${item.provider}-${item.service_type}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.provider.toUpperCase()} {item.service_type.toUpperCase()}</strong> · {new Date(`${item.billing_period}T00:00:00`).toLocaleDateString(locale)} · {item.service_type === "tts" ? item.characters_used : item.audio_seconds_used}</p>)}</div></section><section><h2 className="text-xl font-bold">{eventTitle}</h2><div className="mt-3 space-y-2">{dashboard.events.slice(0, 12).map((item) => <p key={item.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm"><strong>{item.event_type.replace(/_/g, " ")}</strong> · {item.service_type.toUpperCase()}<br />{item.reason}</p>)}</div></section></div>; }
 function NumberField({ label, value, max, step = 1, onChange }: { label: string; value: number; max?: number; step?: number; onChange: (value: number) => void }) { return <label className="text-sm font-bold text-slate-600">{label}<input type="number" min={step} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-2 min-h-[44px] w-full rounded-lg border border-indigo-950/10 bg-white px-3 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200" /></label>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-xs font-bold uppercase text-slate-500">{label}</p><p className="mt-1 font-semibold">{value}</p></div>; }
-function providerName(value: GlobalSpeechProvider) { return value === "azure" ? "Microsoft Azure" : value === "soniox" ? "Soniox" : "Browser"; }
+function providerName(value: GlobalSpeechProvider) { return value === "soniox" ? "Soniox" : "Browser"; }
 function localizedProviderName(value: GlobalSpeechProvider, language: LanguageCode) { return value === "browser" ? providerPageText[language].browser : providerName(value); }
 function localizedStatus(value: string | null | undefined, language: LanguageCode) {
   if (!value) return "-";
@@ -296,15 +296,14 @@ function localizedEventReason(value: string, language: LanguageCode) {
 }
 function providerRowStyle(provider: GlobalSpeechProvider, active: boolean) {
   if (active) return "bg-cyan-50/70 shadow-[inset_4px_0_0_#2dd8d8]";
-  if (provider === "azure") return "bg-indigo-50/35 shadow-[inset_4px_0_0_#6366f1]";
   if (provider === "soniox") return "bg-teal-50/30 shadow-[inset_4px_0_0_#14b8a6]";
   return "bg-amber-50/35 shadow-[inset_4px_0_0_#f59e0b]";
 }
 function providerNumberStyle(provider: GlobalSpeechProvider) {
-  return provider === "azure" ? "bg-indigo-100 text-indigo-700" : provider === "soniox" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700";
+  return provider === "soniox" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700";
 }
 function providerBarStyle(provider: GlobalSpeechProvider) {
-  return provider === "azure" ? "bg-indigo-500" : provider === "soniox" ? "bg-teal-500" : "bg-amber-500";
+  return provider === "soniox" ? "bg-teal-500" : "bg-amber-500";
 }
 function providerStatusStyle(status: string, quotaType: SpeechCapability["quota_type"]) {
   if (quotaType === "unlimited") return "bg-amber-100 text-amber-700";
