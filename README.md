@@ -115,6 +115,10 @@ The assistant stops speaking when the user begins recording, changes screens, le
 
 Scenario analytics include registered and guest sessions and classify outcomes as **successful**, **abandoned**, or **security terminated**.
 
+Online Bill Payment is also available under **Admin → Scenario Analytics**. Tracking starts when the practice run opens and respects guest progress consent. It records login attempts and failures, card-validation errors, payment attempts, paid-bill counts, back navigation, language, duration, final step, and exit/timeout reasons. Credentials and card details are never sent to analytics. A visit can include multiple bills; on exit it is successful if at least one bill was paid, otherwise abandoned (or security terminated after login lockout). Active visits remain visible as in progress. Administrators can filter sessions and open each user's or guest's history. Existing visits before this feature cannot be reconstructed.
+
+Apply migration `20260930_0015` with `alembic upgrade head` from `backend` before running this version against an existing database.
+
 ## Online Bill-Payment Draft Flow
 
 The online bill-payment scenario is a modular first draft that follows the same calm, step-by-step visual style:
