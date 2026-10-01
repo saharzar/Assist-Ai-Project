@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFaceTracking } from "./useFaceTracking";
 import type { TrackingSample } from "../services/trackingSessionRecorder";
+import type { ScenarioAttemptId } from "../services/computerVisionSessionService";
+vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ token: "owner-token", guestSessionToken: null }) }));
 
 // Unit-test the hook's lifecycle boundary without a camera or DOM renderer.
 const lifecycle = vi.hoisted(() => ({
@@ -38,9 +40,9 @@ vi.mock("../services/faceTrackingService", async () => {
 describe("scenario tracking recorder cleanup", () => {
   let surface: EventTarget;
   let consent: string;
-  function render(active = true) {
+  function render(active = true, getAttemptId?: () => ScenarioAttemptId) {
     lifecycle.refCursor = 0;
-    const flow = useFaceTracking("atm-withdrawal", active);
+    const flow = useFaceTracking("atm-withdrawal", active, getAttemptId);
     const cleanup = lifecycle.effects.shift()!();
     return { flow, cleanup: typeof cleanup === "function" ? cleanup : () => {} };
   }
@@ -48,6 +50,7 @@ describe("scenario tracking recorder cleanup", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubEnv("DEV", false);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
     lifecycle.effects.length = 0;
     lifecycle.refs.length = 0;
     lifecycle.trackers.length = 0;
@@ -102,6 +105,7 @@ describe("scenario tracking recorder cleanup", () => {
     expect(lifecycle.trackers).toHaveLength(0);
     expect(flow.getCompletedSamples()).toEqual([]);
     expect(vi.getTimerCount()).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("cancels a deferred start when the user immediately leaves", () => {
@@ -124,5 +128,35 @@ describe("scenario tracking recorder cleanup", () => {
     next.cleanup();
     expect(next.flow.getCompletedSamples()).toHaveLength(1);
     expect(next.flow.getCompletedSamples()[0].timestamp).toBe(500);
+  });
+
+  it("keeps scenario completion and completed samples working when backend saving fails", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("Backend unavailable"));
+    const { flow, cleanup } = render();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(() => cleanup()).not.toThrow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(flow.getCompletedSamples()).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("submits once despite pagehide followed by unmount", async () => {
+    const { cleanup } = render();
+    await vi.advanceTimersByTimeAsync(500);
+    surface.dispatchEvent(new Event("pagehide"));
+    cleanup();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("includes the existing scenario attempt identifier in the completed upload", async () => {
+    const attemptId = "00000000-0000-4000-8000-000000000001";
+    const { cleanup } = render(true, () => Promise.resolve(attemptId));
+    await vi.advanceTimersByTimeAsync(500);
+    cleanup();
+    await vi.advanceTimersByTimeAsync(0);
+    const options = vi.mocked(fetch).mock.calls[0][1];
+    expect(JSON.parse(options!.body as string).scenario_session_id).toBe(attemptId);
   });
 });

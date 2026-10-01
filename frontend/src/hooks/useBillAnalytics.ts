@@ -11,6 +11,7 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
   currentStep.current = step;
   const initialLanguage = useRef(language);
   const tracker = useRef<ReturnType<typeof createBillAnalyticsTracker> | null>(null);
+  const attemptGetter = useRef<(() => string | null | Promise<string | null>) | null>(null);
 
   useEffect(() => {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -25,6 +26,7 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
     };
     let current = createBillAnalyticsTracker(post, initialLanguage.current);
     tracker.current = current;
+    attemptGetter.current = current.getSessionId;
     // Cancelling this timer prevents a phantom session during StrictMode's effect replay.
     const timer = window.setTimeout(current.start, 0);
     const onPageHide = () => { void current.finish("exit", currentStep.current); };
@@ -32,6 +34,7 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
       if (!event.persisted) return;
       current = createBillAnalyticsTracker(post, initialLanguage.current);
       tracker.current = current;
+      attemptGetter.current = current.getSessionId;
       current.event("progress", currentStep.current);
     };
     window.addEventListener("pagehide", onPageHide);
@@ -52,5 +55,7 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
   }, [step]);
   const record = useCallback((type: BillEventType, eventStep: BillPaymentStep, bill?: BillType) => tracker.current?.event(type, eventStep, bill), []);
   const finish = useCallback((reason: BillFinishReason) => tracker.current?.finish(reason, currentStep.current), []);
-  return { record, finish };
+  // Retain this getter through analytics cleanup so CV can still link its final upload.
+  const getSessionId = useCallback(() => attemptGetter.current?.() ?? null, []);
+  return { record, finish, getSessionId };
 }

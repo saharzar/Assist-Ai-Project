@@ -66,7 +66,7 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
-  useFaceTracking("online-bill-payment", state.step !== "success" && !loginLocked && !inactivityTimedOut);
+  useFaceTracking("online-bill-payment", state.step !== "success" && !loginLocked && !inactivityTimedOut, analytics.getSessionId);
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";

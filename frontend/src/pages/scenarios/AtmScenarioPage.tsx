@@ -305,9 +305,6 @@ export function AtmScenarioPage() {
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
 
-  useFaceTracking("atm-withdrawal", !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
-    !["success", "security_terminated", "lockout"].includes(state.status));
-
   useEffect(() => {
     setSpeechError((current) => localizeStoredSpeechError(current, language));
   }, [language]);
@@ -325,6 +322,9 @@ export function AtmScenarioPage() {
   const cardEjectionStartedRef = useRef(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
+  const computerVisionAttemptRef = useRef<Promise<string | null> | null>(null);
+  useFaceTracking("atm-withdrawal", !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
+    !["success", "security_terminated", "lockout"].includes(state.status), () => computerVisionAttemptRef.current);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
   const lastSpokenSpeechErrorRef = useRef("");
@@ -377,6 +377,7 @@ export function AtmScenarioPage() {
     recordedInputModesRef.current = new Set();
     analyticsCredentialsRef.current = { token, guestToken: guestSessionToken };
     const startPromise = startAtmAnalyticsSession(language).catch(() => null);
+    computerVisionAttemptRef.current = startPromise;
     analyticsStartRef.current = startPromise;
     void startPromise.then((sessionId) => {
       if (analyticsStartRef.current === startPromise) {

@@ -19,6 +19,7 @@ export function createBillAnalyticsTracker(post: Post, language: string) {
   };
   return {
     start,
+    getSessionId: () => sessionId ?? session,
     event(event_type: BillEventType, step: BillPaymentStep, bill_type?: BillType) {
       if (finished) return;
       const event = { client_event_id: crypto.randomUUID(), event_type, step, bill_type };
