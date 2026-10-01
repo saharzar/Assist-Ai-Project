@@ -1,5 +1,6 @@
 import type { FaceLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { createHeadPoseEstimator, type HeadPose } from "./headPose";
+import { createEyeDirectionEstimator, type EyeDirection } from "./eyeDirection";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
@@ -8,13 +9,16 @@ type FaceTrackingOptions = {
   allowed: boolean;
   onLandmarks: (landmarks: NormalizedLandmark[][]) => void;
   onHeadPose?: (pose: HeadPose | null) => void;
+  onEyeDirection?: (direction: EyeDirection | null) => void;
   onError: (error: unknown) => void;
 };
 
 /** Browser-only prototype: keeps just the latest landmarks, with no recording. */
-export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }: FaceTrackingOptions) {
+export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDirection, onError }: FaceTrackingOptions) {
   const poseEstimator = createHeadPoseEstimator();
+  const eyeEstimator = createEyeDirectionEstimator();
   let headPose: HeadPose | null = null;
+  let eyeDirection: EyeDirection | null = null;
   let stopped = false;
   let started = false;
   let stream: MediaStream | null = null;
@@ -43,12 +47,16 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }
     landmarkCount = 0;
     poseEstimator.reset();
     headPose = null;
+    eyeEstimator.reset();
+    eyeDirection = null;
     onLandmarks([]);
     onHeadPose?.(null);
+    onEyeDirection?.(null);
     if (import.meta.env.DEV && wasDebugging) {
       console.info("[Face tracking]", {
         cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
         yaw: null, pitch: null, roll: null,
+        estimatedEyeDirection: null,
       });
     }
   }
@@ -78,9 +86,11 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }
         // IMAGE mode avoids application timestamps.
         const landmarks = landmarker.detect(video).faceLandmarks;
         headPose = poseEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
+        eyeDirection = eyeEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
         if (import.meta.env.DEV) landmarkCount = landmarks[0]?.length ?? 0;
         onLandmarks(landmarks);
         onHeadPose?.(headPose);
+        onEyeDirection?.(eyeDirection);
       }
       // Limit inference frequency because this minimal prototype runs on the UI thread.
       frameTimer = setTimeout(detectFrame, 100);
@@ -140,6 +150,7 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }
               yaw: headPose ? Number(headPose.yaw.toFixed(1)) : null,
               pitch: headPose ? Number(headPose.pitch.toFixed(1)) : null,
               roll: headPose ? Number(headPose.roll.toFixed(1)) : null,
+              estimatedEyeDirection: eyeDirection,
             });
           }, 2000);
         }
@@ -149,5 +160,5 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }
     }
   }
 
-  return { start, stop, getHeadPose: () => headPose };
+  return { start, stop, getHeadPose: () => headPose, getEyeDirection: () => eyeDirection };
 }

@@ -14,6 +14,14 @@ function frontFacingLandmarks(): NormalizedLandmark[] {
   landmarks[263] = { x: 0.6, y: 0.4, z: 0, visibility: 1 };
   landmarks[10] = { x: 0.5, y: 0.2, z: 0, visibility: 1 };
   landmarks[152] = { x: 0.5, y: 0.7, z: 0, visibility: 1 };
+  landmarks[133] = { x: 0.46, y: 0.4, z: 0, visibility: 1 };
+  landmarks[362] = { x: 0.54, y: 0.4, z: 0, visibility: 1 };
+  landmarks[159] = { x: 0.43, y: 0.39, z: 0, visibility: 1 };
+  landmarks[145] = { x: 0.43, y: 0.41, z: 0, visibility: 1 };
+  landmarks[386] = { x: 0.57, y: 0.39, z: 0, visibility: 1 };
+  landmarks[374] = { x: 0.57, y: 0.41, z: 0, visibility: 1 };
+  landmarks[468] = { x: 0.43, y: 0.4, z: 0, visibility: 1 };
+  landmarks[473] = { x: 0.57, y: 0.4, z: 0, visibility: 1 };
   return landmarks;
 }
 vi.mock("@mediapipe/tasks-vision", () => ({
@@ -153,18 +161,21 @@ describe("browser face tracking lifecycle", () => {
     expect(console.info).toHaveBeenCalledExactlyOnceWith("[Face tracking]", {
       cameraTrackingActive: true, faceDetected: true, landmarkCount: 478,
       yaw: 0, pitch: 0, roll: 0,
+      estimatedEyeDirection: "center",
     });
     vision.detect.mockReturnValue({ faceLandmarks: [] });
     await vi.advanceTimersByTimeAsync(2000);
     expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
       cameraTrackingActive: true, faceDetected: false, landmarkCount: 0,
       yaw: null, pitch: null, roll: null,
+      estimatedEyeDirection: null,
     });
     expect(console.info).toHaveBeenCalledTimes(2);
     tracker.stop();
     expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
       cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
       yaw: null, pitch: null, roll: null,
+      estimatedEyeDirection: null,
     });
     await vi.advanceTimersByTimeAsync(4000);
     expect(console.info).toHaveBeenCalledTimes(3);
@@ -199,6 +210,30 @@ describe("browser face tracking lifecycle", () => {
     await createFaceTracking({ allowed: true, onLandmarks, onError }).start();
     expect(console.info).not.toHaveBeenCalled();
     expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("exposes approximate eye direction and clears it on unreliable eyes, face loss, and cleanup", async () => {
+    const onEyeDirection = vi.fn();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onEyeDirection, onError });
+    await tracker.start();
+    expect(tracker.getEyeDirection()).toBe("center");
+    expect(onEyeDirection).toHaveBeenLastCalledWith("center");
+    const closed = frontFacingLandmarks();
+    closed[145] = closed[159];
+    vision.detect.mockReturnValue({ faceLandmarks: [closed] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.getEyeDirection()).toBeNull();
+    expect(onEyeDirection).toHaveBeenLastCalledWith(null);
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.getEyeDirection()).toBeNull();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.getEyeDirection()).toBe("center");
+    tracker.stop();
+    expect(tracker.getEyeDirection()).toBeNull();
+    expect(onEyeDirection).toHaveBeenLastCalledWith(null);
   });
 
   it.each([
