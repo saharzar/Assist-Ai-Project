@@ -8,6 +8,14 @@ const vision = vi.hoisted(() => ({
   detect: vi.fn(),
   close: vi.fn(),
 }));
+function frontFacingLandmarks(): NormalizedLandmark[] {
+  const landmarks = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5, z: 0, visibility: 1 }));
+  landmarks[33] = { x: 0.4, y: 0.4, z: 0, visibility: 1 };
+  landmarks[263] = { x: 0.6, y: 0.4, z: 0, visibility: 1 };
+  landmarks[10] = { x: 0.5, y: 0.2, z: 0, visibility: 1 };
+  landmarks[152] = { x: 0.5, y: 0.7, z: 0, visibility: 1 };
+  return landmarks;
+}
 vi.mock("@mediapipe/tasks-vision", () => ({
   FilesetResolver: { forVisionTasks: vision.resolve },
   FaceLandmarker: { createFromOptions: vision.create },
@@ -31,7 +39,7 @@ describe("browser face tracking lifecycle", () => {
     camera = { getTracks: () => [{ stop: stopTrack, kind: "video", readyState: "live" }] } as unknown as MediaStream;
     getUserMedia = vi.fn().mockResolvedValue(camera);
     video = {
-      readyState: 2, videoWidth: 640, play: vi.fn().mockResolvedValue(undefined),
+      readyState: 2, videoWidth: 640, videoHeight: 480, play: vi.fn().mockResolvedValue(undefined),
       pause: vi.fn(), srcObject: null,
     } as unknown as HTMLVideoElement;
     vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
@@ -136,27 +144,50 @@ describe("browser face tracking lifecycle", () => {
 
   it("logs only small development summaries every two seconds and stops logging on cleanup", async () => {
     vi.stubEnv("DEV", true);
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
     const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
     await tracker.start();
     await vi.advanceTimersByTimeAsync(1999);
     expect(console.info).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(console.info).toHaveBeenCalledExactlyOnceWith("[Face tracking]", {
-      cameraTrackingActive: true, faceDetected: true, landmarkCount: 1,
+      cameraTrackingActive: true, faceDetected: true, landmarkCount: 478,
+      yaw: 0, pitch: 0, roll: 0,
     });
     vision.detect.mockReturnValue({ faceLandmarks: [] });
     await vi.advanceTimersByTimeAsync(2000);
     expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
       cameraTrackingActive: true, faceDetected: false, landmarkCount: 0,
+      yaw: null, pitch: null, roll: null,
     });
     expect(console.info).toHaveBeenCalledTimes(2);
     tracker.stop();
     expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
       cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
+      yaw: null, pitch: null, roll: null,
     });
     await vi.advanceTimersByTimeAsync(4000);
     expect(console.info).toHaveBeenCalledTimes(3);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("exposes current pose and clears it immediately on face loss and cleanup", async () => {
+    const onHeadPose = vi.fn();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onHeadPose, onError });
+    await tracker.start();
+    expect(tracker.getHeadPose()?.yaw).toBeCloseTo(0);
+    expect(onHeadPose).toHaveBeenCalledWith(tracker.getHeadPose());
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.getHeadPose()).toBeNull();
+    expect(onHeadPose).toHaveBeenLastCalledWith(null);
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.getHeadPose()).not.toBeNull();
+    tracker.stop();
+    expect(tracker.getHeadPose()).toBeNull();
+    expect(onHeadPose).toHaveBeenLastCalledWith(null);
   });
 
   it("does not log verification summaries or error details in production", async () => {

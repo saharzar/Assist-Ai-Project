@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { readComputerVisionConsent } from "../lib/computerVisionConsent";
 import { createFaceTracking } from "../services/faceTrackingService";
+import type { HeadPose } from "../services/headPose";
 
 export function useFaceTracking(scenario: string, active: boolean) {
   const landmarksRef = useRef<NormalizedLandmark[][]>([]);
+  const headPoseRef = useRef<HeadPose | null>(null);
 
   useEffect(() => {
     if (!active || readComputerVisionConsent(scenario) !== true) return;
@@ -12,6 +14,7 @@ export function useFaceTracking(scenario: string, active: boolean) {
     const tracker = createFaceTracking({
       allowed: true,
       onLandmarks: (landmarks) => { landmarksRef.current = landmarks; },
+      onHeadPose: (pose) => { headPoseRef.current = pose; },
       onError: () => { console.warn("Face tracking is unavailable. The scenario can continue."); },
     });
     // Defer to avoid a duplicate permission request during StrictMode's effect replay.
@@ -27,5 +30,5 @@ export function useFaceTracking(scenario: string, active: boolean) {
     };
   }, [scenario, active]);
 
-  return landmarksRef;
+  return { landmarksRef, headPoseRef };
 }

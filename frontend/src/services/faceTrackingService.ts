@@ -1,4 +1,5 @@
 import type { FaceLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { createHeadPoseEstimator, type HeadPose } from "./headPose";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
@@ -6,11 +7,14 @@ const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmar
 type FaceTrackingOptions = {
   allowed: boolean;
   onLandmarks: (landmarks: NormalizedLandmark[][]) => void;
+  onHeadPose?: (pose: HeadPose | null) => void;
   onError: (error: unknown) => void;
 };
 
 /** Browser-only prototype: keeps just the latest landmarks, with no recording. */
-export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTrackingOptions) {
+export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onError }: FaceTrackingOptions) {
+  const poseEstimator = createHeadPoseEstimator();
+  let headPose: HeadPose | null = null;
   let stopped = false;
   let started = false;
   let stream: MediaStream | null = null;
@@ -37,9 +41,15 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
     landmarker?.close();
     landmarker = null;
     landmarkCount = 0;
+    poseEstimator.reset();
+    headPose = null;
     onLandmarks([]);
+    onHeadPose?.(null);
     if (import.meta.env.DEV && wasDebugging) {
-      console.info("[Face tracking]", { cameraTrackingActive: false, faceDetected: false, landmarkCount: 0 });
+      console.info("[Face tracking]", {
+        cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
+        yaw: null, pitch: null, roll: null,
+      });
     }
   }
 
@@ -65,10 +75,12 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
     if (stopped || !video || !landmarker) return;
     try {
       if (video.readyState >= 2 && video.videoWidth > 0) {
-        // IMAGE mode avoids application timestamps. No pose or eye calculations.
+        // IMAGE mode avoids application timestamps.
         const landmarks = landmarker.detect(video).faceLandmarks;
+        headPose = poseEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
         if (import.meta.env.DEV) landmarkCount = landmarks[0]?.length ?? 0;
         onLandmarks(landmarks);
+        onHeadPose?.(headPose);
       }
       // Limit inference frequency because this minimal prototype runs on the UI thread.
       frameTimer = setTimeout(detectFrame, 100);
@@ -125,6 +137,9 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
               cameraTrackingActive: stream?.getTracks().some((track) => track.kind === "video" && track.readyState === "live") ?? false,
               faceDetected: landmarkCount > 0,
               landmarkCount,
+              yaw: headPose ? Number(headPose.yaw.toFixed(1)) : null,
+              pitch: headPose ? Number(headPose.pitch.toFixed(1)) : null,
+              roll: headPose ? Number(headPose.roll.toFixed(1)) : null,
             });
           }, 2000);
         }
@@ -134,5 +149,5 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
     }
   }
 
-  return { start, stop };
+  return { start, stop, getHeadPose: () => headPose };
 }
