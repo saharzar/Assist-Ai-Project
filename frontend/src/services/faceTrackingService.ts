@@ -17,11 +17,16 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
   let video: HTMLVideoElement | null = null;
   let landmarker: FaceLandmarker | null = null;
   let frameTimer: ReturnType<typeof setTimeout> | null = null;
+  let debugTimer: ReturnType<typeof setInterval> | null = null;
+  let landmarkCount = 0;
 
   function stop() {
     if (stopped) return;
     stopped = true;
     if (frameTimer !== null) clearTimeout(frameTimer);
+    const wasDebugging = debugTimer !== null;
+    if (debugTimer !== null) clearInterval(debugTimer);
+    debugTimer = null;
     stream?.getTracks().forEach((track) => track.stop());
     stream = null;
     if (video) {
@@ -31,11 +36,27 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
     }
     landmarker?.close();
     landmarker = null;
+    landmarkCount = 0;
     onLandmarks([]);
+    if (import.meta.env.DEV && wasDebugging) {
+      console.info("[Face tracking]", { cameraTrackingActive: false, faceDetected: false, landmarkCount: 0 });
+    }
   }
 
-  function fail(error: unknown) {
+  function fail(error: unknown, stage: "camera" | "initialization" | "playback" | "inference") {
     if (stopped) return;
+    if (import.meta.env.DEV) {
+      const name = error instanceof Error ? error.name : "UnknownError";
+      const reason = stage === "camera"
+        ? ["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(name)
+          ? "Camera permission denied"
+          : ["NotFoundError", "DevicesNotFoundError"].includes(name)
+            ? "No camera available"
+            : "Camera unavailable"
+        : stage === "initialization" ? "MediaPipe initialization failed"
+        : stage === "playback" ? "Camera playback failed" : "MediaPipe detection failed";
+      console.warn(`[Face tracking] ${reason}. The scenario can continue.`, { stage, errorName: name });
+    }
     stop();
     onError(error);
   }
@@ -45,18 +66,21 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
     try {
       if (video.readyState >= 2 && video.videoWidth > 0) {
         // IMAGE mode avoids application timestamps. No pose or eye calculations.
-        onLandmarks(landmarker.detect(video).faceLandmarks);
+        const landmarks = landmarker.detect(video).faceLandmarks;
+        if (import.meta.env.DEV) landmarkCount = landmarks[0]?.length ?? 0;
+        onLandmarks(landmarks);
       }
       // Limit inference frequency because this minimal prototype runs on the UI thread.
       frameTimer = setTimeout(detectFrame, 100);
     } catch (error) {
-      fail(error);
+      fail(error, "inference");
     }
   }
 
   async function start() {
     if (!allowed || stopped || started) return;
     started = true;
+    let stage: "camera" | "initialization" | "playback" = "camera";
     try {
       const camera = await navigator.mediaDevices.getUserMedia({
         audio: false,
@@ -68,6 +92,7 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
         return;
       }
       stream = camera;
+      stage = "initialization";
       const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
       if (stopped) return;
       const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
@@ -84,15 +109,28 @@ export function createFaceTracking({ allowed, onLandmarks, onError }: FaceTracki
         return;
       }
       landmarker = instance;
+      stage = "playback";
       // The video is never attached to the DOM: no preview or tracking overlay.
       video = document.createElement("video");
       video.muted = true;
       video.playsInline = true;
       video.srcObject = camera;
       await video.play();
-      if (!stopped) detectFrame();
+      if (!stopped) {
+        detectFrame();
+        if (import.meta.env.DEV && !stopped) {
+          // Temporary verification only; this entire block is removed in production.
+          debugTimer = setInterval(() => {
+            console.info("[Face tracking]", {
+              cameraTrackingActive: stream?.getTracks().some((track) => track.kind === "video" && track.readyState === "live") ?? false,
+              faceDetected: landmarkCount > 0,
+              landmarkCount,
+            });
+          }, 2000);
+        }
+      }
     } catch (error) {
-      fail(error);
+      fail(error, stage);
     }
   }
 

@@ -24,8 +24,11 @@ describe("browser face tracking lifecycle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetAllMocks();
+    vi.stubEnv("DEV", false);
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     stopTrack = vi.fn();
-    camera = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
+    camera = { getTracks: () => [{ stop: stopTrack, kind: "video", readyState: "live" }] } as unknown as MediaStream;
     getUserMedia = vi.fn().mockResolvedValue(camera);
     video = {
       readyState: 2, videoWidth: 640, play: vi.fn().mockResolvedValue(undefined),
@@ -43,6 +46,8 @@ describe("browser face tracking lifecycle", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it("does not request the camera or initialize MediaPipe without consent", async () => {
@@ -127,5 +132,65 @@ describe("browser face tracking lifecycle", () => {
     expect(onError).toHaveBeenCalledOnce();
     expect(stopTrack).toHaveBeenCalledOnce();
     expect(video.play).not.toHaveBeenCalled();
+  });
+
+  it("logs only small development summaries every two seconds and stops logging on cleanup", async () => {
+    vi.stubEnv("DEV", true);
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(console.info).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(console.info).toHaveBeenCalledExactlyOnceWith("[Face tracking]", {
+      cameraTrackingActive: true, faceDetected: true, landmarkCount: 1,
+    });
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
+      cameraTrackingActive: true, faceDetected: false, landmarkCount: 0,
+    });
+    expect(console.info).toHaveBeenCalledTimes(2);
+    tracker.stop();
+    expect(console.info).toHaveBeenLastCalledWith("[Face tracking]", {
+      cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
+    });
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(console.info).toHaveBeenCalledTimes(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not log verification summaries or error details in production", async () => {
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    await vi.advanceTimersByTimeAsync(4000);
+    tracker.stop();
+    vision.create.mockRejectedValue(new Error("Model unavailable"));
+    await createFaceTracking({ allowed: true, onLandmarks, onError }).start();
+    expect(console.info).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["NotAllowedError", "Camera permission denied"],
+    ["NotFoundError", "No camera available"],
+  ])("identifies %s without logging camera data", async (name, reason) => {
+    vi.stubEnv("DEV", true);
+    const error = new Error("Camera error");
+    error.name = name;
+    getUserMedia.mockRejectedValue(error);
+    await createFaceTracking({ allowed: true, onLandmarks, onError }).start();
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      `[Face tracking] ${reason}. The scenario can continue.`, { stage: "camera", errorName: name },
+    );
+  });
+
+  it("identifies MediaPipe initialization failures in development", async () => {
+    vi.stubEnv("DEV", true);
+    vision.create.mockRejectedValue(new Error("Model unavailable"));
+    await createFaceTracking({ allowed: true, onLandmarks, onError }).start();
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      "[Face tracking] MediaPipe initialization failed. The scenario can continue.",
+      { stage: "initialization", errorName: "Error" },
+    );
   });
 });
