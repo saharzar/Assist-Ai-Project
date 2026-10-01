@@ -32,7 +32,7 @@ describe("in-memory tracking session recorder", () => {
     const completed = recorder.stop();
     expect(completed.map((sample) => sample.timestamp)).toEqual([500, 1000, 1500]);
     expect(completed.map((sample) => sample.yaw)).toEqual([4, 9, 14]);
-    expect(Object.keys(completed[0]).sort()).toEqual(["estimatedEyeDirection", "pitch", "roll", "timestamp", "yaw"]);
+    expect(Object.keys(completed[0]).sort()).toEqual(["estimatedEyeDirection", "isUserInteracting", "pitch", "roll", "timestamp", "yaw"]);
   });
 
   it("creates no timer or samples when consent is No", () => {
@@ -55,7 +55,7 @@ describe("in-memory tracking session recorder", () => {
     recorder.update({ ...values, yaw: 90 });
     vi.advanceTimersByTime(5000);
     expect(recorder.stop()).toEqual(completed);
-    expect(recorder.getCompletedSamples()).toEqual([{ timestamp: 500, ...values }]);
+    expect(recorder.getCompletedSamples()).toEqual([{ timestamp: 500, ...values, isUserInteracting: false }]);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -68,7 +68,7 @@ describe("in-memory tracking session recorder", () => {
     vi.advanceTimersByTime(3000);
     recorder.start();
     vi.advanceTimersByTime(500);
-    expect(recorder.stop()).toEqual([{ timestamp: 500, ...unavailable }]);
+    expect(recorder.stop()).toEqual([{ timestamp: 500, ...unavailable, isUserInteracting: false }]);
     recorder.reset();
     expect(recorder.getCompletedSamples()).toEqual([]);
     recorder.start();
@@ -89,10 +89,10 @@ describe("in-memory tracking session recorder", () => {
     // No further inference updates: the next sample must not reuse these angles.
     vi.advanceTimersByTime(500);
     expect(recorder.stop()).toEqual([
-      { timestamp: 500, ...unavailable },
-      { timestamp: 1000, ...unavailable },
-      { timestamp: 1500, ...values, estimatedEyeDirection: null },
-      { timestamp: 2000, ...unavailable },
+      { timestamp: 500, ...unavailable, isUserInteracting: false },
+      { timestamp: 1000, ...unavailable, isUserInteracting: false },
+      { timestamp: 1500, ...values, estimatedEyeDirection: null, isUserInteracting: false },
+      { timestamp: 2000, ...unavailable, isUserInteracting: false },
     ]);
   });
 
@@ -105,8 +105,8 @@ describe("in-memory tracking session recorder", () => {
     vi.advanceTimersByTime(500);
     const completed = recorder.stop();
     completed[0].yaw = 180;
-    completed.push({ timestamp: 999, ...values });
-    expect(recorder.getCompletedSamples()).toEqual([{ timestamp: 500, ...values }]);
+    completed.push({ timestamp: 999, ...values, isUserInteracting: false });
+    expect(recorder.getCompletedSamples()).toEqual([{ timestamp: 500, ...values, isUserInteracting: false }]);
   });
 
   it("logs only a single completed summary in development, never the whole array", () => {
@@ -121,8 +121,60 @@ describe("in-memory tracking session recorder", () => {
     recorder.stop();
     recorder.stop();
     expect(console.info).toHaveBeenCalledExactlyOnceWith("[Face tracking] session recording completed", {
-      sampleCount: 2, durationMs: 1000,
-      firstSample: { timestamp: 500, ...values }, lastSample: { timestamp: 1000, ...values },
+      sampleCount: 2, interactingSampleCount: 0, durationMs: 1000,
+      firstSample: { timestamp: 500, ...values, isUserInteracting: false },
+      lastSample: { timestamp: 1000, ...values, isUserInteracting: false },
     });
+  });
+
+  it("marks active samples without discarding them or changing tracking values and reports the count", () => {
+    vi.stubEnv("DEV", true);
+    const surface = new EventTarget();
+    const recorder = createTrackingSessionRecorder(true, { target: surface });
+    recorder.start();
+    surface.dispatchEvent(new Event("keydown"));
+    for (let i = 0; i < 4; i++) {
+      recorder.update(values);
+      vi.advanceTimersByTime(500);
+    }
+    const completed = recorder.stop();
+    expect(completed.map((sample) => sample.isUserInteracting)).toEqual([true, true, false, false]);
+    expect(completed.map((sample) => sample.yaw)).toEqual([10, 10, 10, 10]);
+    expect(completed).toHaveLength(4);
+    expect(console.info).toHaveBeenCalledWith("[Face tracking] session recording completed", expect.objectContaining({
+      sampleCount: 4, interactingSampleCount: 2,
+    }));
+  });
+
+  it("removes interaction listeners on stop/reset and resets activity for the next session", () => {
+    const surface = new EventTarget();
+    const add = vi.spyOn(surface, "addEventListener");
+    const remove = vi.spyOn(surface, "removeEventListener");
+    const recorder = createTrackingSessionRecorder(true, { target: surface });
+    recorder.start();
+    surface.dispatchEvent(new Event("mousedown"));
+    vi.advanceTimersByTime(500);
+    expect(recorder.stop()[0].isUserInteracting).toBe(true);
+    expect(remove).toHaveBeenCalledTimes(3);
+    surface.dispatchEvent(new Event("keydown"));
+    recorder.start();
+    vi.advanceTimersByTime(500);
+    expect(recorder.stop()[0].isUserInteracting).toBe(false);
+    recorder.start();
+    recorder.reset();
+    expect(add).toHaveBeenCalledTimes(9);
+    expect(remove).toHaveBeenCalledTimes(9);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not register interaction listeners with No consent", () => {
+    const surface = new EventTarget();
+    const add = vi.spyOn(surface, "addEventListener");
+    const recorder = createTrackingSessionRecorder(false, { target: surface });
+    recorder.start();
+    surface.dispatchEvent(new Event("keydown"));
+    vi.advanceTimersByTime(1000);
+    expect(recorder.stop()).toEqual([]);
+    expect(add).not.toHaveBeenCalled();
   });
 });

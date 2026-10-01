@@ -76,13 +76,19 @@ describe("scenario tracking recorder cleanup", () => {
   });
 
   it("stops on pagehide and removes the listener on cleanup", () => {
+    const remove = vi.spyOn(surface, "removeEventListener");
     const { flow, cleanup } = render();
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(300);
+    surface.dispatchEvent(new Event("keydown"));
+    vi.advanceTimersByTime(200);
     surface.dispatchEvent(new Event("pagehide"));
     expect(flow.getCompletedSamples()).toHaveLength(1);
+    expect(flow.getCompletedSamples()[0].isUserInteracting).toBe(true);
+    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "mousedown", "mousemove"]);
     vi.advanceTimersByTime(3000);
     expect(flow.getCompletedSamples()).toHaveLength(1);
     cleanup();
+    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "mousedown", "mousemove", "pagehide"]);
     surface.dispatchEvent(new Event("pagehide"));
     expect(lifecycle.trackers[0].stop).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);

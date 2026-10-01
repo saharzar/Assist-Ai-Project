@@ -1,4 +1,5 @@
 import type { EyeDirection } from "./eyeDirection";
+import { createUserInteractionTracker, type UserInteractionOptions } from "./userInteraction";
 
 export const TRACKING_SAMPLE_INTERVAL_MS = 500;
 export type TrackingValues = {
@@ -10,11 +11,13 @@ export type TrackingValues = {
 export type TrackingSample = TrackingValues & {
   /** Milliseconds elapsed since this tracking session started (monotonic clock). */
   timestamp: number;
+  isUserInteracting: boolean;
 };
 const EMPTY_VALUES: TrackingValues = { yaw: null, pitch: null, roll: null, estimatedEyeDirection: null };
 
 /** Memory only: fixed-rate derived values, with no images, video, or landmarks. */
-export function createTrackingSessionRecorder(allowed: boolean) {
+export function createTrackingSessionRecorder(allowed: boolean, interactionOptions: UserInteractionOptions = {}) {
+  const interaction = createUserInteractionTracker(interactionOptions);
   let running = false;
   let startedAt = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -26,6 +29,7 @@ export function createTrackingSessionRecorder(allowed: boolean) {
   }
 
   function reset() {
+    interaction.stop();
     if (timer !== null) clearInterval(timer);
     timer = null;
     running = false;
@@ -39,6 +43,7 @@ export function createTrackingSessionRecorder(allowed: boolean) {
     reset();
     if (!allowed) return;
     running = true;
+    interaction.start();
     startedAt = performance.now();
     timer = setInterval(() => {
       if (!running) return;
@@ -49,7 +54,7 @@ export function createTrackingSessionRecorder(allowed: boolean) {
       // interval is unavailable; do not reuse values without a fresh inference update.
       const values = latest && now - latest.updatedAt <= TRACKING_SAMPLE_INTERVAL_MS
         ? latest.values : EMPTY_VALUES;
-      samples.push({ timestamp, ...values });
+      samples.push({ timestamp, ...values, isUserInteracting: interaction.isUserInteracting() });
     }, TRACKING_SAMPLE_INTERVAL_MS);
   }
 
@@ -71,6 +76,7 @@ export function createTrackingSessionRecorder(allowed: boolean) {
   function stop(): TrackingSample[] {
     if (!running) return getCompletedSamples();
     running = false;
+    interaction.stop();
     if (timer !== null) clearInterval(timer);
     timer = null;
     latest = null;
@@ -78,6 +84,7 @@ export function createTrackingSessionRecorder(allowed: boolean) {
     if (import.meta.env.DEV) {
       console.info("[Face tracking] session recording completed", {
         sampleCount: completed.length,
+        interactingSampleCount: completed.filter((sample) => sample.isUserInteracting).length,
         durationMs: Math.round(performance.now() - startedAt),
         firstSample: completed[0] ?? null,
         lastSample: completed[completed.length - 1] ?? null,
