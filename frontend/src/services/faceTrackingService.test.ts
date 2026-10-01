@@ -73,6 +73,7 @@ describe("browser face tracking lifecycle", () => {
     expect(vision.resolve).not.toHaveBeenCalled();
     expect(vision.create).not.toHaveBeenCalled();
     tracker.stop();
+    expect(tracker.getCompletedSamples()).toEqual([]);
   });
 
   it("detects landmarks without timestamps and releases all resources on stop", async () => {
@@ -178,7 +179,10 @@ describe("browser face tracking lifecycle", () => {
       estimatedEyeDirection: null,
     });
     await vi.advanceTimersByTimeAsync(4000);
-    expect(console.info).toHaveBeenCalledTimes(3);
+    expect(console.info).toHaveBeenCalledTimes(4);
+    expect(console.info).toHaveBeenCalledWith("[Face tracking] session recording completed", expect.objectContaining({
+      sampleCount: 8, durationMs: 4000,
+    }));
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -234,6 +238,28 @@ describe("browser face tracking lifecycle", () => {
     tracker.stop();
     expect(tracker.getEyeDirection()).toBeNull();
     expect(onEyeDirection).toHaveBeenLastCalledWith(null);
+  });
+
+  it("finishes in-memory recording on scenario exit and never collects after cleanup", async () => {
+    const onSessionComplete = vi.fn();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onSessionComplete, onError });
+    await tracker.start();
+    await vi.advanceTimersByTimeAsync(1000);
+    // This is the same stop method used by the hook's unmount/pagehide cleanup.
+    tracker.stop();
+    const completed = tracker.getCompletedSamples();
+    expect(completed).toHaveLength(2);
+    expect(completed.map((sample) => sample.timestamp)).toEqual([500, 1000]);
+    expect(completed[0].yaw).toBeCloseTo(0);
+    expect(completed[0].estimatedEyeDirection).toBe("center");
+    expect(onSessionComplete).toHaveBeenCalledExactlyOnceWith(completed);
+    await vi.advanceTimersByTimeAsync(2000);
+    tracker.stop();
+    expect(tracker.getCompletedSamples()).toEqual(completed);
+    expect(onSessionComplete).toHaveBeenCalledTimes(1);
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it.each([

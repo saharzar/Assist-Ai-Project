@@ -1,23 +1,32 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { readComputerVisionConsent } from "../lib/computerVisionConsent";
 import { createFaceTracking } from "../services/faceTrackingService";
 import type { HeadPose } from "../services/headPose";
 import type { EyeDirection } from "../services/eyeDirection";
+import type { TrackingSample } from "../services/trackingSessionRecorder";
 
 export function useFaceTracking(scenario: string, active: boolean) {
   const landmarksRef = useRef<NormalizedLandmark[][]>([]);
   const headPoseRef = useRef<HeadPose | null>(null);
   const eyeDirectionRef = useRef<EyeDirection | null>(null);
+  const completedSamplesRef = useRef<TrackingSample[]>([]);
+  const getCompletedSamples = useCallback(
+    () => completedSamplesRef.current.map((sample) => ({ ...sample })),
+    [],
+  );
 
   useEffect(() => {
-    if (!active || readComputerVisionConsent(scenario) !== true) return;
+    if (!active) return;
+    completedSamplesRef.current = [];
+    if (readComputerVisionConsent(scenario) !== true) return;
 
     const tracker = createFaceTracking({
       allowed: true,
       onLandmarks: (landmarks) => { landmarksRef.current = landmarks; },
       onHeadPose: (pose) => { headPoseRef.current = pose; },
       onEyeDirection: (direction) => { eyeDirectionRef.current = direction; },
+      onSessionComplete: (samples) => { completedSamplesRef.current = samples; },
       onError: () => { console.warn("Face tracking is unavailable. The scenario can continue."); },
     });
     // Defer to avoid a duplicate permission request during StrictMode's effect replay.
@@ -33,5 +42,5 @@ export function useFaceTracking(scenario: string, active: boolean) {
     };
   }, [scenario, active]);
 
-  return { landmarksRef, headPoseRef, eyeDirectionRef };
+  return { landmarksRef, headPoseRef, eyeDirectionRef, getCompletedSamples };
 }
