@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useFaceTracking } from "../../hooks/useFaceTracking";
 import { Mic, Square } from "lucide-react";
 import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
 import atmReceiptPrintSound from "../../assets/atm-receipt-print.mp3";
@@ -303,6 +304,9 @@ export function AtmScenarioPage() {
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
+
+  useFaceTracking("atm-withdrawal", !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
+    !["success", "security_terminated", "lockout"].includes(state.status));
 
   useEffect(() => {
     setSpeechError((current) => localizeStoredSpeechError(current, language));
