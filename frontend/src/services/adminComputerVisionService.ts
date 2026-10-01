@@ -52,3 +52,17 @@ export function fetchComputerVisionSessions(page = 1) {
 export function fetchComputerVisionSession(sessionId: string, page = 1) {
   return apiRequest<ComputerVisionSessionDetail>(`/api/admin/computer-vision-sessions/${encodeURIComponent(sessionId)}?page=${page}&page_size=100`);
 }
+
+/** Full saved timeline for charts, independent of the raw table's page. */
+export async function fetchComputerVisionTimeline(sessionId: string, signal?: AbortSignal) {
+  const path = `/api/admin/computer-vision-sessions/${encodeURIComponent(sessionId)}`;
+  const first = await apiRequest<ComputerVisionSessionDetail>(`${path}?page=1&page_size=500`, { signal });
+  const samples = [...first.samples];
+  const pages = Math.ceil(first.session.sample_count / first.page_size);
+  for (let page = 2; page <= pages; page++) {
+    const next = await apiRequest<ComputerVisionSessionDetail>(`${path}?page=${page}&page_size=500`, { signal });
+    samples.push(...next.samples);
+  }
+  if (samples.length !== first.session.sample_count) throw new Error("Incomplete computer vision timeline.");
+  return { samples, durationMs: first.session.duration_ms };
+}

@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { ComputerVisionSessionSummary } from "../../components/ComputerVisionSessionSummary";
+import { SavedHeadPoseCharts } from "../../components/HeadPoseCharts";
 import { scenarios } from "../../data/scenarios";
 import { useTranslation } from "../../i18n";
 import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
@@ -79,6 +80,9 @@ function ComputerVisionRecordings() {
         ].map(([label, value]) => <div key={label}><dt className="text-sm font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words font-semibold">{value}</dd></div>)}
       </dl>
       <ComputerVisionSessionSummary summary={detail.summary} />
+    </>}
+    {sessionId && <SavedHeadPoseCharts key={sessionId} sessionId={sessionId} />}
+    {!loading && !error && detail && <>
       <DataTable headings={[text.timestamp, text.yaw, text.pitch, text.roll, text.eyeDirection, text.interaction]}>
         {detail.samples.map((sample) => <tr key={sample.timestamp} className={sample.isUserInteracting ? "bg-amber-50" : "hover:bg-[#fafbff]"}>
           <Cell>{sample.timestamp}</Cell>{[sample.yaw, sample.pitch, sample.roll].map((value, index) => <Cell key={index}>{value === null ? text.missing : value.toLocaleString(common.locale, { maximumFractionDigits: 2 })}</Cell>)}

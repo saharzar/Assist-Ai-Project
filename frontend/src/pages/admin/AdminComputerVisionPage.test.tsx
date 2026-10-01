@@ -17,6 +17,7 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ isAuthenticated: state.authenticated, user: { role: state.role } }) }));
 vi.mock("react-router-dom", async (original) => ({ ...await original<typeof import("react-router-dom")>(), useParams: () => ({ sessionId: state.sessionId }) }));
 vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: "en", translateScenario: (value: unknown) => value }) }));
+vi.mock("../../components/HeadPoseCharts", () => ({ SavedHeadPoseCharts: ({ sessionId }: { sessionId: string }) => <section data-session={sessionId}>Head pose over time</section> }));
 
 const session = { session_id: "record-123", actor_type: "guest", actor_reference: "42", display_name: null,
   scenario_key: "atm-withdrawal", scenario_session_id: "attempt-456", started_at: "2026-10-01T12:00:00Z",
@@ -77,6 +78,9 @@ describe("admin computer vision page", () => {
     expect(html).toContain("Session Summary");
     expect(html).toContain("Excluding interaction samples");
     expect(html.indexOf("Session Summary")).toBeLessThan(html.indexOf("Elapsed time (ms)"));
+    expect(html.indexOf("Session Summary")).toBeLessThan(html.indexOf("Head pose over time"));
+    expect(html.indexOf("Head pose over time")).toBeLessThan(html.indexOf("Elapsed time (ms)"));
+    expect(html).toContain('data-session="record-123"');
     expect(html).toContain("12.34");
     expect(html).toContain("24.75%");
     expect(html).toContain("49.5%");
