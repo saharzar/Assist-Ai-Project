@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminComputerVisionPage } from "./AdminComputerVisionPage";
 import { adminComputerVisionTranslations } from "../../lib/adminComputerVisionTranslations";
+import { computerVisionSummaryTranslations } from "../../lib/computerVisionSummaryTranslations";
+import type { ComputerVisionMetrics } from "../../services/adminComputerVisionService";
+import { ComputerVisionSessionSummary } from "../../components/ComputerVisionSessionSummary";
 
 const state = vi.hoisted(() => ({ authenticated: true, role: "admin", sessionId: undefined as string | undefined,
   values: [] as unknown[], index: 0 }));
@@ -18,6 +21,18 @@ vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: "en", translat
 const session = { session_id: "record-123", actor_type: "guest", actor_reference: "42", display_name: null,
   scenario_key: "atm-withdrawal", scenario_session_id: "attempt-456", started_at: "2026-10-01T12:00:00Z",
   ended_at: "2026-10-01T12:00:01Z", duration_ms: 1000, sample_count: 101 };
+const emptyAxis = { minimum: null, maximum: null, mean: null, standard_deviation: null, range: null };
+const emptyMetrics: ComputerVisionMetrics = {
+  total_samples: 0, valid_samples: 0, missing_samples: 0, interacting_samples: 0, interacting_percentage: 0,
+  head_pose: { yaw: emptyAxis, pitch: emptyAxis, roll: emptyAxis },
+  eye_direction: { left: { count: 0, percentage: 0 }, center: { count: 0, percentage: 0 },
+    right: { count: 0, percentage: 0 }, unknown: { count: 0, percentage: 0 } }, eye_direction_changes: 0,
+};
+const summary = { all_samples: { ...emptyMetrics, total_samples: 101, valid_samples: 100, missing_samples: 1,
+  interacting_samples: 25, interacting_percentage: 24.75, eye_direction_changes: 9,
+  head_pose: { ...emptyMetrics.head_pose, yaw: { minimum: -10, maximum: 20, mean: 5, standard_deviation: 12.34, range: 30 } },
+  eye_direction: { ...emptyMetrics.eye_direction, left: { count: 50, percentage: 49.5 } },
+}, excluding_interaction: { ...emptyMetrics, total_samples: 76 } };
 const render = () => renderToStaticMarkup(<MemoryRouter><AdminComputerVisionPage /></MemoryRouter>);
 
 beforeEach(() => {
@@ -48,7 +63,7 @@ describe("admin computer vision page", () => {
 
   it("renders nulls as unavailable and interaction with both a highlight and a text label", () => {
     state.sessionId = "record-123";
-    state.values = [1, null, { session, page_size: 100, samples: [
+    state.values = [1, null, { session, summary, page_size: 100, samples: [
       { timestamp: 500, yaw: 10, pitch: -5, roll: 2, estimatedEyeDirection: "left", isUserInteracting: true },
       { timestamp: 1000, yaw: null, pitch: null, roll: null, estimatedEyeDirection: null, isUserInteracting: false },
     ] }, false, false];
@@ -59,6 +74,19 @@ describe("admin computer vision page", () => {
     expect(html).toContain("Unavailable");
     expect(html).toContain(">Left</td>");
     expect(html).toContain("1 / 2");
+    expect(html).toContain("Session Summary");
+    expect(html).toContain("Excluding interaction samples");
+    expect(html.indexOf("Session Summary")).toBeLessThan(html.indexOf("Elapsed time (ms)"));
+    expect(html).toContain("12.34");
+    expect(html).toContain("24.75%");
+    expect(html).toContain("49.5%");
+  });
+
+  it("shows null statistics as unavailable and zero percentages for an empty session", () => {
+    const html = renderToStaticMarkup(<ComputerVisionSessionSummary summary={{ all_samples: emptyMetrics, excluding_interaction: emptyMetrics }} />);
+    expect(html).toContain("Unavailable");
+    expect(html).toContain("0%");
+    expect(html).not.toMatch(/NaN|Infinity/);
   });
 
   it("shows a loading failure without stale sample data", () => {
@@ -73,6 +101,12 @@ describe("admin computer vision page", () => {
     const keys = Object.keys(adminComputerVisionTranslations.en).sort();
     for (const translation of Object.values(adminComputerVisionTranslations)) {
       expect(Object.keys(translation).sort()).toEqual(keys);
+      expect(Object.values(translation).every((label) => label.trim().length > 0)).toBe(true);
+    }
+    expect(Object.keys(computerVisionSummaryTranslations).sort()).toEqual(["de", "en", "es", "fr", "pt", "tr"]);
+    const summaryKeys = Object.keys(computerVisionSummaryTranslations.en).sort();
+    for (const translation of Object.values(computerVisionSummaryTranslations)) {
+      expect(Object.keys(translation).sort()).toEqual(summaryKeys);
       expect(Object.values(translation).every((label) => label.trim().length > 0)).toBe(true);
     }
   });

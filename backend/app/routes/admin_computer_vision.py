@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_admin
 from app.database import get_db
+from app.services.computer_vision_summary import summarize_samples
 from app.models import AtmScenarioSession, BillScenarioSession, ComputerVisionSample, ComputerVisionSession, User
 from app.schemas.admin_computer_vision import (
     ComputerVisionSampleRead, ComputerVisionSessionDetail, ComputerVisionSessionList, ComputerVisionSessionRead,
@@ -67,7 +68,12 @@ def session_detail(session_id: UUID, page: int = Query(1, ge=1), page_size: int 
         raise HTTPException(404, "Computer vision session not found.")
     samples = db.scalars(select(ComputerVisionSample).where(ComputerVisionSample.session_id == row[0].id)
                          .order_by(ComputerVisionSample.timestamp_ms).offset((page - 1) * page_size).limit(page_size)).all()
-    return ComputerVisionSessionDetail(session=metadata(row), page=page, page_size=page_size,
+    # Summary covers the full saved session, independent of the visible sample page.
+    summary_rows = db.execute(select(ComputerVisionSample.yaw, ComputerVisionSample.pitch, ComputerVisionSample.roll,
+                                    ComputerVisionSample.estimated_eye_direction, ComputerVisionSample.is_user_interacting)
+                              .where(ComputerVisionSample.session_id == row[0].id)
+                              .order_by(ComputerVisionSample.timestamp_ms)).all()
+    return ComputerVisionSessionDetail(session=metadata(row), summary=summarize_samples(summary_rows), page=page, page_size=page_size,
         samples=[ComputerVisionSampleRead(timestamp=sample.timestamp_ms, yaw=sample.yaw,
                  pitch=sample.pitch, roll=sample.roll, estimatedEyeDirection=sample.estimated_eye_direction,
                  isUserInteracting=sample.is_user_interacting) for sample in samples])

@@ -26,7 +26,23 @@ export type ComputerVisionSessionList = {
   items: ComputerVisionSessionMetadata[]; total: number; page: number; page_size: number;
 };
 export type ComputerVisionSessionDetail = {
-  session: ComputerVisionSessionMetadata; samples: ComputerVisionSample[]; page: number; page_size: number;
+  session: ComputerVisionSessionMetadata; summary: ComputerVisionSessionSummary;
+  samples: ComputerVisionSample[]; page: number; page_size: number;
+};
+
+export type HeadAxisSummary = {
+  minimum: number | null; maximum: number | null; mean: number | null;
+  standard_deviation: number | null; range: number | null;
+};
+export type ComputerVisionMetrics = {
+  total_samples: number; valid_samples: number; missing_samples: number;
+  interacting_samples: number; interacting_percentage: number;
+  head_pose: Record<"yaw" | "pitch" | "roll", HeadAxisSummary>;
+  eye_direction: Record<"left" | "center" | "right" | "unknown", { count: number; percentage: number }>;
+  eye_direction_changes: number;
+};
+export type ComputerVisionSessionSummary = {
+  all_samples: ComputerVisionMetrics; excluding_interaction: ComputerVisionMetrics;
 };
 
 export function fetchComputerVisionSessions(page = 1) {

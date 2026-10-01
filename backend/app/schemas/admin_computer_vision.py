@@ -34,8 +34,38 @@ class ComputerVisionSampleRead(BaseModel):
     isUserInteracting: bool
 
 
+class HeadAxisSummary(BaseModel):
+    minimum: float | None
+    maximum: float | None
+    mean: float | None
+    standard_deviation: float | None
+    range: float | None
+
+
+class EyeDirectionSummary(BaseModel):
+    count: int
+    percentage: float
+
+
+class ComputerVisionMetrics(BaseModel):
+    total_samples: int
+    valid_samples: int
+    missing_samples: int
+    interacting_samples: int
+    interacting_percentage: float
+    head_pose: dict[Literal["yaw", "pitch", "roll"], HeadAxisSummary]
+    eye_direction: dict[Literal["left", "center", "right", "unknown"], EyeDirectionSummary]
+    eye_direction_changes: int
+
+
+class ComputerVisionSessionSummary(BaseModel):
+    all_samples: ComputerVisionMetrics
+    excluding_interaction: ComputerVisionMetrics
+
+
 class ComputerVisionSessionDetail(BaseModel):
     session: ComputerVisionSessionRead
+    summary: ComputerVisionSessionSummary
     samples: list[ComputerVisionSampleRead]
     page: int
     page_size: int

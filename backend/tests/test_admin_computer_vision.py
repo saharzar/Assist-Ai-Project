@@ -1,6 +1,8 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete
+from app.models import ComputerVisionSample
 
 from test_atm_analytics import auth_headers, make_user, start_session, test_context
 from test_computer_vision import payload
@@ -21,6 +23,24 @@ def test_local_preview_authorization_uses_authenticated_admin_role():
         admin.is_active = False
         db.commit()
         assert client.get(path, headers=auth_headers(admin)).status_code == 401
+
+
+def test_empty_saved_session_returns_an_empty_summary():
+    with test_context() as (client, db):
+        admin = make_user(db, email="empty-cv-admin@example.com", role="admin")
+        headers = auth_headers(admin)
+        body = payload()
+        assert client.post("/api/computer-vision-sessions", headers=headers, json=body).status_code == 200
+        db.execute(delete(ComputerVisionSample))
+        db.commit()
+        response = client.get(f"{ENDPOINT}/{body['client_session_id']}", headers=headers)
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["session"]["sample_count"] == 0 and data["samples"] == []
+        for group in data["summary"].values():
+            assert group["total_samples"] == group["valid_samples"] == group["missing_samples"] == 0
+            assert group["head_pose"]["yaw"]["standard_deviation"] is None
+            assert group["eye_direction"]["unknown"]["percentage"] == 0
 
 
 @pytest.mark.parametrize("suffix", ["", f"/{uuid4()}"])
@@ -67,8 +87,18 @@ def test_admin_reads_metadata_samples_and_pagination(scenario):
         assert detail.status_code == 200, detail.text
         assert detail.json()["session"] == record
         assert detail.json()["samples"] == [body["samples"][0]]
+        summary = detail.json()["summary"]
+        assert summary["all_samples"]["total_samples"] == 2
+        assert summary["all_samples"]["valid_samples"] == 1
+        assert summary["all_samples"]["missing_samples"] == 1
+        assert summary["all_samples"]["interacting_samples"] == 1
+        assert summary["all_samples"]["interacting_percentage"] == 50
+        assert summary["all_samples"]["head_pose"]["yaw"]["mean"] == 10
+        assert summary["all_samples"]["eye_direction"]["unknown"] == {"count": 1, "percentage": 50}
+        assert summary["excluding_interaction"]["head_pose"]["yaw"]["mean"] is None
         detail2 = client.get(f"{ENDPOINT}/{body['client_session_id']}?page=2&page_size=1", headers=headers).json()
         assert detail2["samples"] == [body["samples"][1]]
+        assert detail2["summary"] == summary
         assert client.get(ENDPOINT + "?page=3&page_size=1", headers=headers).json()["items"] == []
         assert client.get(f"{ENDPOINT}/{uuid4()}", headers=headers).status_code == 404
         for query in ("page=0", "page_size=0", "page_size=501"):
