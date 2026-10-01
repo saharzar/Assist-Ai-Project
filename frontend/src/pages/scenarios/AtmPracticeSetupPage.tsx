@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { CreditCard, Eye, EyeOff, KeyRound, Mic, ShieldCheck, Square, UserRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
+import { ComputerVisionConsent } from "../../components/ComputerVisionConsent";
+import { saveComputerVisionConsent } from "../../lib/computerVisionConsent";
+import { computerVisionConsentTranslations } from "../../lib/computerVisionConsentTranslations";
 import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
 import { atmSetupTranslations } from "../../lib/atmSetupTranslations";
 import { atmTranslations } from "../../lib/atmTranslations";
@@ -12,6 +15,7 @@ export function AtmPracticeSetupPage() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [pin, setPin] = useState("");
+  const [allowComputerVisionRecording, setAllowComputerVisionRecording] = useState<boolean | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [nameInputUnlocked, setNameInputUnlocked] = useState(false);
   const [pinInputUnlocked, setPinInputUnlocked] = useState(false);
@@ -21,6 +25,7 @@ export function AtmPracticeSetupPage() {
   const { language } = useTranslation();
   const setupText = atmSetupTranslations[language];
   const atmText = atmTranslations[language];
+  const computerVisionText = computerVisionConsentTranslations[language];
   const [submitted, setSubmitted] = useState(false);
   const [assistantSpeechRequestId, setAssistantSpeechRequestId] = useState(0);
   const [assistantStopRequestId, setAssistantStopRequestId] = useState(0);
@@ -45,6 +50,7 @@ export function AtmPracticeSetupPage() {
   const validationAssistantMessage = [
     !nameIsValid ? setupText.nameError : "",
     !pinIsValid ? setupText.pinError : "",
+    allowComputerVisionRecording === null ? computerVisionText.validation : "",
   ].filter(Boolean).join(" ");
   const setupAssistantMessage = assistantValidationMessage || setupText.assistantMessage;
 
@@ -91,14 +97,15 @@ export function AtmPracticeSetupPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
-    if (!canStart) {
+    if (!canStart || allowComputerVisionRecording === null) {
       setAssistantValidationMessage(validationAssistantMessage);
       setAssistantSpeechRequestId((current) => current + 1);
     }
-    if (canStart) {
+    if (canStart && allowComputerVisionRecording !== null) {
       void unlockAssistantAudioPlayback();
       sessionStorage.setItem("assist_ai_atm_name", fullName.trim());
       sessionStorage.setItem("assist_ai_atm_pin", pin);
+      saveComputerVisionConsent("atm-withdrawal", allowComputerVisionRecording === true);
       navigate("/scenario/atm-withdrawal/practice");
     }
   };
@@ -166,6 +173,8 @@ export function AtmPracticeSetupPage() {
           <p className="mt-2 text-sm text-slate-600">{setupText.pinHint}</p>
           {submitted && !pinIsValid && <p className="mt-2 text-sm font-semibold text-rose-700">{setupText.pinError}</p>}
         </div>
+
+        <ComputerVisionConsent value={allowComputerVisionRecording} onChange={setAllowComputerVisionRecording} showError={submitted && allowComputerVisionRecording === null} />
 
         {voiceError && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{voiceError}</p>}
 
