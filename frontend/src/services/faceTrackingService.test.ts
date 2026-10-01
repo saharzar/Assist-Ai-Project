@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFaceTracking } from "./faceTrackingService";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { createAdminFaceTrackingPreview } from "./adminFaceTrackingPreview";
 
 const vision = vi.hoisted(() => ({
   resolve: vi.fn(),
@@ -74,6 +75,30 @@ describe("browser face tracking lifecycle", () => {
     expect(vision.create).not.toHaveBeenCalled();
     tracker.stop();
     expect(tracker.getCompletedSamples()).toEqual([]);
+    expect(tracker.getPreviewFrame()).toBeNull();
+  });
+
+  it("preview toggles reuse the inference video and do not restart or stop tracking", async () => {
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    const drawImage = vi.fn();
+    const context = { clearRect: vi.fn(), drawImage, beginPath: vi.fn(), moveTo: vi.fn(), arc: vi.fn(), fill: vi.fn() };
+    const canvas = { width: 640, height: 480, getContext: () => context } as unknown as HTMLCanvasElement;
+    const makePreview = () => createAdminFaceTrackingPreview({ token: "admin", canvas,
+      getFrame: tracker.getPreviewFrame, authorize: async () => true, onUpdate: vi.fn(), onUnavailable: vi.fn() });
+    const first = makePreview(); await first.start();
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 640, 480);
+    first.stop();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(vision.detect.mock.calls.length).toBeGreaterThan(1);
+    expect(stopTrack).not.toHaveBeenCalled(); expect(vision.close).not.toHaveBeenCalled();
+    const second = makePreview(); await second.start();
+    expect(getUserMedia).toHaveBeenCalledOnce(); expect(vision.create).toHaveBeenCalledOnce();
+    expect(document.createElement).toHaveBeenCalledOnce();
+    second.stop(); tracker.stop();
+    expect(stopTrack).toHaveBeenCalledOnce(); expect(vision.close).toHaveBeenCalledOnce();
+    expect(tracker.getPreviewFrame()).toBeNull(); expect(vi.getTimerCount()).toBe(0);
   });
 
   it("detects landmarks without timestamps and releases all resources on stop", async () => {

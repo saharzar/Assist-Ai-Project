@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFaceTracking } from "../../hooks/useFaceTracking";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { Mic, Square } from "lucide-react";
 import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
 import atmReceiptPrintSound from "../../assets/atm-receipt-print.mp3";
@@ -323,8 +324,9 @@ export function AtmScenarioPage() {
   const analyticsSessionIdRef = useRef<string | null>(null);
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
   const computerVisionAttemptRef = useRef<Promise<string | null> | null>(null);
-  useFaceTracking("atm-withdrawal", !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
-    !["success", "security_terminated", "lockout"].includes(state.status), () => computerVisionAttemptRef.current);
+  const faceTrackingActive = !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
+    !["success", "security_terminated", "lockout"].includes(state.status);
+  const faceTracking = useFaceTracking("atm-withdrawal", faceTrackingActive, () => computerVisionAttemptRef.current);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
   const lastSpokenSpeechErrorRef = useRef("");
@@ -2245,6 +2247,7 @@ export function AtmScenarioPage() {
         }
       }}
     >
+    <AdminFaceTrackingPreview active={faceTrackingActive} scenario="atm-withdrawal" getFrame={faceTracking.getPreviewFrame} />
     <AtmFrame
       labels={{
         panelTitle: text.panelTitle,

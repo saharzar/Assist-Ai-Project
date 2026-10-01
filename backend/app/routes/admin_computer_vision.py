@@ -15,6 +15,14 @@ from app.schemas.admin_computer_vision import (
 
 router = APIRouter(prefix="/api/admin/computer-vision-sessions", tags=["admin"],
                    dependencies=[Depends(get_current_admin)])
+preview_router = APIRouter(prefix="/api/admin/computer-vision-preview", tags=["admin"],
+                           dependencies=[Depends(get_current_admin)])
+
+
+@preview_router.get("")
+def authorize_local_preview():
+    # Authorization only: no frames, landmarks or tracking values cross this endpoint.
+    return {"allowed": True}
 
 
 def metadata_query():

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFaceTracking } from "./useFaceTracking";
 import type { TrackingSample } from "../services/trackingSessionRecorder";
 import type { ScenarioAttemptId } from "../services/computerVisionSessionService";
+import type { FaceTrackingPreviewFrame } from "../services/faceTrackingService";
 vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ token: "owner-token", guestSessionToken: null }) }));
 
 // Unit-test the hook's lifecycle boundary without a camera or DOM renderer.
@@ -10,6 +11,7 @@ const lifecycle = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
   refCursor: 0,
   trackers: [] as Array<{ start: () => void; stop: () => void }>,
+  previewFrame: null as FaceTrackingPreviewFrame | null,
 }));
 vi.mock("react", () => ({
   useRef: (initial: unknown) => {
@@ -30,6 +32,7 @@ vi.mock("../services/faceTrackingService", async () => {
           recorder.update({ yaw: 0, pitch: 0, roll: 0, estimatedEyeDirection: "center" });
         }),
         stop: vi.fn(() => { options.onSessionComplete(recorder.stop()); }),
+        getPreviewFrame: () => lifecycle.previewFrame,
       };
       lifecycle.trackers.push(tracker);
       return tracker;
@@ -54,6 +57,7 @@ describe("scenario tracking recorder cleanup", () => {
     lifecycle.effects.length = 0;
     lifecycle.refs.length = 0;
     lifecycle.trackers.length = 0;
+    lifecycle.previewFrame = null;
     consent = "allowed";
     surface = new EventTarget();
     vi.stubGlobal("window", Object.assign(surface, { setTimeout, clearTimeout }));
@@ -115,6 +119,15 @@ describe("scenario tracking recorder cleanup", () => {
     expect(lifecycle.trackers[0].start).not.toHaveBeenCalled();
     expect(flow.getCompletedSamples()).toEqual([]);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("exposes the current inference view through a stable getter and clears it on exit", () => {
+    const { flow, cleanup } = render();
+    lifecycle.previewFrame = { video: {} as HTMLVideoElement, landmarks: [], headPose: null,
+      estimatedEyeDirection: null, isUserInteracting: false };
+    expect(flow.getPreviewFrame()).toBe(lifecycle.previewFrame);
+    cleanup();
+    expect(flow.getPreviewFrame()).toBeNull();
   });
 
   it("retains completed data while inactive and clears it when a new scenario session begins", () => {

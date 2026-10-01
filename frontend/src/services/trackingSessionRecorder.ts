@@ -93,5 +93,5 @@ export function createTrackingSessionRecorder(allowed: boolean, interactionOptio
     return completed;
   }
 
-  return { start, update, stop, reset, getCompletedSamples };
+  return { start, update, stop, reset, getCompletedSamples, isUserInteracting: interaction.isUserInteracting };
 }

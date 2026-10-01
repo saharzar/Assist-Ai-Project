@@ -45,6 +45,7 @@ app.include_router(atm_analytics.router)
 app.include_router(bill_analytics.router)
 app.include_router(computer_vision.router)
 app.include_router(admin_computer_vision.router)
+app.include_router(admin_computer_vision.preview_router)
 app.include_router(speech_providers.router)
 app.include_router(user_quotas.router)
 

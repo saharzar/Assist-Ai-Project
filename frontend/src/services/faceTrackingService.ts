@@ -6,6 +6,15 @@ import { createTrackingSessionRecorder, type TrackingSample } from "./trackingSe
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
+/** Ephemeral browser-only view. Never include this object in recording payloads. */
+export type FaceTrackingPreviewFrame = {
+  video: HTMLVideoElement;
+  landmarks: NormalizedLandmark[];
+  headPose: HeadPose | null;
+  estimatedEyeDirection: EyeDirection | null;
+  isUserInteracting: boolean;
+};
+
 type FaceTrackingOptions = {
   allowed: boolean;
   onLandmarks: (landmarks: NormalizedLandmark[][]) => void;
@@ -30,6 +39,8 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
   let frameTimer: ReturnType<typeof setTimeout> | null = null;
   let debugTimer: ReturnType<typeof setInterval> | null = null;
   let landmarkCount = 0;
+  let latestLandmarks: NormalizedLandmark[] = [];
+  let lastDetectionAt: number | null = null;
 
   function stop() {
     if (stopped) return;
@@ -49,6 +60,8 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
     landmarker?.close();
     landmarker = null;
     landmarkCount = 0;
+    latestLandmarks = [];
+    lastDetectionAt = null;
     poseEstimator.reset();
     headPose = null;
     eyeEstimator.reset();
@@ -90,6 +103,8 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       if (video.readyState >= 2 && video.videoWidth > 0) {
         // IMAGE mode does not require inference timestamps; the recorder samples separately.
         const landmarks = landmarker.detect(video).faceLandmarks;
+        latestLandmarks = landmarks[0] ?? [];
+        lastDetectionAt = performance.now();
         headPose = poseEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
         eyeDirection = eyeEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
         recorder.update({
@@ -142,7 +157,7 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       }
       landmarker = instance;
       stage = "playback";
-      // The video is never attached to the DOM: no preview or tracking overlay.
+      // Inference owns this detached video. An authorized local debug canvas may read it.
       video = document.createElement("video");
       video.muted = true;
       video.playsInline = true;
@@ -173,5 +188,11 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
   return {
     start, stop, getHeadPose: () => headPose, getEyeDirection: () => eyeDirection,
     getCompletedSamples: recorder.getCompletedSamples,
+    getPreviewFrame: (): FaceTrackingPreviewFrame | null => {
+      if (stopped || !video || !stream || video.readyState < 2) return null;
+      const fresh = lastDetectionAt !== null && performance.now() - lastDetectionAt <= 500;
+      return { video, landmarks: fresh ? latestLandmarks : [], headPose: fresh ? headPose : null,
+        estimatedEyeDirection: fresh ? eyeDirection : null, isUserInteracting: recorder.isUserInteracting() };
+    },
   };
 }

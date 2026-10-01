@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { readComputerVisionConsent } from "../lib/computerVisionConsent";
-import { createFaceTracking } from "../services/faceTrackingService";
+import { createFaceTracking, type FaceTrackingPreviewFrame } from "../services/faceTrackingService";
 import type { HeadPose } from "../services/headPose";
 import type { EyeDirection } from "../services/eyeDirection";
 import type { TrackingSample } from "../services/trackingSessionRecorder";
@@ -16,6 +16,8 @@ export function useFaceTracking(scenario: ComputerVisionScenario, active: boolea
   const headPoseRef = useRef<HeadPose | null>(null);
   const eyeDirectionRef = useRef<EyeDirection | null>(null);
   const completedSamplesRef = useRef<TrackingSample[]>([]);
+  const previewGetterRef = useRef<(() => FaceTrackingPreviewFrame | null) | null>(null);
+  const getPreviewFrame = useCallback(() => previewGetterRef.current?.() ?? null, []);
   const getCompletedSamples = useCallback(
     () => completedSamplesRef.current.map((sample) => ({ ...sample })),
     [],
@@ -45,11 +47,13 @@ export function useFaceTracking(scenario: ComputerVisionScenario, active: boolea
       },
       onError: () => { console.warn("Face tracking is unavailable. The scenario can continue."); },
     });
+    previewGetterRef.current = tracker.getPreviewFrame;
     // Defer to avoid a duplicate permission request during StrictMode's effect replay.
     const startTimer = window.setTimeout(() => { submission.start(); void tracker.start(); }, 0);
     const stop = () => {
       window.clearTimeout(startTimer);
       tracker.stop();
+      previewGetterRef.current = null;
     };
     window.addEventListener("pagehide", stop);
     return () => {
@@ -58,5 +62,5 @@ export function useFaceTracking(scenario: ComputerVisionScenario, active: boolea
     };
   }, [scenario, active, token, guestSessionToken]);
 
-  return { landmarksRef, headPoseRef, eyeDirectionRef, getCompletedSamples };
+  return { landmarksRef, headPoseRef, eyeDirectionRef, getCompletedSamples, getPreviewFrame };
 }

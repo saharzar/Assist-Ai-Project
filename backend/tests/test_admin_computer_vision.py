@@ -8,6 +8,21 @@ from test_computer_vision import payload
 ENDPOINT = "/api/admin/computer-vision-sessions"
 
 
+def test_local_preview_authorization_uses_authenticated_admin_role():
+    with test_context() as (client, db):
+        path = "/api/admin/computer-vision-preview"
+        user = make_user(db, email="preview-user@example.com")
+        admin = make_user(db, email="preview-admin@example.com", role="admin")
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers=auth_headers(user)).status_code == 403
+        response = client.get(path, headers=auth_headers(admin))
+        assert response.status_code == 200
+        assert response.json() == {"allowed": True}
+        admin.is_active = False
+        db.commit()
+        assert client.get(path, headers=auth_headers(admin)).status_code == 401
+
+
 @pytest.mark.parametrize("suffix", ["", f"/{uuid4()}"])
 def test_reads_require_admin_even_for_unknown_session(suffix):
     with test_context() as (client, db):
