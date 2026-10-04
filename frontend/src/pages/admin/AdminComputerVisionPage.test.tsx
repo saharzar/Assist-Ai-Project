@@ -17,7 +17,7 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ isAuthenticated: state.authenticated, user: { role: state.role } }) }));
 vi.mock("react-router-dom", async (original) => ({ ...await original<typeof import("react-router-dom")>(), useParams: () => ({ sessionId: state.sessionId, routeKey: state.routeKey }) }));
 vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: "en", translateScenario: (value: unknown) => value }) }));
-vi.mock("../../components/HeadPoseCharts", () => ({ SavedHeadPoseCharts: ({ sessionId }: { sessionId: string }) => <section data-session={sessionId}>Head pose over time</section> }));
+vi.mock("../../components/HeadPoseCharts", () => ({ SavedHeadPoseCharts: ({ sessionId }: { sessionId: string }) => <section data-session={sessionId}>Head movement over time</section> }));
 
 const session = { session_id: "record-123", actor_type: "guest", actor_reference: "42", display_name: null,
   scenario_key: "atm-withdrawal", scenario_session_id: "attempt-456", started_at: "2026-10-01T12:00:00Z",
@@ -57,9 +57,13 @@ describe("admin computer vision page", () => {
     state.values = [1, { items: [session], total: 1, page_size: 10 }, null, false, false];
     const html = render();
     expect(html).toContain("#42");
-    expect(html).toContain("attempt-456");
+    expect(html).not.toContain("attempt-456");
     expect(html).toContain("/admin/computer-vision/atm-withdrawal/sessions/record-123");
-    expect(html).toContain("101");
+    expect(html).not.toContain(">101<");
+    expect(html).not.toContain("Scenario attempt");
+    expect(html).not.toContain("Samples");
+    expect(html).toContain("View details");
+    expect(html.match(/scope="col"/g)).toHaveLength(5);
   });
 
   it("shows scenario cards from shared scenario metadata at the recordings index", () => {
@@ -96,11 +100,16 @@ describe("admin computer vision page", () => {
     expect(html).toContain("Unavailable");
     expect(html).toContain(">Left</td>");
     expect(html).toContain("1 / 2");
-    expect(html).toContain("Session Summary");
-    expect(html).toContain("Excluding interaction samples");
-    expect(html.indexOf("Session Summary")).toBeLessThan(html.indexOf("Elapsed time (ms)"));
-    expect(html.indexOf("Session Summary")).toBeLessThan(html.indexOf("Head pose over time"));
-    expect(html.indexOf("Head pose over time")).toBeLessThan(html.indexOf("Elapsed time (ms)"));
+    expect(html).toContain("Session Overview");
+    expect(html).toContain("Excluding keyboard/mouse activity");
+    expect(html.indexOf("Session Overview")).toBeLessThan(html.indexOf("Head movement over time"));
+    expect(html.indexOf("Head movement over time")).toBeLessThan(html.indexOf("Show tracking data"));
+    const disclosures = html.match(/<details[^>]*>/g);
+    expect(disclosures).toHaveLength(2);
+    expect(disclosures?.every((tag) => !tag.includes("open"))).toBe(true);
+    const technical = html.slice(html.indexOf("<details"), html.indexOf("</details>"));
+    expect(technical).toContain("attempt-456");
+    expect(technical).toContain("record-123");
     expect(html).toContain('data-session="record-123"');
     expect(html).toContain("12.34");
     expect(html).toContain("24.75%");
@@ -108,10 +117,49 @@ describe("admin computer vision page", () => {
   });
 
   it("shows null statistics as unavailable and zero percentages for an empty session", () => {
-    const html = renderToStaticMarkup(<ComputerVisionSessionSummary summary={{ all_samples: emptyMetrics, excluding_interaction: emptyMetrics }} />);
+    const html = renderToStaticMarkup(<ComputerVisionSessionSummary durationMs={0} summary={{ all_samples: emptyMetrics, excluding_interaction: emptyMetrics }} />);
     expect(html).toContain("Unavailable");
     expect(html).toContain("0%");
     expect(html).not.toMatch(/NaN|Infinity/);
+    const overview = html.split("<details")[0];
+    expect(overview).toContain("0 sec");
+    expect(overview).toContain("Unknown");
+    expect(overview).not.toContain("0%"); // An empty session has no percentage denominator.
+  });
+
+  it("shows simple overview values while keeping all technical statistics collapsed", () => {
+    const html = renderToStaticMarkup(<ComputerVisionSessionSummary durationMs={127313} summary={summary} />);
+    const [overview, technical] = html.split("<details");
+    expect(overview).toContain("2 min 7 sec");
+    expect(overview).toContain("99%" );
+    expect(overview).toContain("24.8%");
+    expect(overview).toContain("Most common eye direction");
+    expect(overview).toContain(">Left</dd>");
+    expect(overview).toContain("Eye-direction changes");
+    expect(overview).toContain(">9</dd>");
+    expect(overview).toContain("Left / right movement range");
+    expect(overview).toContain("Up / down movement range");
+    expect(overview).toContain("Head tilt range");
+    expect(overview).toContain("30°");
+    expect(overview).not.toMatch(/Minimum|Maximum|Mean|Standard deviation|tracking points|<table/);
+    expect(technical).toContain("Show technical details");
+    expect(technical).toContain("Standard deviation");
+    expect(technical).toContain("Valid tracking points");
+    expect(technical).toContain("Tracking unavailable");
+    expect(technical).toContain("Excluding keyboard/mouse activity");
+    expect(technical).toContain("12.34");
+    expect(html).not.toContain("<details open");
+  });
+
+  it("shows unknown or tied eye directions without inventing a dominant direction", () => {
+    const metrics = { ...emptyMetrics, total_samples: 2, eye_direction: {
+      ...emptyMetrics.eye_direction, left: { count: 1, percentage: 50 }, right: { count: 1, percentage: 50 },
+    } };
+    const html = renderToStaticMarkup(<ComputerVisionSessionSummary durationMs={1000} summary={{ all_samples: metrics, excluding_interaction: emptyMetrics }} />);
+    expect(html.split("<details")[0]).toContain("Left / Right");
+    const unavailable = { ...metrics, eye_direction: { ...emptyMetrics.eye_direction, unknown: { count: 2, percentage: 100 } } };
+    const unknownHtml = renderToStaticMarkup(<ComputerVisionSessionSummary durationMs={1000} summary={{ all_samples: unavailable, excluding_interaction: emptyMetrics }} />);
+    expect(unknownHtml.split("<details")[0]).toContain(">Unknown</dd>");
   });
 
   it("shows a loading failure without stale sample data", () => {

@@ -34,7 +34,10 @@ describe("saved head pose charts", () => {
     const html = render(rows);
     expect(html.match(/data-interaction="true"/g)).toHaveLength(3); // Adjacent samples merge into one band per chart.
     expect(html).toContain('opacity="0.16"');
-    expect(html).toContain("Amber bands: interaction samples");
+    expect(html).toContain("Amber areas: keyboard/mouse activity");
+    expect(html).toContain("Left / right movement");
+    expect(html).toContain("Up / down movement");
+    expect(html).toContain("Head tilt");
   });
 
   it("does not bridge nonfinite values or nonincreasing timestamps", () => {
@@ -44,7 +47,7 @@ describe("saved head pose charts", () => {
   it("handles empty and fully missing sessions without invalid SVG coordinates", () => {
     for (const rows of [[], [sample(500, null)]]) {
       const html = render(rows);
-      expect(html).toContain("No saved head-pose data to display.");
+      expect(html).toContain("No saved head movement data to display.");
       expect(html).not.toMatch(/NaN|Infinity/);
     }
   });

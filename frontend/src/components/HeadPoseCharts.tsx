@@ -83,9 +83,9 @@ export function HeadPoseCharts({ samples, durationMs }: { samples: ComputerVisio
     <p className="mt-1 text-xs text-slate-600">{text.gaps}</p>
     {series.every((item) => item.segments.length === 0) ? <p className="mt-4 text-sm text-slate-600">{text.empty}</p> :
       <div className="mt-4 grid gap-4 xl:grid-cols-3">{series.map(({ axis, segments }, index) => <figure key={axis} className="min-w-0 rounded-lg border border-indigo-950/10 p-3">
-        <figcaption className="font-bold text-[#2a2586]">{labels[axis]}</figcaption>
-        <svg viewBox="0 0 400 260" role="img" aria-label={`${labels[axis]} — ${text.time}`} className="mt-2 w-full">
-          <title>{labels[axis]} — {text.title}</title><desc>{text.interaction}. {text.gaps}</desc>
+        <figcaption className="font-bold text-[#2a2586]">{text[axis]}</figcaption>
+        <svg viewBox="0 0 400 260" role="img" aria-label={`${text[axis]} — ${text.time}`} className="mt-2 w-full">
+          <title>{text[axis]} — {text.title}</title><desc>{text.interaction}. {text.gaps}</desc>
           {bands.map((band, i) => <rect key={i} data-interaction="true" x={x(band.start)} y={30} width={Math.max(1, x(band.end) - x(band.start))} height={170} fill="#fbbf24" opacity={0.16}><title>{labels.interaction}: {format(band.start / 1000)}–{format(band.end / 1000)} s</title></rect>)}
           {[-bound, 0, bound].map((tick) => <g key={tick}><line x1={55} x2={375} y1={y(tick)} y2={y(tick)} stroke="#e2e8f0" /><text x={48} y={y(tick) + 4} textAnchor="end" fontSize={14} fill="#64748b">{format(tick)}</text></g>)}
           <line x1={55} x2={55} y1={30} y2={200} stroke="#94a3b8" /><line x1={55} x2={375} y1={200} y2={200} stroke="#94a3b8" />

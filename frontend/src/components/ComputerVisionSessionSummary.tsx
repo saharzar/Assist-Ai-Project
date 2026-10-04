@@ -1,19 +1,48 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "../i18n";
 import { adminAnalyticsTranslations } from "../lib/adminAnalyticsTranslations";
 import { adminComputerVisionTranslations } from "../lib/adminComputerVisionTranslations";
 import { computerVisionSummaryTranslations } from "../lib/computerVisionSummaryTranslations";
+import { formatComputerVisionDuration } from "../lib/computerVisionDuration";
 import type { ComputerVisionMetrics, ComputerVisionSessionSummary as Summary } from "../services/adminComputerVisionService";
 
-export function ComputerVisionSessionSummary({ summary }: { summary: Summary }) {
+export function ComputerVisionSessionSummary({ summary, durationMs, children }: { summary: Summary; durationMs: number; children?: ReactNode }) {
   const { language } = useTranslation();
   const text = computerVisionSummaryTranslations[language];
-  return <section className="mt-6 rounded-xl border border-indigo-950/10 bg-white p-5" aria-labelledby="cv-summary-title">
+  const labels = adminComputerVisionTranslations[language];
+  const common = adminAnalyticsTranslations[language];
+  const values = summary.all_samples;
+  const number = (value: number) => value.toLocaleString(common.locale, { maximumFractionDigits: 1 });
+  const range = (axis: "yaw" | "pitch" | "roll") => values.head_pose[axis].range === null ? labels.missing : `${number(values.head_pose[axis].range!)}°`;
+  const directions = ["left", "center", "right", "unknown"] as const;
+  const highestCount = Math.max(...directions.map((direction) => values.eye_direction[direction].count));
+  const mostCommon = highestCount === 0 ? text.unknown : directions
+    .filter((direction) => values.eye_direction[direction].count === highestCount)
+    .map((direction) => direction === "unknown" ? text.unknown : labels[direction]).join(" / ");
+  const cards = [
+    [common.duration, formatComputerVisionDuration(durationMs, language)],
+    [text.trackingAvailable, values.total_samples > 0 ? `${number(values.valid_samples / values.total_samples * 100)}%` : labels.missing],
+    [text.interactionPercentage, values.total_samples > 0 ? `${number(values.interacting_percentage)}%` : labels.missing],
+    [text.mostCommonEyeDirection, mostCommon],
+    [text.eyeChanges, number(values.eye_direction_changes)],
+    [text.leftRightRange, range("yaw")], [text.upDownRange, range("pitch")], [text.tiltRange, range("roll")],
+  ];
+  return <section className="mt-6 rounded-xl border border-indigo-950/10 bg-white p-6" aria-labelledby="cv-summary-title">
     <h2 id="cv-summary-title" className="text-xl font-bold">{text.title}</h2>
-    <p className="mt-2 text-xs leading-5 text-slate-600">{text.definitions}</p>
-    <div className="mt-4 grid gap-6 xl:grid-cols-2">
-      <Metrics title={text.all} values={summary.all_samples} />
-      <Metrics title={text.excluding} values={summary.excluding_interaction} />
-    </div>
+    <dl className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(([label, value]) => <div key={label} className="rounded-xl bg-[#f7f7fc] p-4">
+        <dt className="text-sm text-slate-600">{label}</dt><dd className="mt-2 text-xl font-bold text-[#2a2586]">{value}</dd>
+      </div>)}
+    </dl>
+    <details className="mt-6 border-t border-indigo-950/10 pt-4">
+      <summary className="cursor-pointer font-semibold text-[#2a2586]">{text.technicalDetails}</summary>
+      {children}
+      <p className="mt-4 text-xs leading-5 text-slate-600">{text.definitions}</p>
+      <div className="mt-4 grid gap-6 xl:grid-cols-2">
+        <Metrics title={text.all} values={summary.all_samples} />
+        <Metrics title={text.excluding} values={summary.excluding_interaction} />
+      </div>
+    </details>
   </section>;
 }
 
