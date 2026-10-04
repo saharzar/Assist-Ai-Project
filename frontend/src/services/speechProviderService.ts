@@ -94,6 +94,17 @@ export function testSpeechProvider(serviceType: "tts" | "stt", providerKey: Glob
   return apiRequest<{ ok: boolean; status: string }>(`/api/admin/speech-providers/test/${serviceType}/${providerKey}`, { method: "POST" });
 }
 
+export type SonioxUsageSummary = {
+  month: string; period_start: string; period_end: string; updated_at: string;
+  total_cost_usd: string; total_requests: number;
+  models: Array<{ model: string; cost_usd: string; requests: number }>;
+  daily: Array<{ date: string; cost_usd: string; requests: number }>;
+};
+
+export function fetchSonioxUsage(signal?: AbortSignal) {
+  return apiRequest<SonioxUsageSummary>("/api/admin/speech-providers/soniox-usage", { signal });
+}
+
 export const SPEECH_PROVIDER_UPDATED_EVENT = "assist-ai:speech-provider-updated";
 export const SPEECH_PROVIDER_USED_EVENT = "assist-ai:speech-provider-used";
 

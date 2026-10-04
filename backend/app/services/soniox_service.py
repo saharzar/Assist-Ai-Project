@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 import time
 import unicodedata
 
@@ -28,6 +29,15 @@ class SonioxProviderError(HTTPException):
         self.quota_error = quota_error
 
 
+def _safe_soniox_error_message(message: object) -> str:
+    """Provider diagnostics can reach API responses and persisted admin events."""
+    text = str(message)
+    key = get_settings().soniox_api_key
+    if key:
+        text = text.replace(key, "[REDACTED]")
+    return re.sub(r"(?i)(Bearer\s+)[^\s,;\"']+", r"\1[REDACTED]", text)
+
+
 def _raise_for_soniox(response: httpx.Response) -> None:
     if response.is_success:
         return
@@ -38,7 +48,7 @@ def _raise_for_soniox(response: httpx.Response) -> None:
         message = "Soniox request failed."
     raise SonioxProviderError(
         status.HTTP_503_SERVICE_UNAVAILABLE,
-        message,
+        _safe_soniox_error_message(message),
         quota_error=response.status_code in QUOTA_STATUS_CODES,
     )
 
@@ -139,7 +149,7 @@ def recognize_soniox_stt(audio: bytes, request_id: str, language: str, mode: str
                 if state.get("status") in {"error", "failed"}:
                     raise SonioxProviderError(
                         status.HTTP_503_SERVICE_UNAVAILABLE,
-                        str(state.get("error_message") or "Soniox transcription failed."),
+                        _safe_soniox_error_message(state.get("error_message") or "Soniox transcription failed."),
                     )
                 time.sleep(0.25)
             raise SonioxProviderError(status.HTTP_504_GATEWAY_TIMEOUT, "Soniox transcription timed out.")

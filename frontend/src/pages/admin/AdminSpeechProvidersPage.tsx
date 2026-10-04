@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
+import { SonioxUsageCard } from "../../components/admin/SonioxUsageCard";
 import { useTranslation, type LanguageCode } from "../../i18n";
 import { speechProviderTranslations } from "../../lib/speechProviderTranslations";
 import {
@@ -105,7 +106,9 @@ export function AdminSpeechProvidersPage() {
     <div className="catalogue-style-heading"><h1 className="font-display text-3xl font-bold text-[#1d1a5e]">{text.title}</h1></div>
     {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</p>}
     {success && <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 font-semibold text-teal-800">{success}</p>}
+    <SonioxUsageCard />
     {isLoading ? <p className="py-12 text-center font-semibold">{text.loading}</p> : draft && dashboard ? <>
+      <p className="mt-7 text-sm font-semibold text-slate-500">{text.estimatedNotice}</p>
       <ProviderOverview dashboard={dashboard} text={text} labels={labels} language={language} />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-b border-indigo-950/10">
         <div className="flex gap-1" role="tablist" aria-label="Speech provider views">

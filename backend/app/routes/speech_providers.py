@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 import httpx
 
 from app.core.config import get_settings
+from app.schemas.soniox_usage import SonioxUsageSummary
+from app.services.soniox_usage import fetch_current_month_soniox_usage
 
 from app.core.security import get_current_admin, get_current_user, get_speech_actor
 from app.database import get_db
@@ -34,6 +36,15 @@ from app.services.speech_provider_manager import (
 )
 
 router = APIRouter(tags=["speech providers"])
+
+
+@router.get("/api/admin/speech-providers/soniox-usage", response_model=SonioxUsageSummary)
+def get_soniox_usage(
+    response: Response,
+    current_admin: User = Depends(get_current_admin),
+) -> SonioxUsageSummary:
+    response.headers["Cache-Control"] = "no-store"
+    return fetch_current_month_soniox_usage()
 
 
 @router.get("/api/speech/providers/{service_type}", response_model=SpeechProviderResolution)
