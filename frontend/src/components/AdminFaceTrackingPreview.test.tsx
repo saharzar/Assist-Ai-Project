@@ -29,7 +29,19 @@ describe("scenario admin preview control", () => {
     const html = render();
     expect(html).toContain('role="switch"'); expect(html).toContain('aria-checked="false"');
     expect(html).toContain("OFF"); expect(html).not.toContain("<canvas");
+    expect(html).toContain("fixed right-3 top-24");
+    expect(html).toContain("max-sm:bottom-3");
+    expect(html).toContain("Collapse preview panel");
     state.effects[1](); expect(createAdminFaceTrackingPreview).not.toHaveBeenCalled();
+  });
+
+  it("can render a compact collapsed OFF header without moving the scenario", () => {
+    state.values = [true, false, false, null, true];
+    const html = render();
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain("Expand preview panel");
+    expect(html).not.toContain("<canvas");
+    expect(html).not.toContain("Local admin preview only");
   });
 
   it("ON displays the camera canvas and derived tracking summary", () => {

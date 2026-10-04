@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import { readComputerVisionConsent } from "../lib/computerVisionConsent";
@@ -24,6 +25,7 @@ function AuthorizedPreview({ scenario, getFrame, token }: Props & { token: strin
   const [enabled, setEnabled] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [summary, setSummary] = useState<PreviewSummary | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const consent = readComputerVisionConsent(scenario) === true;
 
@@ -48,19 +50,28 @@ function AuthorizedPreview({ scenario, getFrame, token }: Props & { token: strin
   if (!authorized) return null;
   const yesNo = (value: boolean | undefined) => value ? labels.yes : labels.no;
   const angle = (value: number | undefined) => value === undefined ? labels.missing : `${value.toFixed(1)}°`;
-  return <section className="mx-auto my-4 max-w-xl rounded-xl border border-indigo-200 bg-white p-4 text-[#1d1a3d]">
+  return <section className="fixed right-3 top-24 z-50 max-h-[calc(100dvh-7rem)] w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-indigo-200 bg-white p-3 text-[#1d1a3d] shadow-xl sm:right-5 sm:p-4 max-sm:bottom-3 max-sm:top-auto max-sm:max-h-[calc(100dvh-1.5rem)] max-sm:w-[min(17rem,calc(100vw-1.5rem))]">
     <div className="flex items-center justify-between gap-4">
-      <h2 className="font-bold">{text.title}</h2>
-      <button type="button" role="switch" aria-checked={enabled && consent} aria-label={text.title}
-        disabled={!consent} onClick={() => setEnabled((value) => !value)}
-        className="rounded-full border border-indigo-200 px-4 py-2 font-bold focus:ring-2 focus:ring-cyan-400 disabled:opacity-40">
-        {enabled && consent ? text.on : text.off}
-      </button>
+      <h2 className="min-w-0 text-sm font-bold leading-tight">{text.title}</h2>
+      <div className="flex shrink-0 items-center gap-2">
+        <button type="button" role="switch" aria-checked={enabled && consent} aria-label={text.title}
+          data-atm-button-sound="true" disabled={!consent}
+          onClick={() => setEnabled((value) => { const next = !value; if (next) setCollapsed(false); return next; })}
+          className="rounded-full border border-indigo-200 px-3 py-1.5 text-sm font-bold focus:ring-2 focus:ring-cyan-400 disabled:opacity-40">
+          {enabled && consent ? text.on : text.off}
+        </button>
+        <button type="button" aria-label={collapsed ? text.expand : text.collapse}
+          aria-expanded={!collapsed} data-atm-button-sound="true"
+          onClick={() => { if (enabled) setEnabled(false); setCollapsed((value) => !value); }}
+          className="rounded-full p-1.5 text-[#2a2586] hover:bg-indigo-50 focus:ring-2 focus:ring-cyan-400">
+          {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronUp className="h-4 w-4" aria-hidden="true" />}
+        </button>
+      </div>
     </div>
-    {!consent && <p className="mt-2 text-sm text-slate-600">{text.consentRequired}</p>}
-    {enabled && consent && <>
-      <p className="mt-2 text-xs text-slate-600">{text.localOnly}</p>
-      <canvas ref={canvas} width={640} height={480} aria-label={text.title} className="mt-3 w-full rounded-lg bg-slate-950" />
+    {!collapsed && !consent && <p className="mt-2 text-xs text-slate-600">{text.consentRequired}</p>}
+    {!collapsed && enabled && consent && <>
+      <p className="mt-2 text-[11px] leading-4 text-slate-600">{text.localOnly}</p>
+      <canvas ref={canvas} width={640} height={480} aria-label={text.title} className="mt-2 max-h-44 w-full rounded-lg bg-slate-950 object-contain sm:max-h-48" />
       {unavailable ? <p role="status" className="mt-2 text-sm text-amber-800">{text.unavailable}</p> : <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
         {[[text.camera, yesNo(summary?.cameraTrackingActive)], [text.face, yesNo(summary?.faceDetected)],
           [text.landmarks, summary?.landmarkCount ?? 0], [labels.yaw, angle(summary?.headPose?.yaw)],
