@@ -2247,8 +2247,8 @@ export function AtmScenarioPage() {
         }
       }}
     >
-    <AdminFaceTrackingPreview active={faceTrackingActive} scenario="atm-withdrawal" getFrame={faceTracking.getPreviewFrame} />
     <AtmFrame
+      trackingPreview={<AdminFaceTrackingPreview active={faceTrackingActive} scenario="atm-withdrawal" getFrame={faceTracking.getPreviewFrame} />}
       labels={{
         panelTitle: text.panelTitle,
         practiceMode: text.practiceMode,

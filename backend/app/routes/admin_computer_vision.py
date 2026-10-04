@@ -52,11 +52,17 @@ def metadata(row):
 
 @router.get("", response_model=ComputerVisionSessionList)
 def list_sessions(page: int = Query(1, ge=1), page_size: int = Query(10, ge=1, le=100),
+                  scenario_key: str | None = Query(None, max_length=64),
                   db: Session = Depends(get_db)):
-    rows = db.execute(metadata_query().order_by(ComputerVisionSession.started_at.desc(), ComputerVisionSession.id.desc())
+    query = metadata_query()
+    count_query = select(func.count()).select_from(ComputerVisionSession)
+    if scenario_key is not None:
+        query = query.where(ComputerVisionSession.scenario_key == scenario_key)
+        count_query = count_query.where(ComputerVisionSession.scenario_key == scenario_key)
+    rows = db.execute(query.order_by(ComputerVisionSession.started_at.desc(), ComputerVisionSession.id.desc())
                       .offset((page - 1) * page_size).limit(page_size)).all()
     return ComputerVisionSessionList(items=[metadata(row) for row in rows],
-                                    total=db.scalar(select(func.count()).select_from(ComputerVisionSession)),
+                                    total=db.scalar(count_query),
                                     page=page, page_size=page_size)
 
 

@@ -8,14 +8,14 @@ import { computerVisionSummaryTranslations } from "../../lib/computerVisionSumma
 import type { ComputerVisionMetrics } from "../../services/adminComputerVisionService";
 import { ComputerVisionSessionSummary } from "../../components/ComputerVisionSessionSummary";
 
-const state = vi.hoisted(() => ({ authenticated: true, role: "admin", sessionId: undefined as string | undefined,
+const state = vi.hoisted(() => ({ authenticated: true, role: "admin", sessionId: undefined as string | undefined, routeKey: undefined as string | undefined,
   values: [] as unknown[], index: 0 }));
 
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(),
   useState: (initial: unknown) => [state.values.length ? state.values[state.index++] : initial, vi.fn()],
 }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ isAuthenticated: state.authenticated, user: { role: state.role } }) }));
-vi.mock("react-router-dom", async (original) => ({ ...await original<typeof import("react-router-dom")>(), useParams: () => ({ sessionId: state.sessionId }) }));
+vi.mock("react-router-dom", async (original) => ({ ...await original<typeof import("react-router-dom")>(), useParams: () => ({ sessionId: state.sessionId, routeKey: state.routeKey }) }));
 vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: "en", translateScenario: (value: unknown) => value }) }));
 vi.mock("../../components/HeadPoseCharts", () => ({ SavedHeadPoseCharts: ({ sessionId }: { sessionId: string }) => <section data-session={sessionId}>Head pose over time</section> }));
 
@@ -37,7 +37,7 @@ const summary = { all_samples: { ...emptyMetrics, total_samples: 101, valid_samp
 const render = () => renderToStaticMarkup(<MemoryRouter><AdminComputerVisionPage /></MemoryRouter>);
 
 beforeEach(() => {
-  state.authenticated = true; state.role = "admin"; state.sessionId = undefined; state.values = []; state.index = 0;
+  state.authenticated = true; state.role = "admin"; state.sessionId = undefined; state.routeKey = undefined; state.values = []; state.index = 0;
 });
 
 describe("admin computer vision page", () => {
@@ -58,8 +58,29 @@ describe("admin computer vision page", () => {
     const html = render();
     expect(html).toContain("#42");
     expect(html).toContain("attempt-456");
-    expect(html).toContain("/admin/computer-vision/record-123");
+    expect(html).toContain("/admin/computer-vision/atm-withdrawal/sessions/record-123");
     expect(html).toContain("101");
+  });
+
+  it("shows scenario cards from shared scenario metadata at the recordings index", () => {
+    const html = renderToStaticMarkup(<MemoryRouter><AdminComputerVisionPage view="index" /></MemoryRouter>);
+    expect(html).toContain("Select a scenario to review its computer vision recordings.");
+    expect(html).toContain("Withdrawing Money from an ATM");
+    expect(html).toContain("Paying a Bill Online");
+    expect(html).toContain("/admin/computer-vision/atm-withdrawal");
+    expect(html).toContain("/admin/computer-vision/online-bill-payment");
+    expect(html.match(/<article/g)).toHaveLength(12);
+    expect(html).toContain("Coming soon");
+  });
+
+  it("shows only the selected scenario's sessions and keeps pagination metadata", () => {
+    state.routeKey = "online-bill-payment";
+    state.values = [1, { items: [{ ...session, scenario_key: "online-bill-payment" }], total: 11, page: 1, page_size: 10 }, null, false, false];
+    const html = renderToStaticMarkup(<MemoryRouter><AdminComputerVisionPage view="route" /></MemoryRouter>);
+    expect(html).toContain("Paying a Bill Online — Computer vision recordings");
+    expect(html).toContain("/ 2");
+    expect(html).toContain("/admin/computer-vision/online-bill-payment/sessions/record-123");
+    expect(html).toContain("/admin/computer-vision");
   });
 
   it("renders nulls as unavailable and interaction with both a highlight and a text label", () => {

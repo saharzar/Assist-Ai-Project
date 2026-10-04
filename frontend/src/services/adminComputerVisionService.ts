@@ -45,8 +45,10 @@ export type ComputerVisionSessionSummary = {
   all_samples: ComputerVisionMetrics; excluding_interaction: ComputerVisionMetrics;
 };
 
-export function fetchComputerVisionSessions(page = 1) {
-  return apiRequest<ComputerVisionSessionList>(`/api/admin/computer-vision-sessions?page=${page}&page_size=10`);
+export function fetchComputerVisionSessions(page = 1, scenarioKey?: string) {
+  const query = new URLSearchParams({ page: String(page), page_size: "10" });
+  if (scenarioKey) query.set("scenario_key", scenarioKey);
+  return apiRequest<ComputerVisionSessionList>(`/api/admin/computer-vision-sessions?${query}`);
 }
 
 export function fetchComputerVisionSession(sessionId: string, page = 1) {

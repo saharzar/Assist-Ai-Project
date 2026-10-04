@@ -43,6 +43,27 @@ def test_empty_saved_session_returns_an_empty_summary():
             assert group["eye_direction"]["unknown"]["percentage"] == 0
 
 
+def test_session_list_filters_by_scenario_before_paginating_and_counting():
+    with test_context() as (client, db):
+        owner = make_user(db, email="cv-filter-owner@example.com")
+        admin = make_user(db, email="cv-filter-admin@example.com", role="admin")
+        owner_headers = auth_headers(owner)
+        for scenario in ("atm-withdrawal", "online-bill-payment", "atm-withdrawal"):
+            result = client.post("/api/computer-vision-sessions", headers=owner_headers, json=payload(scenario))
+            assert result.status_code == 200, result.text
+        headers = auth_headers(admin)
+        atm_page = client.get(f"{ENDPOINT}?scenario_key=atm-withdrawal&page_size=1", headers=headers)
+        assert atm_page.status_code == 200
+        assert atm_page.json()["total"] == 2
+        assert len(atm_page.json()["items"]) == 1
+        assert {item["scenario_key"] for item in atm_page.json()["items"]} == {"atm-withdrawal"}
+        bill_page = client.get(f"{ENDPOINT}?scenario_key=online-bill-payment", headers=headers)
+        assert bill_page.json()["total"] == 1
+        assert {item["scenario_key"] for item in bill_page.json()["items"]} == {"online-bill-payment"}
+        future_scenario = client.get(f"{ENDPOINT}?scenario_key=future-scenario", headers=headers)
+        assert future_scenario.json()["items"] == [] and future_scenario.json()["total"] == 0
+
+
 @pytest.mark.parametrize("suffix", ["", f"/{uuid4()}"])
 def test_reads_require_admin_even_for_unknown_session(suffix):
     with test_context() as (client, db):

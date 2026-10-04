@@ -29,8 +29,8 @@ describe("scenario admin preview control", () => {
     const html = render();
     expect(html).toContain('role="switch"'); expect(html).toContain('aria-checked="false"');
     expect(html).toContain("OFF"); expect(html).not.toContain("<canvas");
-    expect(html).toContain("fixed right-3 top-24");
-    expect(html).toContain("max-sm:bottom-3");
+    expect(html).toContain("w-full min-w-0");
+    expect(html).not.toContain("fixed right-3");
     expect(html).toContain("Collapse preview panel");
     state.effects[1](); expect(createAdminFaceTrackingPreview).not.toHaveBeenCalled();
   });

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ATMRealisticShell } from "./ATMRealisticShell";
+import { ScenarioAssistantColumn } from "../ScenarioAssistantColumn";
 
 export function AtmFrame({
   assistantMessage,
@@ -26,6 +27,7 @@ export function AtmFrame({
   onCardCollect,
   onCardInsert,
   children,
+  trackingPreview,
 }: {
   assistantMessage: ReactNode;
   soundControls: ReactNode;
@@ -54,6 +56,7 @@ export function AtmFrame({
   onCardCollect: () => void;
   onCardInsert: () => void;
   children: ReactNode;
+  trackingPreview?: ReactNode;
 }) {
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4">
@@ -82,7 +85,7 @@ export function AtmFrame({
           {children}
         </ATMRealisticShell>
 
-        <aside className="flex flex-col gap-4 rounded-xl border border-cyan-300/25 bg-[#111735]/95 p-5 shadow-[0_20px_55px_rgba(3,7,18,0.38)] backdrop-blur-sm">
+        <ScenarioAssistantColumn assistant={<aside className="flex flex-col gap-4 rounded-xl border border-cyan-300/25 bg-[#111735]/95 p-5 shadow-[0_20px_55px_rgba(3,7,18,0.38)] backdrop-blur-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-display text-sm font-bold uppercase tracking-wide text-white">{labels.panelTitle}</p>
@@ -97,7 +100,9 @@ export function AtmFrame({
           <div className="border-t border-cyan-100/15 pt-4 text-sm font-semibold leading-6 text-slate-200">
             {labels.warning}
           </div>
-        </aside>
+        </aside>}>
+          {trackingPreview}
+        </ScenarioAssistantColumn>
       </div>
     </section>
   );

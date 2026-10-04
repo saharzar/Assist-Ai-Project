@@ -50,7 +50,7 @@ function AuthorizedPreview({ scenario, getFrame, token }: Props & { token: strin
   if (!authorized) return null;
   const yesNo = (value: boolean | undefined) => value ? labels.yes : labels.no;
   const angle = (value: number | undefined) => value === undefined ? labels.missing : `${value.toFixed(1)}°`;
-  return <section className="fixed right-3 top-24 z-50 max-h-[calc(100dvh-7rem)] w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-indigo-200 bg-white p-3 text-[#1d1a3d] shadow-xl sm:right-5 sm:p-4 max-sm:bottom-3 max-sm:top-auto max-sm:max-h-[calc(100dvh-1.5rem)] max-sm:w-[min(17rem,calc(100vw-1.5rem))]">
+  return <section className="w-full min-w-0 rounded-xl border border-indigo-200 bg-white p-3 text-[#1d1a3d] shadow-lg sm:p-4">
     <div className="flex items-center justify-between gap-4">
       <h2 className="min-w-0 text-sm font-bold leading-tight">{text.title}</h2>
       <div className="flex shrink-0 items-center gap-2">

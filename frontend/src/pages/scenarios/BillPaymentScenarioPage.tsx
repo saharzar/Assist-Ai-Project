@@ -189,8 +189,7 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
 
   return (
     <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
-    <AdminFaceTrackingPreview active={faceTrackingActive} scenario="online-bill-payment" getFrame={faceTracking.getPreviewFrame} />
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />} trackingPreview={<AdminFaceTrackingPreview active={faceTrackingActive} scenario="online-bill-payment" getFrame={faceTracking.getPreviewFrame} />}>
       {inactivityTimedOut ? (
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />

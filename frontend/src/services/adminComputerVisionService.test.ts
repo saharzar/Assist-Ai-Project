@@ -31,6 +31,13 @@ describe("admin computer vision reads", () => {
     expect(apiRequest).toHaveBeenCalledWith("/api/admin/computer-vision-sessions?page=2&page_size=10");
   });
 
+  it("filters recordings by scenario while retaining the existing page size", async () => {
+    const response = { items: [], total: 0, page: 2, page_size: 10 };
+    vi.mocked(apiRequest).mockResolvedValue(response);
+    await expect(fetchComputerVisionSessions(2, "atm-withdrawal")).resolves.toEqual(response);
+    expect(apiRequest).toHaveBeenCalledWith("/api/admin/computer-vision-sessions?page=2&page_size=10&scenario_key=atm-withdrawal");
+  });
+
   it("requests a bounded sample page and encodes the recording identifier", async () => {
     const response = { session: { sample_count: 300 }, samples: [], page: 3, page_size: 100 };
     vi.mocked(apiRequest).mockResolvedValue(response);

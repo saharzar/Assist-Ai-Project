@@ -50,8 +50,10 @@ export function App() {
             </Route>
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="admin/users" element={<AdminUsersPage />} />
-              <Route path="admin/computer-vision" element={<AdminComputerVisionPage key="computer-vision-list" />} />
-              <Route path="admin/computer-vision/:sessionId" element={<AdminComputerVisionPage key="computer-vision-detail" />} />
+              <Route path="admin/computer-vision" element={<AdminComputerVisionPage view="index" />} />
+              <Route path="admin/computer-vision/sessions/:sessionId" element={<AdminComputerVisionPage view="detail" />} />
+              <Route path="admin/computer-vision/:routeKey/sessions/:sessionId" element={<AdminComputerVisionPage view="detail" />} />
+              <Route path="admin/computer-vision/:routeKey" element={<AdminComputerVisionPage view="route" />} />
               <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
               <Route path="admin/bill-analytics" element={<AdminBillAnalyticsPage />} />
               <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
