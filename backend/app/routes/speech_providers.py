@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 import httpx
 
@@ -9,7 +9,7 @@ from app.services.soniox_usage import fetch_current_month_soniox_usage
 
 from app.core.security import get_current_admin, get_current_user, get_speech_actor
 from app.database import get_db
-from app.models.speech_provider import SpeechProviderCapabilityConfig, SpeechUsage
+from app.models.speech_provider import SpeechProviderCapabilityConfig, SpeechUsage, SpeechUsageRequest
 from app.models.user import User
 from app.models.guest_session import GuestSession
 from app.schemas.speech_provider import (
@@ -19,6 +19,8 @@ from app.schemas.speech_provider import (
     GlobalSpeechDashboard,
     GlobalSpeechRoutingUpdate,
     SpeechCapabilityRead,
+    SpeechCalendarMonthUsage,
+    SpeechMonthProviderUsage,
 )
 from app.services.speech_provider_manager import (
     get_or_create_provider_settings,
@@ -113,8 +115,29 @@ def _global_dashboard(db: Session) -> GlobalSpeechDashboard:
     active_stt = resolve_global_provider(db, "stt")
     history = list(db.scalars(select(SpeechUsage).where(SpeechUsage.provider.in_(["soniox", "browser"])).order_by(SpeechUsage.billing_period.desc(), SpeechUsage.service_type, SpeechUsage.provider)).all())
     event_rows = list_provider_events(db)
+    # Calendar-month totals come from request dates, not billing-period history.
+    # Custom quotas may span two months. Stored charged amounts also preserve
+    # new speech generated during partial cache hits; full hits have zero charge.
+    now = utc_now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_rows = db.execute(select(
+        SpeechUsageRequest.provider, SpeechUsageRequest.service_type,
+        func.sum(SpeechUsageRequest.characters_used), func.sum(SpeechUsageRequest.audio_seconds_used),
+    ).where(
+        SpeechUsageRequest.created_at >= month_start,
+        SpeechUsageRequest.created_at <= now,
+        SpeechUsageRequest.provider.in_(["soniox", "browser"]),
+        SpeechUsageRequest.outcome == "success",
+    ).group_by(SpeechUsageRequest.provider, SpeechUsageRequest.service_type)
+      .order_by(SpeechUsageRequest.provider, SpeechUsageRequest.service_type)).all()
     return GlobalSpeechDashboard(
         estimate_notice="Estimated usage based on ASSIST-AI requests.",
+        current_month_usage=SpeechCalendarMonthUsage(
+            month=month_start.date(),
+            items=[SpeechMonthProviderUsage(provider=provider, service_type=service,
+                                           characters_used=characters or 0, audio_seconds_used=seconds or 0)
+                   for provider, service, characters, seconds in month_rows],
+        ),
         automatic_tts_routing_enabled=provider_settings.automatic_tts_routing_enabled,
         automatic_stt_routing_enabled=provider_settings.automatic_stt_routing_enabled,
         forced_tts_provider_key=provider_settings.forced_tts_provider_key,

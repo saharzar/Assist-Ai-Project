@@ -39,6 +39,7 @@ describe("admin API response parsing", () => {
       automatic_stt_routing_enabled: true, forced_tts_provider_key: null,
       forced_stt_provider_key: null, active_tts_provider: "soniox", active_stt_provider: "soniox",
       capabilities: [], usage_history: [], events: [],
+      current_month_usage: { month: "2026-10-01", items: [] },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(dashboard)));
 

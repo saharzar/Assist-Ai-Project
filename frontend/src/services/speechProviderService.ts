@@ -67,6 +67,10 @@ export type GlobalSpeechDashboard = {
   forced_tts_provider_key: GlobalSpeechProvider | null; forced_stt_provider_key: GlobalSpeechProvider | null;
   active_tts_provider: GlobalSpeechProvider; active_stt_provider: GlobalSpeechProvider;
   capabilities: SpeechCapability[]; usage_history: SpeechUsageHistory[]; events: SpeechProviderEvent[];
+  current_month_usage: {
+    month: string;
+    items: Array<{ provider: GlobalSpeechProvider; service_type: "tts" | "stt"; characters_used: number; audio_seconds_used: number }>;
+  };
 };
 
 export type GlobalSpeechRoutingUpdate = {
@@ -80,7 +84,7 @@ export async function fetchGlobalSpeechDashboard() {
   const path = "/api/admin/speech-providers/global";
   const payload = await apiRequest<unknown>(path);
   return expectObjectResponse<GlobalSpeechDashboard>(payload, path, [
-    "active_tts_provider", "active_stt_provider", "capabilities", "usage_history", "events",
+    "active_tts_provider", "active_stt_provider", "capabilities", "usage_history", "events", "current_month_usage",
   ], ["data", "dashboard"]);
 }
 
