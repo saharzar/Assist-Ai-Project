@@ -56,7 +56,8 @@ describe("admin computer vision page", () => {
   it("renders metadata and the detail link", () => {
     state.values = [1, { items: [session], total: 1, page_size: 10 }, null, false, false];
     const html = render();
-    expect(html).toContain("#42");
+    expect(html).toContain("Guest");
+    expect(html).not.toContain("#42");
     expect(html).not.toContain("attempt-456");
     expect(html).toContain("/admin/computer-vision/atm-withdrawal/sessions/record-123");
     expect(html).not.toContain(">101<");
@@ -101,6 +102,7 @@ describe("admin computer vision page", () => {
     expect(html).toContain(">Left</td>");
     expect(html).toContain("1 / 2");
     expect(html).toContain("Session Overview");
+    expect(html).not.toContain("#42");
     expect(html).toContain("Excluding keyboard/mouse activity");
     expect(html.indexOf("Session Overview")).toBeLessThan(html.indexOf("Head movement over time"));
     expect(html.indexOf("Head movement over time")).toBeLessThan(html.indexOf("Show tracking data"));

@@ -95,7 +95,7 @@ function ComputerVisionRecordings({ view }: { view: "index" | "route" | "detail"
     {error && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4">{common.loadError}</p>}
     {!loading && !error && list && <><DataTable headings={[common.user, text.scenario, text.date, common.duration, text.open]}>
       {list.items.map((session) => <tr key={session.session_id} className="hover:bg-[#fafbff]">
-        <Cell>{session.display_name && <span className="block font-bold">{session.display_name}</span>}{session.actor_type === "guest" ? common.guest : common.registered} #{session.actor_reference}</Cell>
+        <Cell>{session.display_name && <span className="block font-bold">{session.display_name}</span>}{session.actor_type === "guest" ? common.guest : common.registered}</Cell>
         <Cell>{scenarioName(session.scenario_key)}</Cell>
         <Cell>{date(session.started_at)}</Cell><Cell>{duration(session.duration_ms)}</Cell>
         <Cell><Link className="font-bold text-[#2a2586] hover:underline" to={`/admin/computer-vision/${session.scenario_key}/sessions/${session.session_id}`}>{text.open}</Link></Cell>
@@ -105,7 +105,7 @@ function ComputerVisionRecordings({ view }: { view: "index" | "route" | "detail"
     {!loading && !error && detail && <>
       <dl className="mt-6 grid gap-5 sm:grid-cols-3">
         {[
-          [common.user, `${detail.session.display_name ?? ""} ${detail.session.actor_type === "guest" ? common.guest : common.registered} #${detail.session.actor_reference}`],
+          [common.user, `${detail.session.display_name ?? ""} ${detail.session.actor_type === "guest" ? common.guest : common.registered}`.trim()],
           [text.scenario, scenarioName(detail.session.scenario_key)],
           [text.date, date(detail.session.started_at)],
         ].map(([label, value]) => <div key={label}><dt className="text-sm font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words font-semibold">{value}</dd></div>)}
