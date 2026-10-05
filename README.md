@@ -39,8 +39,9 @@ The selected language controls the interface, feedback, errors, and assistant pr
 - Backend: FastAPI, SQLAlchemy, Alembic, JWT authentication
 - Database: PostgreSQL via Docker Compose
 - Speech: Soniox with browser speech as fallback
+- Computer vision: browser-based MediaPipe face landmarks, approximate head rotation and eye direction
 - Deployment: Docker Compose, Nginx, and Linux VPS support
-- Data: Persisted users, guest sessions, scenario analytics, speech quotas, provider events, usage periods, and cached TTS metadata
+- Data: Persisted users, guest sessions, scenario analytics, consented derived computer-vision recordings, speech quotas, provider events, usage periods, and cached TTS metadata
 
 ## Architecture
 
@@ -76,21 +77,32 @@ This version includes:
 - Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, and audit history
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
 - Speech input for supported steps and applause feedback on success
+- Required Yes/No computer-vision recording choice in both scenario setup forms, with neither option preselected
+- Consented browser face tracking with derived session recording; no stored webcam video, images, or landmarks
+- Admin computer-vision recordings grouped by scenario, with a simple overview, head-movement charts, and expandable technical details
+- Admin-only local computer-vision preview below the scenario's voice assistant
+- Official current-month Soniox costs and model/daily usage, separate from ASSIST-AI estimates
 - `GET /health`
 - `GET /api/scenarios`
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /guests/session`
-- `GET /admin/users`
-- `GET /admin/users/pending`
-- `POST /admin/users/{user_id}/approve`
-- `POST /admin/users/{user_id}/deny`
-- `POST /admin/users/{user_id}/suspend`
-- `POST /admin/users/{user_id}/activate`
-- `POST /admin/email/test`
+- `GET /api/admin/users`
+- `GET /api/admin/users/pending`
+- `POST /api/admin/users/{user_id}/approve`
+- `POST /api/admin/users/{user_id}/deny`
+- `POST /api/admin/users/{user_id}/suspend`
+- `POST /api/admin/users/{user_id}/activate`
+- `POST /api/admin/email/test`
 - `GET /api/tts/usage`
 - `POST /api/tts`
+- `POST /api/stt`
+- `POST /api/computer-vision-sessions`
+- `GET /api/admin/computer-vision-sessions`
+- `GET /api/admin/computer-vision-sessions/{session_id}`
+- `GET /api/admin/computer-vision-preview`
+- `GET /api/admin/speech-providers/soniox-usage`
 
 Other scenarios remain visible as locked or disabled previews while the ATM and online bill-payment scenarios are available.
 
@@ -117,7 +129,7 @@ Scenario analytics include registered and guest sessions and classify outcomes a
 
 Online Bill Payment is also available under **Admin → Scenario Analytics**. Tracking starts when the practice run opens and respects guest progress consent. It records login attempts and failures, card-validation errors, payment attempts, paid-bill counts, back navigation, language, duration, final step, and exit/timeout reasons. Credentials and card details are never sent to analytics. A visit can include multiple bills; on exit it is successful if at least one bill was paid, otherwise abandoned (or security terminated after login lockout). Active visits remain visible as in progress. Administrators can filter sessions and open each user's or guest's history. Existing visits before this feature cannot be reconstructed.
 
-Apply migration `20260930_0015` with `alembic upgrade head` from `backend` before running this version against an existing database.
+Bill-payment analytics were introduced in migration `20260930_0015`. Before running this version against an existing database, apply all migrations with `alembic upgrade head`; the current head is `20261001_0017`.
 
 ## Online Bill-Payment Draft Flow
 
@@ -138,11 +150,29 @@ The inactivity monitor displays and speaks warnings after 15, 30, and 45 seconds
 
 The complete flow, including guidance, validation, warnings, and error messages, is available in English, Turkish, German, Spanish, Portuguese, and French. Users are instructed to use only the made-up account and card details shown in the flow, never real details.
 
+## Computer Vision
+
+ATM Withdrawal and Online Bill Payment both ask whether face and eye movement data may be saved. Neither Yes nor No is preselected, and the user must choose before starting. This choice is separate from guest progress consent and the browser's camera permission prompt.
+
+After Yes, the scenario initializes one local webcam stream and MediaPipe face tracking in the browser. No leaves the camera and MediaPipe inactive. Permission denial or an unavailable camera does not prevent the scenario from continuing. Normal users see no camera preview or landmark overlay. Tracking, camera tracks, timers, and interaction listeners stop when the scenario finishes, times out, terminates, or the user leaves.
+
+The browser calculates approximate yaw (left/right rotation), pitch (up/down rotation), roll (head tilt), and eye direction (`left`, `center`, `right`, or unknown). These are descriptive estimates, not precise gaze tracking or measures of attention.
+
+Derived values are collected every 500 ms. Each tracking point contains elapsed milliseconds, yaw, pitch, roll, estimated eye direction, and a keyboard/mouse activity flag. Missing or stale tracking produces null values. Keyboard input, mouse clicks, and meaningful pointer movement mark activity for 1.5 seconds; these points remain in the recording. Input text and pressed keys are not recorded.
+
+Completed sessions are submitted to the backend only with Yes consent and linked to the authenticated user or guest, scenario, and scenario attempt when available. The database stores one session and its tracking points. Duplicate submissions are protected, and a save failure does not block scenario completion. Raw camera video, images, frames, and landmark arrays are never submitted or stored.
+
+Administrators can open **Computer Vision Recordings** at `/admin/computer-vision`, choose ATM Withdrawal or Online Bill Payment, and review paginated recordings. Session details show duration, tracking availability, keyboard/mouse activity, the most common eye direction, direction changes, and the three head-movement ranges. Charts show movement over time, with subtle activity highlights and gaps for unavailable tracking. Detailed statistics, session IDs, and tracking rows are collapsed by default. Backend authorization protects the recordings and preview authorization APIs.
+
+When an administrator runs either scenario, **Computer Vision Preview** appears below the assistant in the right-side column. Its toggle displays the existing local camera stream, landmarks, and tracking values. Switching the preview off hides it without stopping tracking or opening another camera stream. It requires Yes consent and backend-confirmed admin authorization; normal users cannot access it.
+
+Production camera access requires HTTPS. MediaPipe currently downloads its WASM files from `cdn.jsdelivr.net` and its face model from `storage.googleapis.com`. Computer vision adds no backend environment variable. Apply migration `20261001_0017` for `computer_vision_sessions` and `computer_vision_samples`.
+
 ## User Roles
 
 - **Registered user:** accesses approved scenarios, profile preferences, personal speech usage, and quota requests.
 - **Guest:** can preview the catalogue and use supported guest flows with an explicit progress-saving choice.
-- **Administrator:** manages accounts, speech providers, personal quotas, requests, and scenario analytics.
+- **Administrator:** manages accounts, speech providers, personal quotas, requests, scenario analytics, and consented computer-vision recordings; can use the local scenario preview.
 
 Backend authorization protects every administrative API. Frontend navigation and route guards improve the experience but are not treated as the security boundary.
 
@@ -162,6 +192,8 @@ cd backend
 .venv\Scripts\activate
 alembic upgrade head
 ```
+
+Current migration head: `20261001_0017`. Back up an existing production database before applying pending migrations. The Docker backend runs `alembic upgrade head` automatically before starting Uvicorn.
 
 ## Create the First Admin
 
@@ -213,7 +245,7 @@ Use `SMTP_USE_TLS=true` for STARTTLS on port 587. Use `SMTP_USE_SSL=true` for SS
 After logging in as an admin, send a test email with:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/admin/email/test -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+curl -X POST http://127.0.0.1:8000/api/admin/email/test -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
 The endpoint returns `{"message":"Test email processed."}` whether the message was handled by console mode or SMTP mode.
@@ -264,7 +296,13 @@ Generated audio is cached under `backend/media/tts-cache`, and metadata is store
 
 Administrators can open **Speech Provider Management** to monitor monthly TTS character usage and STT duration, configure each provider, and arrange separate priority orders for TTS and STT. When a provider reaches its configured switch value or cannot complete a request, the backend selects the next enabled provider in that service's priority order.
 
-The monthly provider totals are global estimates based only on ASSIST-AI requests; they are not a live provider account balance. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Soniox quota, and request IDs prevent retries from being counted twice.
+The internal overview cards show the **current UTC calendar month's** STT minutes and TTS characters across supported providers, using successful request timestamps rather than summing historical billing periods. An unused month shows zero. Full cache hits add no new usage; partially cached requests retain their newly charged amount. Previous months remain available in the history. These internal estimates are separate from each user's weekly allowance and from Soniox's official costs. Browser speech does not consume Soniox quota, and request IDs prevent retries from being counted twice.
+
+The separate **Soniox Usage** section fetches `GET https://api.soniox.com/v1/usage/summary` through the admin-only backend endpoint `GET /api/admin/speech-providers/soniox-usage`. It shows the current UTC month, project-level USD cost, per-model costs and request counts, expandable daily usage, and the last fetch time. Refresh requests updated data. Soniox errors remain within this section so provider management continues to work. The API reports usage for the project associated with the configured key, not a complete account balance; no balance is displayed or scraped.
+
+Keep the long-lived `SONIOX_API_KEY` only in the ignored backend environment file or server environment variables. STT and TTS requests also run through the backend; there are no browser-direct Soniox connections or temporary-key flows. Provider error diagnostics redact credentials before reaching API errors or stored provider events. Tests use synthetic credentials.
+
+For the existing integration, the Soniox key needs **Async STT: Write**, **Files: Write**, **Text-to-speech**, **Usage and limits**, and **Model listing**. Real-time STT, temporary-key creation, and cloned-voice management are not used. Confirm the granted permissions in the Soniox Console and limit the key to the required set; see [Soniox API key permissions](https://soniox.com/docs/guides/api-key-permissions).
 
 Global speech routing is stored in PostgreSQL and applies to registered users. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Soniox supports both TTS and STT. Guest sessions bypass paid providers and use browser speech when the client reports that capability.
 
@@ -323,10 +361,18 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 14. Confirm the denied user cannot log in.
 15. Try `Continue as Guest`, choose whether to save progress, and confirm scenarios are accessible.
 
-To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
+To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /api/admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
 
 To test Soniox TTS, set the Soniox variables in `backend/.env`, restart the backend, log in as an approved user, open the ATM scenario, and confirm the assistant speaks. The first time a prompt is spoken it may spend TTS characters; repeated cached prompts should reuse saved audio.
+
+## Development Checks
+
+From `frontend`, run `npm test` and `npm run build`. From `backend` with the virtual environment active, run `python -m pytest -q` (pytest must be installed in the development environment). The tests cover consent and tracking cleanup, derived recording and admin access, summaries and charts, Soniox usage and credential redaction, and UTC monthly usage boundaries.
 
 ## Docker Deployment
 
 Production Docker files are included for PostgreSQL, the FastAPI backend, and the React/Nginx frontend. Follow [DEPLOYMENT.md](DEPLOYMENT.md) to deploy ASSIST-AI on a Linux VPS.
+
+Use the approved commit from `computer-vision` for this version; the deployment guide's older example branch is not the current target. The root Compose file runs `postgres`, `backend`, and `frontend` with persistent `postgres_data` and `backend_media` volumes. Frontend images build the React app and serve it through Nginx using the same-origin API proxy. HTTPS termination is configured separately from these repository files.
+
+Before updating a VPS, verify its deployed commit, running services/images, Alembic revision, disk space, and HTTPS. Preserve the existing environment files, Compose project name, and rollback images. Back up and verify the database and media before migrations. Never remove production volumes with `docker compose down -v`. If migration compatibility prevents an image-only rollback, restore the verified database backup with application writers stopped; restoring a backup discards later writes.
