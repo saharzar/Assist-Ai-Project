@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useFaceTracking } from "../../hooks/useFaceTracking";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { Mic, Square } from "lucide-react";
 import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
 import atmReceiptPrintSound from "../../assets/atm-receipt-print.mp3";
@@ -321,6 +323,10 @@ export function AtmScenarioPage() {
   const cardEjectionStartedRef = useRef(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
+  const computerVisionAttemptRef = useRef<Promise<string | null> | null>(null);
+  const faceTrackingActive = !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
+    !["success", "security_terminated", "lockout"].includes(state.status);
+  const faceTracking = useFaceTracking("atm-withdrawal", faceTrackingActive, () => computerVisionAttemptRef.current);
   const analyticsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const latestStatusRef = useRef(state.status);
   const lastSpokenSpeechErrorRef = useRef("");
@@ -373,6 +379,7 @@ export function AtmScenarioPage() {
     recordedInputModesRef.current = new Set();
     analyticsCredentialsRef.current = { token, guestToken: guestSessionToken };
     const startPromise = startAtmAnalyticsSession(language).catch(() => null);
+    computerVisionAttemptRef.current = startPromise;
     analyticsStartRef.current = startPromise;
     void startPromise.then((sessionId) => {
       if (analyticsStartRef.current === startPromise) {
@@ -2241,6 +2248,7 @@ export function AtmScenarioPage() {
       }}
     >
     <AtmFrame
+      trackingPreview={<AdminFaceTrackingPreview active={faceTrackingActive} scenario="atm-withdrawal" getFrame={faceTracking.getPreviewFrame} />}
       labels={{
         panelTitle: text.panelTitle,
         practiceMode: text.practiceMode,

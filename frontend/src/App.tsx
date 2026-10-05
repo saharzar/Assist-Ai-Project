@@ -6,6 +6,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { TranslationProvider } from "./i18n";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { AdminComputerVisionPage } from "./pages/admin/AdminComputerVisionPage";
 import { AdminBillAnalyticsPage } from "./pages/admin/AdminBillAnalyticsPage";
 import { AdminAtmAnalyticsPage } from "./pages/admin/AdminAtmAnalyticsPage";
 import { AdminScenarioAnalyticsPage } from "./pages/admin/AdminScenarioAnalyticsPage";
@@ -49,6 +50,10 @@ export function App() {
             </Route>
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="admin/users" element={<AdminUsersPage />} />
+              <Route path="admin/computer-vision" element={<AdminComputerVisionPage view="index" />} />
+              <Route path="admin/computer-vision/sessions/:sessionId" element={<AdminComputerVisionPage view="detail" />} />
+              <Route path="admin/computer-vision/:routeKey/sessions/:sessionId" element={<AdminComputerVisionPage view="detail" />} />
+              <Route path="admin/computer-vision/:routeKey" element={<AdminComputerVisionPage view="route" />} />
               <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
               <Route path="admin/bill-analytics" element={<AdminBillAnalyticsPage />} />
               <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />

@@ -115,7 +115,20 @@ class SpeechProviderEventRead(BaseModel):
     administrator_name: str | None
 
 
+class SpeechMonthProviderUsage(BaseModel):
+    provider: ProviderKey
+    service_type: SpeechServiceType
+    characters_used: int
+    audio_seconds_used: int
+
+
+class SpeechCalendarMonthUsage(BaseModel):
+    month: date
+    items: list[SpeechMonthProviderUsage]
+
+
 class GlobalSpeechDashboard(GlobalSpeechRoutingRead):
     estimate_notice: str
     usage_history: list[SpeechUsageHistoryRead]
     events: list[SpeechProviderEventRead]
+    current_month_usage: SpeechCalendarMonthUsage

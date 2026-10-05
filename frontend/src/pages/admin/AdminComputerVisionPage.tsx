@@ -1,0 +1,146 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
+
+import { useAuth } from "../../context/AuthContext";
+import { ComputerVisionSessionSummary } from "../../components/ComputerVisionSessionSummary";
+import { SavedHeadPoseCharts } from "../../components/HeadPoseCharts";
+import { AdminScenarioCardGrid } from "../../components/admin/AdminScenarioCardGrid";
+import { scenarios } from "../../data/scenarios";
+import { useTranslation } from "../../i18n";
+import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
+import { adminComputerVisionTranslations } from "../../lib/adminComputerVisionTranslations";
+import { formatComputerVisionDuration } from "../../lib/computerVisionDuration";
+import { fetchComputerVisionSession, fetchComputerVisionSessions,
+  type ComputerVisionSessionDetail, type ComputerVisionSessionList,
+} from "../../services/adminComputerVisionService";
+
+const supportedScenarios: Record<string, true> = {
+  "atm-withdrawal": true,
+  "online-bill-payment": true,
+};
+export function AdminComputerVisionPage({ view = "detail" }: { view?: "index" | "route" | "detail" }) {
+  const { isAuthenticated, user } = useAuth();
+  const { language } = useTranslation();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "admin") return <section role="alert">{adminAnalyticsTranslations[language].accessDenied}</section>;
+  return <ComputerVisionRecordings view={view} />;
+}
+
+function ComputerVisionRecordings({ view }: { view: "index" | "route" | "detail" }) {
+  const { routeKey, sessionId } = useParams();
+  const { language, translateScenario } = useTranslation();
+  const text = adminComputerVisionTranslations[language];
+  const common = adminAnalyticsTranslations[language];
+  const [page, setPage] = useState(1);
+  const [list, setList] = useState<ComputerVisionSessionList | null>(null);
+  const [detail, setDetail] = useState<ComputerVisionSessionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const selectedScenario = view === "route" ? scenarios.find((item) => item.slug === routeKey) : undefined;
+  const sessionIdentifier = view === "detail" ? sessionId : view === "route" && !selectedScenario ? routeKey : undefined;
+
+  useEffect(() => {
+    if (view === "index") {
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    setError(false);
+    setList(null);
+    setDetail(null);
+    const request = sessionIdentifier
+      ? fetchComputerVisionSession(sessionIdentifier, page).then((value) => { if (active) setDetail(value); })
+      : fetchComputerVisionSessions(page, selectedScenario?.slug).then((value) => { if (active) setList(value); });
+    void request.catch(() => { if (active) setError(true); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [view, sessionIdentifier, selectedScenario?.slug, page]);
+
+  useEffect(() => { setPage(1); }, [routeKey]);
+
+  const scenarioName = (key: string) => {
+    const scenario = scenarios.find((item) => item.slug === key);
+    return scenario ? translateScenario(scenario).title : key;
+  };
+  const date = (value: string) => new Date(value).toLocaleString(common.locale);
+  const duration = (ms: number) => formatComputerVisionDuration(ms, language);
+  const total = detail?.session.sample_count ?? list?.total ?? 0;
+  const pageSize = detail?.page_size ?? list?.page_size ?? 10;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const recordingsRoutes = Object.fromEntries(Object.keys(supportedScenarios).map((slug) => [slug, `/admin/computer-vision/${slug}`]));
+  const backTo = sessionIdentifier
+    ? selectedScenario ? `/admin/computer-vision/${selectedScenario.slug}`
+      : detail ? `/admin/computer-vision/${detail.session.scenario_key}` : "/admin/computer-vision"
+    : selectedScenario ? "/admin/computer-vision" : "/admin/scenario-analytics";
+  const pagination = pages > 1 && <nav aria-label={text.pagination} className="mt-4 flex items-center justify-end gap-3">
+    <button className="rounded-lg border border-indigo-950/10 px-4 py-2 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>{text.previous}</button>
+    <span>{page} / {pages}</span>
+    <button className="rounded-lg border border-indigo-950/10 px-4 py-2 disabled:opacity-40" disabled={page >= pages} onClick={() => setPage(page + 1)}>{text.next}</button>
+  </nav>;
+
+  return <section className="standard-page flex flex-1 flex-col text-[#1d1a3d]">
+    <div className="catalogue-style-heading">
+      <div>
+        <h1 className="font-display text-3xl font-extrabold">{selectedScenario ? `${translateScenario(selectedScenario).title} — ${text.title}` : text.title}</h1>
+        <p className="mt-2 text-slate-600">{view === "index" ? text.selectorDescription : selectedScenario ? translateScenario(selectedScenario).description : text.description}</p>
+      </div>
+      <Link className="mt-4 inline-flex rounded-full border border-indigo-950/10 bg-white px-5 py-3 font-bold text-[#2a2586]" to={backTo}>
+        {selectedScenario || sessionIdentifier ? text.back : common.allScenarioAnalytics}
+      </Link>
+    </div>
+    {view === "index" && <AdminScenarioCardGrid scenarios={scenarios} routes={recordingsRoutes}
+      labels={{ comingSoon: text.comingSoon, action: text.viewRecordings }}
+      translateScenario={translateScenario} />}
+    {loading && <p role="status" className="py-10 text-center">{common.loading}</p>}
+    {error && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4">{common.loadError}</p>}
+    {!loading && !error && list && <><DataTable headings={[common.user, text.scenario, text.date, common.duration, text.open]}>
+      {list.items.map((session) => <tr key={session.session_id} className="hover:bg-[#fafbff]">
+        <Cell>{session.display_name && <span className="block font-bold">{session.display_name}</span>}{session.actor_type === "guest" ? common.guest : common.registered}</Cell>
+        <Cell>{scenarioName(session.scenario_key)}</Cell>
+        <Cell>{date(session.started_at)}</Cell><Cell>{duration(session.duration_ms)}</Cell>
+        <Cell><Link className="font-bold text-[#2a2586] hover:underline" to={`/admin/computer-vision/${session.scenario_key}/sessions/${session.session_id}`}>{text.open}</Link></Cell>
+      </tr>)}
+      {list.items.length === 0 && <tr><td colSpan={5} className="p-5 text-center">{common.noSessions}</td></tr>}
+    </DataTable>{pagination}</>}
+    {!loading && !error && detail && <>
+      <dl className="mt-6 grid gap-5 sm:grid-cols-3">
+        {[
+          [common.user, `${detail.session.display_name ?? ""} ${detail.session.actor_type === "guest" ? common.guest : common.registered}`.trim()],
+          [text.scenario, scenarioName(detail.session.scenario_key)],
+          [text.date, date(detail.session.started_at)],
+        ].map(([label, value]) => <div key={label}><dt className="text-sm font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words font-semibold">{value}</dd></div>)}
+      </dl>
+      <ComputerVisionSessionSummary summary={detail.summary} durationMs={detail.session.duration_ms}>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+          {[[text.sessionId, detail.session.session_id], [text.attempt, detail.session.scenario_session_id ?? text.missing]].map(([label, value]) =>
+            <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 break-all">{value}</dd></div>)}
+        </dl>
+      </ComputerVisionSessionSummary>
+    </>}
+    {!loading && !error && detail && sessionIdentifier && <SavedHeadPoseCharts key={sessionIdentifier} sessionId={sessionIdentifier} />}
+    {!loading && !error && detail && <>
+      <details className="mt-6 rounded-xl border border-indigo-950/10 bg-white p-5">
+      <summary className="cursor-pointer font-semibold text-[#2a2586]">{text.showTrackingData}</summary>
+      <DataTable headings={[text.timestamp, text.yaw, text.pitch, text.roll, text.eyeDirection, text.interaction]}>
+        {detail.samples.map((sample) => <tr key={sample.timestamp} className={sample.isUserInteracting ? "bg-amber-50" : "hover:bg-[#fafbff]"}>
+          <Cell>{(sample.timestamp / 1000).toLocaleString(common.locale, { maximumFractionDigits: 2 })} {text.second}</Cell>{[sample.yaw, sample.pitch, sample.roll].map((value, index) => <Cell key={index}>{value === null ? text.missing : value.toLocaleString(common.locale, { maximumFractionDigits: 2 })}</Cell>)}
+          <Cell>{sample.estimatedEyeDirection === null ? text.missing : text[sample.estimatedEyeDirection]}</Cell>
+          <Cell><span className={sample.isUserInteracting ? "rounded-full bg-amber-200 px-3 py-1 font-bold text-amber-950" : "text-slate-600"}>{sample.isUserInteracting ? text.yes : text.no}</span></Cell>
+        </tr>)}
+      </DataTable>
+      {pagination}
+      </details>
+    </>}
+  </section>;
+}
+
+function Cell({ children }: { children: ReactNode }) {
+  return <td className="px-5 py-4 text-slate-600">{children}</td>;
+}
+
+function DataTable({ headings, children }: { headings: string[]; children: ReactNode }) {
+  return <div className="mt-6 overflow-x-auto rounded-xl border border-indigo-950/10 bg-white"><table className="min-w-full text-left text-sm">
+    <thead className="bg-[#f3f3fb] text-xs uppercase tracking-wider text-slate-500"><tr>{headings.map((heading) => <th key={heading} scope="col" className="whitespace-nowrap px-5 py-4">{heading}</th>)}</tr></thead>
+    <tbody className="divide-y divide-indigo-950/10">{children}</tbody>
+  </table></div>;
+}

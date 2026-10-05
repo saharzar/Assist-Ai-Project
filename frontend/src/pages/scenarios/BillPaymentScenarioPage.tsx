@@ -7,6 +7,8 @@ import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useBillAnalytics } from "../../hooks/useBillAnalytics";
+import { useFaceTracking } from "../../hooks/useFaceTracking";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billAccountValidation";
@@ -65,6 +67,8 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
+  const faceTrackingActive = state.step !== "success" && !loginLocked && !inactivityTimedOut;
+  const faceTracking = useFaceTracking("online-bill-payment", faceTrackingActive, analytics.getSessionId);
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
@@ -185,7 +189,7 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
 
   return (
     <div onPointerDownCapture={() => { unlockAssistantAudioPlayback(); resetInactivityTimer(); }} onKeyDownCapture={resetInactivityTimer}>
-    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />}>
+    <BillScenarioShell currentStep={currentStep} title={title} subtitle={subtitle} compact={state.step === "card-payment"} assistant={<BillVoiceAssistant message={assistantMessage} speechRequestId={cardValidationSpeechRequestId} onMessageEnd={handleAssistantMessageEnd} onSpeakingChange={handleAssistantSpeakingChange} />} trackingPreview={<AdminFaceTrackingPreview active={faceTrackingActive} scenario="online-bill-payment" getFrame={faceTracking.getPreviewFrame} />}>
       {inactivityTimedOut ? (
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-amber-400 bg-amber-50 p-7 text-center shadow-sm" role="alert">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-700" />

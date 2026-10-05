@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "../../i18n";
 import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
+import { ScenarioAssistantColumn } from "../ScenarioAssistantColumn";
 
-export function BillScenarioShell({ currentStep, title, subtitle, compact = false, assistant, children }: {
+export function BillScenarioShell({ currentStep, title, subtitle, compact = false, assistant, trackingPreview, children }: {
   currentStep: number;
   title: string;
   subtitle: string;
   compact?: boolean;
   assistant?: ReactNode;
+  trackingPreview?: ReactNode;
   children: ReactNode;
 }) {
   const { language } = useTranslation();
@@ -36,7 +38,7 @@ export function BillScenarioShell({ currentStep, title, subtitle, compact = fals
         </header>
         <div className={compact ? "p-4 sm:p-5" : "p-6 sm:p-9"}>{children}</div>
       </div>
-      {assistant}
+      {assistant && <ScenarioAssistantColumn assistant={assistant}>{trackingPreview}</ScenarioAssistantColumn>}
       </div>
     </section>
   );

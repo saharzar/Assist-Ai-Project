@@ -101,6 +101,65 @@ def test_soniox_tts_cache_voice_is_versioned(monkeypatch):
     assert soniox_service.get_soniox_tts_cache_voice() == "soniox:tts-rt-v1:Adrian:v2"
 
 
+@pytest.mark.parametrize("field", ["message", "error_message"])
+def test_provider_error_diagnostics_redact_credentials(monkeypatch, field):
+    monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
+    response = httpx.Response(401, json={field: "Invalid api_key=private-test-key; Authorization: Bearer synthetic-header-token"})
+    with pytest.raises(soniox_service.SonioxProviderError) as error:
+        soniox_service._raise_for_soniox(response)
+    assert "private-test-key" not in error.value.detail
+    assert "synthetic-header-token" not in error.value.detail
+    assert "[REDACTED]" in error.value.detail
+
+
+def test_async_transcription_failure_redacts_credentials(monkeypatch):
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def post(self, url, **kwargs):
+            return httpx.Response(200, json={"id": "synthetic-id"})
+        def get(self, url):
+            return httpx.Response(200, json={"status": "failed", "error_message": "Rejected private-test-key"})
+        def delete(self, url):
+            return httpx.Response(200)
+    monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
+    monkeypatch.setattr(soniox_service.httpx, "Client", Client)
+    with pytest.raises(soniox_service.SonioxProviderError) as error:
+        soniox_service.recognize_soniox_stt(b"audio", "audit-request", "en", "name")
+    assert error.value.detail == "Rejected [REDACTED]"
+
+
+def test_error_credentials_do_not_reach_api_responses_or_stored_events(monkeypatch):
+    from app.routes import tts as tts_routes
+    from app.services import speech_provider_manager as manager
+    from app.models import SpeechProviderEvent
+    from test_speech_provider_manager import SpeechTestContext, fake_config, headers, make_user
+
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
+    monkeypatch.setattr(soniox_service.httpx, "post", lambda *args, **kwargs: httpx.Response(
+        401, json={"message": "Invalid Authorization: Bearer private-test-key"},
+    ))
+    monkeypatch.setattr(tts_routes, "synthesize_tts_with_cache", lambda *args, **kwargs:
+                        soniox_service.synthesize_soniox_tts("Hello", "en", "audit-request"))
+    with SpeechTestContext() as (client, db):
+        admin = make_user(db, "credential-audit@example.com", "admin")
+        response = client.post("/api/tts", headers={**headers(admin), "X-Browser-Speech-Supported": "false"},
+                               json={"text": "Hello", "language": "en"})
+        assert response.status_code == 503
+        assert "private-test-key" not in response.text
+        events = db.query(SpeechProviderEvent).filter_by(event_type="provider_failure").all()
+        assert events
+        assert all("private-test-key" not in event.reason for event in events)
+        dashboard = client.get("/api/admin/speech-providers/global", headers=headers(admin))
+        assert dashboard.status_code == 200
+        assert "private-test-key" not in dashboard.text
+
+
 @pytest.mark.parametrize("status_code", [402, 429])
 def test_soniox_tts_marks_quota_errors(monkeypatch, status_code):
     def fake_post(url, **kwargs):

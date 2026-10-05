@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation, type LanguageCode } from "../i18n";
 import { speechUsageTranslations } from "../lib/speechUsageTranslations";
+import { adminComputerVisionTranslations } from "../lib/adminComputerVisionTranslations";
 import {
   getSttUsage,
   STT_USAGE_UPDATED_EVENT,
@@ -271,6 +272,7 @@ export function PageShell() {
               <div className="flex h-full items-center gap-1">
                 <AdminNavLink to="/admin/users" label={adminMenuText(language).users} active={location.pathname === "/admin/users"} />
                 <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics")} />
+                <AdminNavLink to="/admin/computer-vision" label={adminComputerVisionTranslations[language].title} active={location.pathname.startsWith("/admin/computer-vision")} />
                 <AdminNavLink to="/admin/speech-providers" label={adminMenuText(language).speech} active={location.pathname === "/admin/speech-providers"} />
                 <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />
               </div>

@@ -4,6 +4,22 @@ import { createBillAnalyticsTracker } from "./billAnalyticsTracker";
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("bill analytics lifecycle", () => {
+  it("exposes its attempt ID through completion without starting a new analytics session", async () => {
+    const calls: string[] = [];
+    const tracker = createBillAnalyticsTracker(async (path) => {
+      calls.push(path);
+      return path === "start" ? { session_id: "attempt-id" } : {};
+    }, "en");
+    expect(tracker.getSessionId()).toBeNull();
+    expect(calls).toEqual([]);
+    const starting = tracker.start();
+    expect(await tracker.getSessionId()).toBe("attempt-id");
+    await starting;
+    await tracker.finish("exit", "success");
+    expect(tracker.getSessionId()).toBe("attempt-id");
+    expect(calls).toEqual(["start", "attempt-id/finish"]);
+  });
+
   it("flushes pending payments on exit even before session creation resolves", async () => {
     const calls: Array<{ path: string; body: object }> = [];
     let resolveStart!: (value: { session_id: string }) => void;
