@@ -1,3 +1,4 @@
+from app.models.bill_scenario_session import BillScenarioEvent, BillScenarioSession
 from app.models.atm_scenario_session import AtmScenarioEvent, AtmScenarioSession
 from app.models.guest_session import GuestSession
 from app.models.speech_provider import (
@@ -14,6 +15,8 @@ from app.models.user import User
 from app.models.user_speech_quota import QuotaAdjustmentHistory, QuotaIncreaseRequest, UserNotification, UserQuotaDefaults, UserSpeechUsagePeriod
 
 __all__ = [
+    "BillScenarioEvent",
+    "BillScenarioSession",
     "AtmScenarioEvent",
     "AtmScenarioSession",
     "GuestSession",

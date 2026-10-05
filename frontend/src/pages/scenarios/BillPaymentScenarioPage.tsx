@@ -6,6 +6,7 @@ import { BillCardPreview, type ActiveCardField, type CardPreviewDetails } from "
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
+import { useBillAnalytics } from "../../hooks/useBillAnalytics";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
 import { isValidBillAccountName, sanitizeBillAccountName } from "../../lib/billAccountValidation";
@@ -42,10 +43,15 @@ function readSetupDetails(): BillSetupDetails | null {
 type LoginFailure = { kind: "incorrect"; attemptsRemaining: number } | { kind: "locked" };
 
 export function BillPaymentScenarioPage() {
-  const navigate = useNavigate();
   const setup = useMemo(readSetupDetails, []);
+  return setup ? <BillPaymentPractice setup={setup} /> : <Navigate to="/scenario/online-bill-payment/setup" replace />;
+}
+
+function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
+  const navigate = useNavigate();
   const [state, dispatch] = useReducer(billPaymentReducer, initialBillPaymentState);
   const { language } = useTranslation();
+  const analytics = useBillAnalytics(language, state.step);
   const text = billPaymentTranslations[language];
   const assistantText = billAssistantTranslations[language];
   const loginSecurityText = billLoginSecurityTranslations[language];
@@ -69,8 +75,6 @@ export function BillPaymentScenarioPage() {
   const statements = useMemo(() => Object.fromEntries(
     sessionBills.map((bill) => [bill.type, createBillStatementMetadata(bill.type)]),
   ) as Record<BillType, BillStatementMetadata>, [sessionBills]);
-
-  if (!setup) return <Navigate to="/scenario/online-bill-payment/setup" replace />;
 
   const currentStep = state.step === "login" ? 1 : state.step === "bill-selection" || state.step === "bill-details" ? 2 : state.step === "card-payment" ? 3 : 4;
   const title = state.step === "login" ? text.loginTitle : state.step === "bill-selection" ? text.selectTitle : state.step === "bill-details" ? text.reviewTitle : state.step === "card-payment" ? text.cardTitle : text.completeTitle;
@@ -167,10 +171,11 @@ export function BillPaymentScenarioPage() {
 
   useEffect(() => {
     if (!inactivityTimedOut) return;
+    analytics.finish("inactivity_timeout");
     const soundEnabled = localStorage.getItem("assist_ai_sound_enabled") !== "false";
     const fallbackTimer = window.setTimeout(finishInactiveSession, soundEnabled ? 8000 : 2000);
     return () => window.clearTimeout(fallbackTimer);
-  }, [finishInactiveSession, inactivityTimedOut]);
+  }, [finishInactiveSession, inactivityTimedOut, analytics.finish]);
 
   useEffect(() => {
     if (inactivityWarningRemaining === null || localStorage.getItem("assist_ai_sound_enabled") !== "false") return;
@@ -194,7 +199,7 @@ export function BillPaymentScenarioPage() {
           <div><p className="text-xs font-extrabold uppercase tracking-wide text-amber-700">{inactivityText.warningTitle}</p><p className="mt-1 font-bold">{inactivityText.warning(inactivityWarningRemaining)}</p></div>
         </div>
       )}
-      {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={setLoginFailure} onLocked={() => setLoginLocked(true)} onSuccess={() => { setLoginFailure(null); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
+      {state.step === "login" && <LoginStep setup={setup} text={text} securityText={loginSecurityText} onFailed={(failure) => { analytics.record("login_failed", "login"); setLoginFailure(failure); }} onLocked={() => { analytics.finish("login_locked"); setLoginLocked(true); }} onSuccess={() => { analytics.record("login_success", "bill-selection"); setLoginFailure(null); dispatch({ type: "LOGIN_SUCCESS" }); }} />}
       {state.step === "bill-selection" && (
         <div className="mx-auto max-w-5xl">
         <div className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-6 text-white shadow-[0_22px_45px_-30px_rgba(48,41,146,0.85)] sm:px-8">
@@ -232,7 +237,7 @@ export function BillPaymentScenarioPage() {
             </div>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <button type="button" onClick={() => dispatch({ type: "BACK_TO_BILLS" })} className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-6 py-4 text-lg font-extrabold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
+            <button type="button" onClick={() => { analytics.record("back_navigation", "bill-selection"); dispatch({ type: "BACK_TO_BILLS" }); }} className="min-h-14 rounded-xl border-2 border-[#302992] bg-white px-6 py-4 text-lg font-extrabold text-[#302992] hover:bg-indigo-50">{text.anotherBill}</button>
             <button type="button" onClick={() => dispatch({ type: "PAY_BY_CARD" })} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55]"><CreditCard className="h-6 w-6" /> {text.payCard}</button>
           </div>
         </div>
@@ -245,13 +250,16 @@ export function BillPaymentScenarioPage() {
           text={text}
           onBack={() => {
             setCardValidationMessage("");
+            analytics.record("back_navigation", "bill-selection");
             dispatch({ type: "BACK_TO_BILLS" });
           }}
           onValidationError={(message) => {
+            analytics.record("validation_error", "card-payment", state.selectedBill?.type);
             setCardValidationMessage(message);
             setCardValidationSpeechRequestId((current) => current + 1);
           }}
           onSubmit={() => {
+            analytics.record("payment_success", "success", state.selectedBill?.type);
             setCardValidationMessage("");
             setReceiptVisible(true);
             dispatch({ type: "PAYMENT_SUCCESS" });

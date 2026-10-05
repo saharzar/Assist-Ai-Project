@@ -1,39 +1,13 @@
 import { apiRequest, expectObjectResponse } from "./api";
 
-export type SpeechMode = "automatic" | "azure" | "browser";
-export type SpeechProvider = "azure" | "browser";
-export type GlobalSpeechProvider = SpeechProvider | "soniox";
+export type SpeechMode = "automatic" | "browser";
+export type GlobalSpeechProvider = "soniox" | "browser";
 export type SpeechStatus = "normal" | "warning" | "critical" | "quota_reached" | "unavailable";
 
 export type SpeechProviderResolution = {
   service_type: "tts" | "stt";
   provider: GlobalSpeechProvider;
   mode: SpeechMode;
-  status: SpeechStatus;
-};
-
-export type SpeechProviderSettings = {
-  tts_mode: SpeechMode;
-  stt_mode: SpeechMode;
-  azure_tts_monthly_limit: number;
-  azure_stt_monthly_limit_seconds: number;
-  warning_threshold_percent: number;
-  switch_threshold_percent: number;
-};
-
-export type SpeechServiceSnapshot = {
-  service_type: "tts" | "stt";
-  current_provider: SpeechProvider;
-  mode: SpeechMode;
-  used: number;
-  limit: number;
-  remaining: number;
-  usage_percent: number;
-  successful_requests: number;
-  failed_requests: number;
-  cached_requests: number;
-  billing_period: string;
-  reset_date: string;
   status: SpeechStatus;
 };
 
@@ -57,15 +31,6 @@ export type SpeechProviderEvent = {
   new_provider: string | null;
   reason: string;
   administrator_name: string | null;
-};
-
-export type SpeechProviderDashboard = {
-  estimate_notice: string;
-  settings: SpeechProviderSettings;
-  tts: SpeechServiceSnapshot;
-  stt: SpeechServiceSnapshot;
-  usage_history: SpeechUsageHistory[];
-  events: SpeechProviderEvent[];
 };
 
 export function resolveSpeechProvider(serviceType: "tts" | "stt") {
@@ -129,21 +94,10 @@ export function testSpeechProvider(serviceType: "tts" | "stt", providerKey: Glob
   return apiRequest<{ ok: boolean; status: string }>(`/api/admin/speech-providers/test/${serviceType}/${providerKey}`, { method: "POST" });
 }
 
-export function fetchSpeechProviderDashboard() {
-  return apiRequest<SpeechProviderDashboard>("/api/admin/speech-providers");
-}
-
-export function updateSpeechProviderSettings(settings: SpeechProviderSettings) {
-  return apiRequest<SpeechProviderSettings>("/api/admin/speech-providers/settings", {
-    method: "PUT",
-    body: JSON.stringify(settings),
-  });
-}
-
 export const SPEECH_PROVIDER_UPDATED_EVENT = "assist-ai:speech-provider-updated";
 export const SPEECH_PROVIDER_USED_EVENT = "assist-ai:speech-provider-used";
 
-export function notifySpeechProviderUpdated(dashboard: SpeechProviderDashboard | GlobalSpeechDashboard) {
+export function notifySpeechProviderUpdated(dashboard: GlobalSpeechDashboard) {
   window.dispatchEvent(new CustomEvent(SPEECH_PROVIDER_UPDATED_EVENT, { detail: dashboard }));
 }
 

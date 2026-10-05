@@ -9,8 +9,6 @@ from app.database import Base
 class SpeechProviderSettings(Base):
     __tablename__ = "speech_provider_settings"
     __table_args__ = (
-        CheckConstraint("tts_mode IN ('automatic', 'azure', 'browser')", name="ck_speech_settings_tts_mode"),
-        CheckConstraint("stt_mode IN ('automatic', 'azure', 'browser')", name="ck_speech_settings_stt_mode"),
         CheckConstraint(
             "warning_threshold_percent > 0 AND warning_threshold_percent < switch_threshold_percent",
             name="ck_speech_settings_warning_threshold",
@@ -19,14 +17,8 @@ class SpeechProviderSettings(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    tts_mode: Mapped[str] = mapped_column(String(16), default="automatic", nullable=False)
-    stt_mode: Mapped[str] = mapped_column(String(16), default="automatic", nullable=False)
-    azure_tts_monthly_limit: Mapped[int] = mapped_column(Integer, default=500000, nullable=False)
-    azure_stt_monthly_limit_seconds: Mapped[int] = mapped_column(Integer, default=18000, nullable=False)
     warning_threshold_percent: Mapped[int] = mapped_column(Integer, default=80, nullable=False)
     switch_threshold_percent: Mapped[int] = mapped_column(Integer, default=95, nullable=False)
-    tts_fallback_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    stt_fallback_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     automatic_tts_routing_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     automatic_stt_routing_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     forced_tts_provider_key: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -123,6 +115,7 @@ class SpeechProviderCapabilityConfig(Base):
         UniqueConstraint("provider_key", "service_type", name="uq_speech_provider_capability"),
         UniqueConstraint("service_type", "priority", name="uq_speech_provider_capability_priority"),
         CheckConstraint("service_type IN ('tts', 'stt')", name="ck_speech_capability_service"),
+        CheckConstraint("provider_key IN ('soniox', 'browser')", name="ck_speech_capability_provider"),
         CheckConstraint("quota_type IN ('limited', 'unlimited')", name="ck_speech_capability_quota_type"),
         CheckConstraint(
             "billing_period_type IN ('calendar_month', 'custom_monthly', 'no_reset', 'manual')",

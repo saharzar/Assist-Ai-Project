@@ -369,7 +369,7 @@ function formatResetDate(resetDate: string) {
 }
 
 function providerLabel(provider: GlobalSpeechProvider) {
-  return provider === "azure" ? "Azure" : provider === "soniox" ? "Soniox" : "Browser";
+  return provider === "soniox" ? "Soniox" : "Browser";
 }
 
 function AdminNavLink({ to, label, active }: { to: string; label: string; active: boolean }) {

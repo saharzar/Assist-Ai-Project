@@ -38,7 +38,7 @@ The selected language controls the interface, feedback, errors, and assistant pr
 - Frontend: React, TypeScript, Vite, Tailwind CSS
 - Backend: FastAPI, SQLAlchemy, Alembic, JWT authentication
 - Database: PostgreSQL via Docker Compose
-- Speech: Microsoft Azure AI Speech, Soniox, and browser fallback according to administrator-defined routing order
+- Speech: Soniox with browser speech as fallback
 - Deployment: Docker Compose, Nginx, and Linux VPS support
 - Data: Persisted users, guest sessions, scenario analytics, speech quotas, provider events, usage periods, and cached TTS metadata
 
@@ -50,7 +50,7 @@ Browser
   -> Docker frontend Nginx
   -> FastAPI backend
   -> PostgreSQL
-  -> Azure AI Speech / Soniox / browser fallback
+  -> Soniox / browser fallback
 ```
 
 Speech-provider secrets remain in the backend environment and are never included in the browser bundle. The backend authenticates requests, enforces personal and provider quotas, records usage, applies provider routing, and returns generated audio or recognized text to the frontend.
@@ -72,7 +72,7 @@ This version includes:
 - Realistic ATM interface with clickable controls, card/receipt/cash animations, and synchronized sound effects
 - ATM input through on-screen controls, a computer keyboard, or voice where supported
 - Step-by-step online bill-payment draft with guided account setup, secured login attempts, localized bill details, automatic card-field guidance, spoken validation, and PDF receipts
-- Azure and Soniox speech-provider support with configurable TTS/STT priority and browser fallback
+- Soniox speech-provider support with configurable TTS/STT priority and browser fallback
 - Per-user TTS/STT quotas, temporary allowances, quota requests, warnings, and audit history
 - Backend TTS audio caching for repeated fixed prompts and split dynamic PIN/name segments
 - Speech input for supported steps and applause feedback on success
@@ -114,6 +114,10 @@ If the user remains inactive, the ATM displays and speaks periodic warnings. Pre
 The assistant stops speaking when the user begins recording, changes screens, leaves the scenario, or starts another message. Repeated fixed prompts can be served from the shared backend TTS cache, while dynamic name and PIN segments are generated only when needed.
 
 Scenario analytics include registered and guest sessions and classify outcomes as **successful**, **abandoned**, or **security terminated**.
+
+Online Bill Payment is also available under **Admin → Scenario Analytics**. Tracking starts when the practice run opens and respects guest progress consent. It records login attempts and failures, card-validation errors, payment attempts, paid-bill counts, back navigation, language, duration, final step, and exit/timeout reasons. Credentials and card details are never sent to analytics. A visit can include multiple bills; on exit it is successful if at least one bill was paid, otherwise abandoned (or security terminated after login lockout). Active visits remain visible as in progress. Administrators can filter sessions and open each user's or guest's history. Existing visits before this feature cannot be reconstructed.
+
+Apply migration `20260930_0015` with `alembic upgrade head` from `backend` before running this version against an existing database.
 
 ## Online Bill-Payment Draft Flow
 
@@ -216,7 +220,9 @@ The endpoint returns `{"message":"Test email processed."}` whether the message w
 
 ## Speech Services
 
-ASSIST-AI supports Azure AI Speech and Soniox through the backend, with browser speech available as a fallback where supported. Registered users follow the administrator-defined provider order and can fall back to browser speech after a provider error or exhausted allowance. Guest sessions use browser TTS and STT directly. The frontend never receives provider API keys. For backend TTS, it calls `POST /api/tts`, and the backend:
+Speech providers are Soniox (primary) and browser (fallback) for both TTS and STT. Apply migration `20260930_0016` with `alembic upgrade head` when upgrading an existing installation. Historical provider usage remains in the database; the current dashboard shows only supported providers.
+
+ASSIST-AI supports Soniox through the backend, with browser speech available as a fallback where supported. Registered users follow the administrator-defined provider order and can fall back to browser speech after a provider error or exhausted allowance. Guest sessions use browser TTS and STT directly. The frontend never receives provider API keys. For backend TTS, it calls `POST /api/tts`, and the backend:
 
 1. Confirms the user is logged in.
 2. Checks the user's TTS character limit.
@@ -228,14 +234,9 @@ ASSIST-AI supports Azure AI Speech and Soniox through the backend, with browser 
 Add these values to `backend/.env`:
 
 ```env
-AZURE_SPEECH_KEY=your_azure_speech_key
-AZURE_SPEECH_REGION=swedencentral
 TTS_DEFAULT_LIMIT_CHARACTERS=5000
 TTS_MAX_REQUEST_CHARACTERS=1000
-TTS_DEFAULT_VOICE=en-US-JennyNeural
 TTS_CACHE_DIR=media/tts-cache
-AZURE_TTS_MONTHLY_LIMIT_CHARACTERS=500000
-AZURE_STT_MONTHLY_LIMIT_SECONDS=18000
 SPEECH_WARNING_THRESHOLD_PERCENT=80
 SPEECH_SWITCH_THRESHOLD_PERCENT=95
 SONIOX_API_KEY=
@@ -255,14 +256,7 @@ COUNT_BROWSER_USAGE_AGAINST_USER_QUOTA=false
 ADMIN_QUOTA_REQUEST_EMAIL=admin@example.com
 ```
 
-The voice assistant supports the site languages with Azure neural voices:
-
-- English: `en-US-JennyNeural`
-- Spanish: `es-ES-ElviraNeural`
-- German: `de-DE-KatjaNeural`
-- Turkish: `tr-TR-EmelNeural`
-- Portuguese: `pt-PT-RaquelNeural`
-- French: `fr-FR-DeniseNeural`
+The voice assistant uses the configured Soniox voice for English, Spanish, German, Turkish, Portuguese, and French, with browser speech as fallback.
 
 TTS billing is character-based, so ASSIST-AI tracks usage by characters, not tokens. The frontend shows the remaining voice allowance in the top navigation for logged-in users.
 
@@ -270,9 +264,9 @@ Generated audio is cached under `backend/media/tts-cache`, and metadata is store
 
 Administrators can open **Speech Provider Management** to monitor monthly TTS character usage and STT duration, configure each provider, and arrange separate priority orders for TTS and STT. When a provider reaches its configured switch value or cannot complete a request, the backend selects the next enabled provider in that service's priority order.
 
-The monthly provider totals are global estimates based only on ASSIST-AI requests; Azure does not provide a remaining-free-quota API. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Azure quota, and request IDs prevent retries from being counted twice.
+The monthly provider totals are global estimates based only on ASSIST-AI requests; they are not a live provider account balance. They are separate from each user's weekly TTS and STT allowance. Cached TTS audio and browser speech do not consume the estimated Soniox quota, and request IDs prevent retries from being counted twice.
 
-Global speech routing is stored in PostgreSQL and applies to registered users. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Azure and Soniox support both TTS and STT. Guest sessions bypass paid providers and use browser speech when the client reports that capability.
+Global speech routing is stored in PostgreSQL and applies to registered users. Administrators can independently order TTS and STT providers, enable or disable providers, configure calendar or custom monthly periods, and edit provider-specific warning and switch values. Soniox supports both TTS and STT. Guest sessions bypass paid providers and use browser speech when the client reports that capability.
 
 Provider warning and automatic-switch levels are configured as real usage values rather than percentages. TTS levels use characters and STT levels use audio seconds. Crossing a warning level sends one email per provider and billing period to `ADMIN_NOTIFICATION_EMAIL` (or `ADMIN_EMAIL` when no notification address is set). Crossing the switch level makes the next eligible provider in the configured priority order active for subsequent requests.
 
@@ -297,7 +291,7 @@ python -m uvicorn app.main:app --reload
 
 The backend runs at `http://127.0.0.1:8000`.
 
-If the frontend shows an Azure Speech configuration error, check that `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` are set in `backend/.env`, then restart the backend.
+If the frontend shows a Soniox configuration error, check that `SONIOX_API_KEY` is set in `backend/.env`, then restart the backend.
 
 ## Run the Frontend
 
@@ -331,7 +325,7 @@ If your backend uses a different URL, copy `frontend/.env.example` to `frontend/
 
 To test real SMTP, set `EMAIL_ENABLED=true`, `EMAIL_BACKEND=smtp`, and your SMTP variables in `backend/.env`, restart the backend, call `POST /admin/email/test`, then repeat registration, approval, denial, suspension, and activation with test users.
 
-To test Azure TTS, set the Azure Speech variables in `backend/.env`, restart the backend, log in as an approved user, open the ATM scenario, and confirm the assistant speaks. The first time a prompt is spoken it may spend TTS characters; repeated cached prompts should reuse saved audio.
+To test Soniox TTS, set the Soniox variables in `backend/.env`, restart the backend, log in as an approved user, open the ATM scenario, and confirm the assistant speaks. The first time a prompt is spoken it may spend TTS characters; repeated cached prompts should reuse saved audio.
 
 ## Docker Deployment
 

@@ -75,3 +75,33 @@ export function fetchActorAtmSessions(actorType: string, actorReference: string)
     `/api/admin/atm-analytics/actors/${encodeURIComponent(actorType)}/${encodeURIComponent(actorReference)}`,
   );
 }
+
+export type BillAnalyticsSession = {
+  session_id: string;
+  actor_type: "registered" | "guest";
+  actor_reference: string;
+  display_name: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  completion_status: "in_progress" | "completed" | "abandoned";
+  success: boolean;
+  security_terminated: boolean;
+  selected_language: string;
+  final_step_reached: string;
+  termination_reason: string | null;
+  login_attempt_count: number;
+  incorrect_login_count: number;
+  payment_attempt_count: number;
+  validation_error_count: number;
+  paid_bill_count: number;
+  back_navigation_count: number;
+};
+
+export function fetchBillAnalyticsSessions(filters: AtmAnalyticsFilters) {
+  return apiRequest<BillAnalyticsSession[]>(`/api/admin/bill-analytics/sessions${queryString(filters)}`);
+}
+
+export function fetchActorBillSessions(actorType: string, actorReference: string) {
+  return apiRequest<BillAnalyticsSession[]>(`/api/admin/bill-analytics/actors/${encodeURIComponent(actorType)}/${encodeURIComponent(actorReference)}`);
+}

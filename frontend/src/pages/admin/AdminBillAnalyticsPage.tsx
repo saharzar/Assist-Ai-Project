@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 
+import { billAnalyticsLabels } from "../../lib/billAnalyticsTranslations";
+import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
 import {
@@ -8,10 +10,10 @@ import {
   type AdminAnalyticsText,
 } from "../../lib/adminAnalyticsTranslations";
 import {
-  fetchActorAtmSessions,
-  fetchAtmAnalyticsSessions,
+  fetchActorBillSessions,
+  fetchBillAnalyticsSessions,
   type AtmAnalyticsFilters,
-  type AtmAnalyticsSession,
+  type BillAnalyticsSession,
 } from "../../services/adminAnalyticsService";
 
 const initialFilters: AtmAnalyticsFilters = {
@@ -19,14 +21,23 @@ const initialFilters: AtmAnalyticsFilters = {
   completionStatus: "all",
 };
 
-export function AdminAtmAnalyticsPage() {
+export function AdminBillAnalyticsPage() {
   const { user, isAuthenticated } = useAuth();
   const { language } = useTranslation();
-  const text = adminAnalyticsTranslations[language];
+  const labels = billAnalyticsLabels[language];
+  const billText = billPaymentTranslations[language];
+  const text = { ...adminAnalyticsTranslations[language],
+    atmAnalytics: labels[0],
+    loadError: adminAnalyticsTranslations[language].historyLoadError,
+    loading: adminAnalyticsTranslations[language].loading.replace(/ATM/g, labels[0]),
+    noSessions: adminAnalyticsTranslations[language].noSessions.replace(/ATM/g, labels[0]),
+    stepNames: { login: billText.loginTitle, "bill-selection": billText.selectTitle, "bill-details": billText.reviewTitle, "card-payment": billText.cardTitle, success: billText.completeTitle },
+    terminationReasons: { inactivity_timeout: labels[7], login_locked: labels[8], exit: labels[9] },
+  };
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [filters, setFilters] = useState(initialFilters);
-  const [sessions, setSessions] = useState<AtmAnalyticsSession[]>([]);
-  const [selectedActorSessions, setSelectedActorSessions] = useState<AtmAnalyticsSession[] | null>(null);
+  const [sessions, setSessions] = useState<BillAnalyticsSession[]>([]);
+  const [selectedActorSessions, setSelectedActorSessions] = useState<BillAnalyticsSession[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const isAdmin = isAuthenticated && user?.role === "admin";
@@ -42,12 +53,14 @@ export function AdminAtmAnalyticsPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
+    let active = true;
     setIsLoading(true);
     setErrorMessage("");
-    fetchAtmAnalyticsSessions(filters)
-      .then(setSessions)
-      .catch(() => setErrorMessage(text.loadError))
-      .finally(() => setIsLoading(false));
+    fetchBillAnalyticsSessions(filters)
+      .then((rows) => { if (active) setSessions(rows); })
+      .catch(() => { if (active) setErrorMessage(text.loadError); })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
   }, [filters, isAdmin, text.loadError]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -55,11 +68,11 @@ export function AdminAtmAnalyticsPage() {
     return <section className="rounded-lg border border-amber-300 bg-amber-50 p-6 font-semibold text-amber-900">{text.accessDenied}</section>;
   }
 
-  const openActorHistory = async (session: AtmAnalyticsSession) => {
+  const openActorHistory = async (session: BillAnalyticsSession) => {
     setErrorMessage("");
     try {
       setSelectedActorSessions(
-        await fetchActorAtmSessions(session.actor_type, session.actor_reference),
+        await fetchActorBillSessions(session.actor_type, session.actor_reference),
       );
     } catch {
       setErrorMessage(text.historyLoadError);
@@ -81,7 +94,7 @@ export function AdminAtmAnalyticsPage() {
       </div>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <Metric label={text.totalSessions} value={finalizedStats.total} tone="indigo" />
+        <Metric label={text.totalSessions} value={sessions.length} detail={`${sessions.length - finalizedStats.total} ${text.stillInProgress}`} tone="indigo" />
         <Metric label={text.successful} value={finalizedStats.successful} detail={`${finalizedStats.total ? (finalizedStats.successful / finalizedStats.total * 100).toFixed(1) : 0}% ${text.successRate}`} tone="cyan" />
         <Metric label={text.abandoned} value={finalizedStats.abandoned} tone="violet" />
         <Metric label={text.securityTerminated} value={finalizedStats.securityTerminated} tone="rose" />
@@ -103,9 +116,8 @@ export function AdminAtmAnalyticsPage() {
         <FilterInput label={text.to} type="date" value={draftFilters.dateTo ?? ""} onChange={(dateTo) => setDraftFilters((current) => ({ ...current, dateTo }))} />
         <FilterInput label={text.userName} value={draftFilters.userName ?? ""} onChange={(userName) => setDraftFilters((current) => ({ ...current, userName }))} />
         <FilterSelect label={text.userType} value={draftFilters.actorType ?? "all"} options={[{ value: "all", label: text.all }, { value: "registered", label: text.registered }, { value: "guest", label: text.guest }]} onChange={(actorType) => setDraftFilters((current) => ({ ...current, actorType: actorType as AtmAnalyticsFilters["actorType"] }))} />
-        <FilterSelect label={text.status} value={draftFilters.completionStatus ?? "all"} options={[{ value: "all", label: text.all }, { value: "completed", label: text.completed }, { value: "abandoned", label: text.abandoned }]} onChange={(completionStatus) => setDraftFilters((current) => ({ ...current, completionStatus: completionStatus as AtmAnalyticsFilters["completionStatus"] }))} />
+        <FilterSelect label={text.status} value={draftFilters.completionStatus ?? "all"} options={[{ value: "all", label: text.all }, { value: "in_progress", label: text.inProgress }, { value: "completed", label: text.completed }, { value: "abandoned", label: text.abandoned }]} onChange={(completionStatus) => setDraftFilters((current) => ({ ...current, completionStatus: completionStatus as AtmAnalyticsFilters["completionStatus"] }))} />
         <FilterSelect label={text.language} value={draftFilters.language ?? ""} options={[{ value: "", label: text.any }, ...["en", "es", "de", "tr", "pt", "fr"].map((value) => ({ value, label: value.toUpperCase() }))]} onChange={(selectedLanguage) => setDraftFilters((current) => ({ ...current, language: selectedLanguage }))} />
-        <FilterSelect label={text.sttProvider} value={draftFilters.sttProvider ?? ""} options={[{ value: "", label: text.any }, { value: "soniox", label: "Soniox" }, { value: "browser", label: "Browser" }]} onChange={(sttProvider) => setDraftFilters((current) => ({ ...current, sttProvider }))} />
         <div className="flex items-end gap-2">
           <button type="submit" className="min-h-[44px] flex-1 rounded-lg bg-[#2a2586] px-4 font-bold text-white hover:bg-[#1d1a5e] focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.applyFilters}</button>
           <button type="button" aria-label={text.clear} onClick={() => { setDraftFilters(initialFilters); setFilters(initialFilters); setSelectedActorSessions(null); }} className="min-h-[44px] rounded-lg border border-indigo-950/10 bg-white px-4 font-bold text-[#2a2586] hover:bg-[#f3f3fb] focus:outline-none focus:ring-2 focus:ring-cyan-400">{text.clear}</button>
@@ -116,7 +128,7 @@ export function AdminAtmAnalyticsPage() {
       {isLoading ? (
         <p className="py-10 text-center font-semibold text-slate-600">{text.loading}</p>
       ) : (
-        <SessionTable sessions={sessions} text={text} onActorClick={(session) => void openActorHistory(session)} />
+        <SessionTable key={JSON.stringify(filters)} labels={labels} sessions={sessions} text={text} onActorClick={(session) => void openActorHistory(session)} />
       )}
 
       {selectedActorSessions && (
@@ -129,7 +141,7 @@ export function AdminAtmAnalyticsPage() {
               </div>
               <button type="button" onClick={() => setSelectedActorSessions(null)} className="min-h-[44px] rounded-lg border border-slate-300 px-4 font-bold hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500">{text.close}</button>
             </div>
-            <SessionTable sessions={selectedActorSessions} text={text} />
+            <SessionTable labels={labels} sessions={selectedActorSessions} text={text} />
           </section>
         </div>
       )}
@@ -167,7 +179,7 @@ function AnalyticsCharts({ stats, text }: { stats: FinalizedStats; text: AdminAn
 
   return <div className="mt-5 grid gap-5 lg:grid-cols-2">
     <section className="rounded-xl border border-indigo-950/10 bg-white p-6"><h2 className="text-lg font-bold text-[#1d1a5e]">{text.status}</h2><div className="mt-5 flex flex-wrap items-center gap-8"><div className="relative h-36 w-36 shrink-0 rounded-full" style={{ background: outcomeCount ? `conic-gradient(${segments.join(", ")})` : "#f3f3fb" }} role="img" aria-label={outcomes.map((item) => `${item.label}: ${item.value}`).join(", ")}><span className="absolute inset-5 flex items-center justify-center rounded-full bg-white text-2xl font-extrabold text-[#1d1a5e]">{outcomeCount}</span></div><div className="min-w-[180px] flex-1 space-y-3">{outcomes.map((item) => <div key={item.label} className="flex items-center justify-between gap-4"><span className="flex items-center gap-2 text-sm text-slate-600"><i className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />{item.label}</span><strong>{item.value}</strong></div>)}</div></div></section>
-    <section className="rounded-xl border border-indigo-950/10 bg-white p-6"><h2 className="text-lg font-bold text-[#1d1a5e]">{text.userType}</h2><div className="mt-8 space-y-6">{audiences.map((item) => { const percent = item.value / audienceTotal * 100; return <div key={item.label}><div className="mb-2 flex items-center justify-between text-sm"><span className="font-semibold text-slate-600">{item.label}</span><strong className="text-[#1d1a5e]">{item.value} · {percent.toFixed(0)}%</strong></div><div className="h-3 overflow-hidden rounded-full bg-[#f3f3fb]"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${percent}%` }} /></div></div>; })}</div></section>
+    <section className="rounded-xl border border-indigo-950/10 bg-white p-6"><h2 className="text-lg font-bold text-[#1d1a5e]">{text.userType}</h2><div className="mt-8 space-y-6">{audiences.map((item) => { const percent = item.value / audienceTotal * 100; return <div key={item.label}><div className="mb-2 flex items-center justify-between text-sm"><span className="font-semibold text-slate-600">{item.label}</span><strong className="text-[#1d1a5e]">{item.value} ({percent.toFixed(0)}%)</strong></div><div className="h-3 overflow-hidden rounded-full bg-[#f3f3fb]"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${percent}%` }} /></div></div>; })}</div></section>
   </div>;
 }
 
@@ -179,17 +191,17 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
   return <label className="text-sm font-bold text-slate-600">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 min-h-[44px] w-full rounded-lg border border-indigo-950/10 bg-white px-3 font-normal outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200">{options.map((option) => <option key={option.value || "any"} value={option.value}>{option.label}</option>)}</select></label>;
 }
 
-function SessionTable({ sessions, text, onActorClick }: { sessions: AtmAnalyticsSession[]; text: AdminAnalyticsText; onActorClick?: (session: AtmAnalyticsSession) => void }) {
-  const finalizedSessions = sessions.filter((session) => session.completion_status !== "in_progress");
+function SessionTable({ sessions, text, labels, onActorClick }: { labels: string[]; sessions: BillAnalyticsSession[]; text: AdminAnalyticsText; onActorClick?: (session: BillAnalyticsSession) => void }) {
+  const finalizedSessions = sessions;
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const pages = Math.max(1, Math.ceil(finalizedSessions.length / pageSize));
   const visible = finalizedSessions.slice((page - 1) * pageSize, page * pageSize);
   if (!finalizedSessions.length) return <p className="py-10 text-center font-semibold text-slate-500">{text.noSessions}</p>;
-  const result = (session: AtmAnalyticsSession) => session.success ? text.successful : session.security_terminated ? text.securityTerminated : text.abandoned;
-  const resultStyle = (session: AtmAnalyticsSession) => session.success ? "bg-cyan-50 text-teal-700" : session.security_terminated ? "bg-amber-50 text-amber-700" : "bg-[#f3f3fb] text-[#3730a3]";
-  const finalStepLabel = (session: AtmAnalyticsSession) => session.termination_reason
-    ? text.terminationReasons[session.termination_reason] ?? session.termination_reason
+  const result = (session: BillAnalyticsSession) => session.completion_status === "in_progress" ? text.inProgress : session.success ? text.successful : session.security_terminated ? text.securityTerminated : text.abandoned;
+  const resultStyle = (session: BillAnalyticsSession) => session.success ? "bg-cyan-50 text-teal-700" : session.security_terminated ? "bg-amber-50 text-amber-700" : "bg-[#f3f3fb] text-[#3730a3]";
+  const finalStepLabel = (session: BillAnalyticsSession) => session.termination_reason
+    ? `${text.stepNames[session.final_step_reached] ?? session.final_step_reached} · ${text.terminationReasons[session.termination_reason] ?? session.termination_reason}`
     : text.stepNames[session.final_step_reached] ?? session.final_step_reached;
-  return <div className="mt-6"><div className="overflow-x-auto rounded-xl border border-indigo-950/10 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-[#f3f3fb] text-xs uppercase tracking-wider text-slate-500"><tr>{[text.user, text.started, text.duration, text.status, text.submissions, text.finalStep].map((heading) => <th key={heading} className="whitespace-nowrap px-5 py-4">{heading}</th>)}</tr></thead><tbody className="divide-y divide-indigo-950/10">{visible.map((session) => <tr key={session.session_id} className="hover:bg-[#fafbff]"><td className="whitespace-nowrap px-5 py-4 font-bold">{onActorClick ? <button type="button" onClick={() => onActorClick(session)} className="text-[#2a2586] hover:underline">{session.display_name}</button> : session.display_name}</td><td className="whitespace-nowrap px-5 py-4 text-slate-600">{new Date(session.started_at).toLocaleString(text.locale)}</td><td className="px-5 py-4 text-slate-600">{session.duration_seconds === null ? "-" : `${session.duration_seconds}s`}</td><td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${resultStyle(session)}`}>{result(session)}</span></td><td className="px-5 py-4 font-semibold">{session.total_pin_submission_count}</td><td className="px-5 py-4 text-slate-600">{finalStepLabel(session)}</td></tr>)}</tbody></table></div>{pages > 1 && <div className="mt-4 flex justify-end gap-2"><button disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-indigo-950/10 px-3 py-2 text-[#2a2586] disabled:opacity-40">Previous</button><span className="px-2 py-2 text-sm">{page} / {pages}</span><button disabled={page === pages} onClick={() => setPage(page + 1)} className="rounded-lg border border-indigo-950/10 px-3 py-2 text-[#2a2586] disabled:opacity-40">Next</button></div>}</div>;
+  return <div className="mt-6"><div className="overflow-x-auto rounded-xl border border-indigo-950/10 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-[#f3f3fb] text-xs uppercase tracking-wider text-slate-500"><tr>{[text.user, text.started, text.duration, text.status, ...labels.slice(1, 7), text.language, text.finalStep].map((heading) => <th key={heading} className="whitespace-nowrap px-5 py-4">{heading}</th>)}</tr></thead><tbody className="divide-y divide-indigo-950/10">{visible.map((session) => <tr key={session.session_id} className="hover:bg-[#fafbff]"><td className="whitespace-nowrap px-5 py-4 font-bold">{onActorClick ? <button type="button" onClick={() => onActorClick(session)} className="text-[#2a2586] hover:underline">{session.display_name}</button> : session.display_name}</td><td className="whitespace-nowrap px-5 py-4 text-slate-600">{new Date(session.started_at).toLocaleString(text.locale)}</td><td className="px-5 py-4 text-slate-600">{session.duration_seconds === null ? "-" : `${session.duration_seconds}s`}</td><td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${resultStyle(session)}`}>{result(session)}</span></td>{[session.login_attempt_count, session.incorrect_login_count, session.payment_attempt_count, session.validation_error_count, session.paid_bill_count, session.back_navigation_count].map((value, index) => <td key={index} className="px-5 py-4 font-semibold">{value}</td>)}<td className="px-5 py-4">{session.selected_language.toUpperCase()}</td><td className="px-5 py-4 text-slate-600">{finalStepLabel(session)}</td></tr>)}</tbody></table></div>{pages > 1 && <div className="mt-4 flex justify-end gap-2"><button disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-indigo-950/10 px-3 py-2 text-[#2a2586] disabled:opacity-40">Previous</button><span className="px-2 py-2 text-sm">{page} / {pages}</span><button disabled={page === pages} onClick={() => setPage(page + 1)} className="rounded-lg border border-indigo-950/10 px-3 py-2 text-[#2a2586] disabled:opacity-40">Next</button></div>}</div>;
 }

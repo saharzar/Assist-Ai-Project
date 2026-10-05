@@ -3,7 +3,7 @@
 This setup runs ASSIST-AI with three containers:
 
 - `postgres`: PostgreSQL database
-- `backend`: FastAPI API, Alembic migrations, Azure TTS/STT
+- `backend`: FastAPI API, Alembic migrations, Soniox TTS/STT
 - `frontend`: Nginx serving the React app and proxying backend endpoint namespaces
 
 The frontend container proxies only `/api/`, `/auth/`, `/users/`, `/guests/`, and `/health` to FastAPI. React page URLs, including `/admin/...`, are served through the SPA fallback. Admin APIs use `/api/admin/...`; do not add a broad Nginx proxy for `/admin/`.
@@ -35,8 +35,7 @@ ADMIN_PASSWORD=change_this_password
 ADMIN_FULL_NAME=ASSIST-AI Admin
 ADMIN_NOTIFICATION_EMAIL=admin@example.com
 
-AZURE_SPEECH_KEY=your_azure_key
-AZURE_SPEECH_REGION=swedencentral
+SONIOX_API_KEY=your_soniox_key
 
 EMAIL_ENABLED=true
 EMAIL_BACKEND=smtp
@@ -85,7 +84,7 @@ cp backend/.env.example backend/.env
 nano backend/.env
 ```
 
-Set Azure, SMTP, admin, and JWT values. Use strong passwords.
+Set Soniox, SMTP, admin, and JWT values. Use strong passwords.
 
 4. Optional: create a root `.env` for Docker Compose.
 

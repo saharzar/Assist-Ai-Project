@@ -25,11 +25,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = 10
-    azure_speech_key: str = ""
-    azure_speech_region: str = "swedencentral"
     tts_default_limit_characters: int = 5000
     tts_max_request_characters: int = 1000
-    tts_default_voice: str = "en-US-JennyNeural"
     tts_cache_dir: str = "media/tts-cache"
     stt_default_limit_seconds: int = 300
     default_user_quota_period: str = "weekly"
@@ -39,8 +36,6 @@ class Settings(BaseSettings):
     admin_quota_request_email: str = ""
     default_user_tts_limit_characters: int = 5000
     default_user_stt_limit_seconds: int = 300
-    azure_tts_monthly_limit_characters: int = 500000
-    azure_stt_monthly_limit_seconds: int = 18000
     speech_warning_threshold_percent: int = 80
     speech_switch_threshold_percent: int = 95
     soniox_api_key: str = ""
