@@ -125,7 +125,7 @@ describe("scenario tracking recorder cleanup", () => {
   it("exposes the current inference view through a stable getter and clears it on exit", () => {
     const { flow, cleanup } = render();
     lifecycle.previewFrame = { video: {} as HTMLVideoElement, landmarks: [], headPose: null,
-      estimatedEyeDirection: null, isUserInteracting: false };
+      estimatedEyeDirection: null, isUserInteracting: false, detectedFaceCount: 0, primaryFaceIndex: null };
     expect(flow.getPreviewFrame()).toBe(lifecycle.previewFrame);
     cleanup();
     expect(flow.getPreviewFrame()).toBeNull();

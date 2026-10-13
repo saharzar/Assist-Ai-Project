@@ -74,6 +74,8 @@ function AuthorizedPreview({ scenario, getFrame, token }: Props & { token: strin
       <canvas ref={canvas} width={640} height={480} aria-label={text.title} className="mt-2 max-h-44 w-full rounded-lg bg-slate-950 object-contain sm:max-h-48" />
       {unavailable ? <p role="status" className="mt-2 text-sm text-amber-800">{text.unavailable}</p> : <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
         {[[text.camera, yesNo(summary?.cameraTrackingActive)], [text.face, yesNo(summary?.faceDetected)],
+          [text.detectedFaces, summary?.detectedFaceCount ?? 0],
+          [text.primaryFace, summary?.primaryFaceIndex == null ? labels.missing : summary.primaryFaceIndex + 1],
           [text.landmarks, summary?.landmarkCount ?? 0], [labels.yaw, angle(summary?.headPose?.yaw)],
           [labels.pitch, angle(summary?.headPose?.pitch)], [labels.roll, angle(summary?.headPose?.roll)],
           [labels.eyeDirection, summary?.estimatedEyeDirection ? labels[summary.estimatedEyeDirection] : labels.missing],

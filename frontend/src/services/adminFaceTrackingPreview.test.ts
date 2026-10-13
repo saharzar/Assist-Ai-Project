@@ -21,7 +21,7 @@ describe("local admin preview", () => {
     canvas = { width: 640, height: 480, getContext: () => context } as unknown as HTMLCanvasElement;
     frame = { video: { videoWidth: 640, videoHeight: 480 } as HTMLVideoElement,
       landmarks: [{ x: 0.5, y: 0.25, z: 0, visibility: 1 }], headPose: { yaw: 10, pitch: -5, roll: 2 },
-      estimatedEyeDirection: "left", isUserInteracting: true };
+      estimatedEyeDirection: "left", isUserInteracting: true, detectedFaceCount: 2, primaryFaceIndex: 1 };
     getFrame = vi.fn(() => frame); onUpdate = vi.fn(); onUnavailable = vi.fn();
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -52,7 +52,7 @@ describe("local admin preview", () => {
     expect(context.drawImage).toHaveBeenCalledWith(frame.video, 0, 0, 640, 480);
     expect(context.arc).toHaveBeenCalledWith(320, 120, 1.5, 0, 2 * Math.PI);
     expect(onUpdate).toHaveBeenCalledWith({ cameraTrackingActive: true, faceDetected: true, landmarkCount: 1,
-      headPose: frame.headPose, estimatedEyeDirection: "left", isUserInteracting: true });
+      headPose: frame.headPose, estimatedEyeDirection: "left", isUserInteracting: true, detectedFaceCount: 2, primaryFaceIndex: 1 });
     expect(onUpdate.mock.calls[0][0]).not.toHaveProperty("video");
     expect(onUpdate.mock.calls[0][0]).not.toHaveProperty("landmarks");
     preview.stop(); expect(vi.getTimerCount()).toBe(0);
@@ -84,7 +84,7 @@ describe("local admin preview", () => {
     await preview.start();
     expect(context.drawImage).not.toHaveBeenCalled();
     expect(onUpdate).toHaveBeenCalledWith({ cameraTrackingActive: false, faceDetected: false, landmarkCount: 0,
-      headPose: null, estimatedEyeDirection: null, isUserInteracting: false });
+      headPose: null, estimatedEyeDirection: null, isUserInteracting: false, detectedFaceCount: 0, primaryFaceIndex: null });
     preview.stop();
   });
 

@@ -51,6 +51,8 @@ describe("scenario admin preview control", () => {
     expect(html).toContain('aria-checked="true"'); expect(html).toContain("<canvas");
     expect(html).toContain("478"); expect(html).toContain("10.0°"); expect(html).toContain("Left");
     expect(html).toContain("Keyboard/mouse activity");
+    expect(html).toContain("Faces detected");
+    expect(html).toContain("Selected face (this frame)");
   });
 
   it.each(["user", "guest"])("never mounts the preview for %s even with ON state", (role) => {
