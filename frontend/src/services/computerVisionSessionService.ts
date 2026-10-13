@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./api";
-import type { TrackingSample } from "./trackingSessionRecorder";
+import type { TrackingRecordingStart, TrackingSample } from "./trackingSessionRecorder";
 
 export type ComputerVisionScenario = "atm-withdrawal" | "online-bill-payment";
 export type ScenarioAttemptId = string | null | Promise<string | null>;
@@ -48,9 +48,9 @@ export function createComputerVisionSessionSubmission({ allowed, scenario, heade
   }
 
   return {
-    start() {
+    start(timing?: TrackingRecordingStart) {
       if (allowed && !started && !finished) {
-        started = { id: crypto.randomUUID(), wallTime: Date.now(), clock: performance.now() };
+        started = { id: crypto.randomUUID(), wallTime: timing?.wallTime ?? Date.now(), clock: timing?.clock ?? performance.now() };
       }
     },
     finish(samples: TrackingSample[]): Promise<void> {

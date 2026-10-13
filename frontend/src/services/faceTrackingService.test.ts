@@ -134,7 +134,7 @@ describe("browser face tracking lifecycle", () => {
     expect(tracker.getPreviewFrame()?.primaryFaceIndex).toBe(0);
     tracker.stop();
     const samples = tracker.getCompletedSamples();
-    expect(samples).toHaveLength(1);
+    expect(samples).toHaveLength(2);
     expect(samples[0].roll).toBeCloseTo(pose.roll);
     expect(samples[0].estimatedEyeDirection).toBe(eyeDirection);
     expect(samples[0]).not.toHaveProperty("landmarks");
@@ -284,7 +284,7 @@ describe("browser face tracking lifecycle", () => {
     await vi.advanceTimersByTimeAsync(4000);
     expect(console.info).toHaveBeenCalledTimes(4);
     expect(console.info).toHaveBeenCalledWith("[Face tracking] session recording completed", expect.objectContaining({
-      sampleCount: 8, durationMs: 4000,
+      sampleCount: 9, durationMs: 4000,
     }));
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -352,8 +352,8 @@ describe("browser face tracking lifecycle", () => {
     // This is the same stop method used by the hook's unmount/pagehide cleanup.
     tracker.stop();
     const completed = tracker.getCompletedSamples();
-    expect(completed).toHaveLength(2);
-    expect(completed.map((sample) => sample.timestamp)).toEqual([500, 1000]);
+    expect(completed).toHaveLength(3);
+    expect(completed.map((sample) => sample.timestamp)).toEqual([0, 500, 1000]);
     expect(completed[0].yaw).toBeCloseTo(0);
     expect(completed[0].estimatedEyeDirection).toBe("center");
     expect(onSessionComplete).toHaveBeenCalledExactlyOnceWith(completed);
@@ -377,6 +377,21 @@ describe("browser face tracking lifecycle", () => {
     expect(console.warn).toHaveBeenCalledExactlyOnceWith(
       `[Face tracking] ${reason}. The scenario can continue.`, { stage: "camera", errorName: name },
     );
+  });
+
+  it("waits through unavailable detections before notifying recording start and saving a zero-time point", async () => {
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    const onRecordingStart = vi.fn();
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onRecordingStart, onError });
+    await tracker.start();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(onRecordingStart).not.toHaveBeenCalled();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onRecordingStart).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(500);
+    tracker.stop();
+    expect(tracker.getCompletedSamples().map((sample) => sample.timestamp)).toEqual([0, 500]);
   });
 
   it("identifies MediaPipe initialization failures in development", async () => {

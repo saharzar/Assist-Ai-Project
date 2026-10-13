@@ -41,6 +41,7 @@ export function useFaceTracking(scenario: ComputerVisionScenario, active: boolea
       onLandmarks: (landmarks) => { landmarksRef.current = landmarks; },
       onHeadPose: (pose) => { headPoseRef.current = pose; },
       onEyeDirection: (direction) => { eyeDirectionRef.current = direction; },
+      onRecordingStart: submission.start,
       onSessionComplete: (samples) => {
         completedSamplesRef.current = samples;
         void submission.finish(samples);
@@ -49,7 +50,7 @@ export function useFaceTracking(scenario: ComputerVisionScenario, active: boolea
     });
     previewGetterRef.current = tracker.getPreviewFrame;
     // Defer to avoid a duplicate permission request during StrictMode's effect replay.
-    const startTimer = window.setTimeout(() => { submission.start(); void tracker.start(); }, 0);
+    const startTimer = window.setTimeout(() => { void tracker.start(); }, 0);
     const stop = () => {
       window.clearTimeout(startTimer);
       tracker.stop();

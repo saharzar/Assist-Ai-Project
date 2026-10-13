@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFaceTracking } from "./useFaceTracking";
-import type { TrackingSample } from "../services/trackingSessionRecorder";
+import type { TrackingRecordingStart, TrackingSample, TrackingValues } from "../services/trackingSessionRecorder";
 import type { ScenarioAttemptId } from "../services/computerVisionSessionService";
 import type { FaceTrackingPreviewFrame } from "../services/faceTrackingService";
 vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ token: "owner-token", guestSessionToken: null }) }));
@@ -12,6 +12,8 @@ const lifecycle = vi.hoisted(() => ({
   refCursor: 0,
   trackers: [] as Array<{ start: () => void; stop: () => void }>,
   previewFrame: null as FaceTrackingPreviewFrame | null,
+  autoMeasurement: true,
+  updates: [] as Array<(values: TrackingValues) => void>,
 }));
 vi.mock("react", () => ({
   useRef: (initial: unknown) => {
@@ -24,12 +26,14 @@ vi.mock("react", () => ({
 vi.mock("../services/faceTrackingService", async () => {
   const { createTrackingSessionRecorder } = await import("../services/trackingSessionRecorder");
   return {
-    createFaceTracking: (options: { allowed: boolean; onSessionComplete: (samples: TrackingSample[]) => void }) => {
-      const recorder = createTrackingSessionRecorder(options.allowed);
+    createFaceTracking: (options: { allowed: boolean; onSessionComplete: (samples: TrackingSample[]) => void;
+      onRecordingStart: (timing: TrackingRecordingStart) => void }) => {
+      const recorder = createTrackingSessionRecorder(options.allowed, {}, options.onRecordingStart);
+      lifecycle.updates.push(recorder.update);
       const tracker = {
         start: vi.fn(() => {
           recorder.start();
-          recorder.update({ yaw: 0, pitch: 0, roll: 0, estimatedEyeDirection: "center" });
+          if (lifecycle.autoMeasurement) recorder.update({ yaw: 0, pitch: 0, roll: 0, estimatedEyeDirection: "center" });
         }),
         stop: vi.fn(() => { options.onSessionComplete(recorder.stop()); }),
         getPreviewFrame: () => lifecycle.previewFrame,
@@ -58,6 +62,8 @@ describe("scenario tracking recorder cleanup", () => {
     lifecycle.refs.length = 0;
     lifecycle.trackers.length = 0;
     lifecycle.previewFrame = null;
+    lifecycle.autoMeasurement = true;
+    lifecycle.updates = [];
     consent = "allowed";
     surface = new EventTarget();
     vi.stubGlobal("window", Object.assign(surface, { setTimeout, clearTimeout }));
@@ -76,7 +82,7 @@ describe("scenario tracking recorder cleanup", () => {
     expect(flow.getCompletedSamples()).toEqual([]);
     cleanup();
     const completed = flow.getCompletedSamples();
-    expect(completed).toHaveLength(2);
+    expect(completed).toHaveLength(3);
     vi.advanceTimersByTime(3000);
     expect(flow.getCompletedSamples()).toEqual(completed);
     expect(lifecycle.trackers[0].stop).toHaveBeenCalledOnce();
@@ -90,11 +96,11 @@ describe("scenario tracking recorder cleanup", () => {
     surface.dispatchEvent(new Event("keydown"));
     vi.advanceTimersByTime(200);
     surface.dispatchEvent(new Event("pagehide"));
-    expect(flow.getCompletedSamples()).toHaveLength(1);
-    expect(flow.getCompletedSamples()[0].isUserInteracting).toBe(true);
+    expect(flow.getCompletedSamples()).toHaveLength(2);
+    expect(flow.getCompletedSamples()[1].isUserInteracting).toBe(true);
     expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown"]);
     vi.advanceTimersByTime(3000);
-    expect(flow.getCompletedSamples()).toHaveLength(1);
+    expect(flow.getCompletedSamples()).toHaveLength(2);
     cleanup();
     expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "pagehide"]);
     surface.dispatchEvent(new Event("pagehide"));
@@ -135,13 +141,13 @@ describe("scenario tracking recorder cleanup", () => {
     const first = render();
     vi.advanceTimersByTime(500);
     first.cleanup();
-    expect(render(false).flow.getCompletedSamples()).toHaveLength(1);
+    expect(render(false).flow.getCompletedSamples()).toHaveLength(2);
     const next = render();
     expect(next.flow.getCompletedSamples()).toEqual([]);
     vi.advanceTimersByTime(500);
     next.cleanup();
-    expect(next.flow.getCompletedSamples()).toHaveLength(1);
-    expect(next.flow.getCompletedSamples()[0].timestamp).toBe(500);
+    expect(next.flow.getCompletedSamples()).toHaveLength(2);
+    expect(next.flow.getCompletedSamples()[0].timestamp).toBe(0);
   });
 
   it("keeps scenario completion and completed samples working when backend saving fails", async () => {
@@ -150,7 +156,7 @@ describe("scenario tracking recorder cleanup", () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(() => cleanup()).not.toThrow();
     await vi.advanceTimersByTimeAsync(0);
-    expect(flow.getCompletedSamples()).toHaveLength(1);
+    expect(flow.getCompletedSamples()).toHaveLength(2);
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -172,5 +178,32 @@ describe("scenario tracking recorder cleanup", () => {
     await vi.advanceTimersByTimeAsync(0);
     const options = vi.mocked(fetch).mock.calls[0][1];
     expect(JSON.parse(options!.body as string).scenario_session_id).toBe(attemptId);
+  });
+
+  it("aligns saved session metadata with the first valid measurement and submits only once", async () => {
+    vi.setSystemTime(new Date("2026-10-01T12:00:00Z"));
+    lifecycle.autoMeasurement = false;
+    const { flow, cleanup } = render();
+    await vi.advanceTimersByTimeAsync(2000);
+    lifecycle.updates[0]({ yaw: 0, pitch: 0, roll: 0, estimatedEyeDirection: "center" });
+    await vi.advanceTimersByTimeAsync(500);
+    surface.dispatchEvent(new Event("pagehide")); cleanup();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetch).toHaveBeenCalledOnce();
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(body).toMatchObject({ started_at: "2026-10-01T12:00:02.000Z", ended_at: "2026-10-01T12:00:02.500Z", duration_ms: 500 });
+    expect(body.samples.map((sample: TrackingSample) => sample.timestamp)).toEqual([0, 500]);
+    expect(flow.getCompletedSamples()).toHaveLength(2);
+  });
+
+  it("does not submit a recording if the scenario ends before any valid measurement", async () => {
+    lifecycle.autoMeasurement = false;
+    const { flow, cleanup } = render();
+    await vi.advanceTimersByTimeAsync(2000);
+    surface.dispatchEvent(new Event("pagehide")); cleanup();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(flow.getCompletedSamples()).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -1,7 +1,7 @@
 import type { FaceLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { createHeadPoseEstimator, type HeadPose } from "./headPose";
 import { createEyeDirectionEstimator, type EyeDirection } from "./eyeDirection";
-import { createTrackingSessionRecorder, type TrackingSample } from "./trackingSessionRecorder";
+import { createTrackingSessionRecorder, type TrackingRecordingStart, type TrackingSample } from "./trackingSessionRecorder";
 import { createPrimaryFaceSelector } from "./primaryFaceSelection";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
@@ -24,12 +24,13 @@ type FaceTrackingOptions = {
   onHeadPose?: (pose: HeadPose | null) => void;
   onEyeDirection?: (direction: EyeDirection | null) => void;
   onSessionComplete?: (samples: TrackingSample[]) => void;
+  onRecordingStart?: (timing: TrackingRecordingStart) => void;
   onError: (error: unknown) => void;
 };
 
 /** Browser-only prototype: records derived values in memory, never raw media. */
-export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDirection, onSessionComplete, onError }: FaceTrackingOptions) {
-  const recorder = createTrackingSessionRecorder(allowed);
+export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDirection, onSessionComplete, onRecordingStart, onError }: FaceTrackingOptions) {
+  const recorder = createTrackingSessionRecorder(allowed, {}, onRecordingStart);
   const poseEstimator = createHeadPoseEstimator();
   const eyeEstimator = createEyeDirectionEstimator();
   const primaryFaceSelector = createPrimaryFaceSelector();
