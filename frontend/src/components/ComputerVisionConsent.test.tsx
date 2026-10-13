@@ -6,6 +6,7 @@ import { AtmAssistantMessage } from "./atm/AtmAssistantMessage";
 import { computerVisionConsentTranslations } from "../lib/computerVisionConsentTranslations";
 import { speakAssistantMessage, stopAssistantSpeech, unlockAssistantAudioPlayback } from "../services/speechSynthesisService";
 import type { LanguageCode } from "../i18n";
+import { ComputerVisionDialog } from "./ComputerVisionDialog";
 
 const state = vi.hoisted(() => ({ authenticated: true, loading: false, choice: null as boolean | null,
   language: "en" as LanguageCode, choose: vi.fn(), effects: [] as Array<() => void | (() => void)>,
@@ -23,8 +24,11 @@ vi.mock("../services/speechSynthesisService", () => ({ speakAssistantMessage: vi
 
 function render() { return renderToStaticMarkup(<ComputerVisionConsentGate><p>Scenario content</p></ComputerVisionConsentGate>); }
 function dialogTree() {
-  const element = ComputerVisionConsentGate({ children: "Scenario content" }) as ReactElement<{ onChoose: (allowed: boolean) => void }>;
-  return (element.type as (props: typeof element.props) => ReactElement)(element.props);
+  let element = ComputerVisionConsentGate({ children: "Scenario content" }) as ReactElement;
+  while (typeof element.type === "function") {
+    element = (element.type as (props: unknown) => ReactElement)(element.props);
+  }
+  return element;
 }
 function elements(node: ReactNode): ReactElement[] {
   if (!isValidElement<{ children?: ReactNode }>(node)) return [];
@@ -53,6 +57,16 @@ describe("post-login camera analysis consent", () => {
     state.choice = choice;
     expect(render()).toContain("Scenario content");
     expect(render()).not.toContain("<dialog");
+  });
+
+  it("never probes the camera just because consent is Yes after login", () => {
+    const getUserMedia = vi.fn();
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+    state.choice = true;
+    expect(ComputerVisionConsentGate({ children: "Scenario" })).toBe("Scenario");
+    state.choice = false;
+    expect(ComputerVisionConsentGate({ children: "Scenario" })).toBe("Scenario");
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 
   it("does not prompt signed-out users or guests, or prompt while authentication is being validated", () => {
@@ -125,5 +139,18 @@ describe("post-login camera analysis consent", () => {
     expect(html).toContain(text.no);
     state.effects[1]();
     expect(speakAssistantMessage).toHaveBeenCalledWith(`${text.legend}. ${text.description}`, expect.any(Object), language);
+  });
+
+  it.each(Object.keys(computerVisionConsentTranslations) as LanguageCode[])("renders and reads a camera error without reading its button in %s", (language) => {
+    state.language = language;
+    const text = computerVisionConsentTranslations[language];
+    const html = renderToStaticMarkup(<ComputerVisionDialog title={text.cameraUnavailable} message={text.cameraUnavailableMessage}>
+      <button>{text.cameraRetry}</button>
+    </ComputerVisionDialog>);
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain(text.cameraUnavailable);
+    expect(html).toContain(text.cameraRetry);
+    state.effects[1]();
+    expect(speakAssistantMessage).toHaveBeenCalledWith(`${text.cameraUnavailable}. ${text.cameraUnavailableMessage}`, expect.any(Object), language);
   });
 });
