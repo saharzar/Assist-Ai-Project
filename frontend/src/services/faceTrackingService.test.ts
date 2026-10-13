@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFaceTracking } from "./faceTrackingService";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { createAdminFaceTrackingPreview } from "./adminFaceTrackingPreview";
+import { calculateHeadPose } from "./headPose";
+import { estimateEyeDirection } from "./eyeDirection";
 
 const vision = vi.hoisted(() => ({
   resolve: vi.fn(),
@@ -24,6 +26,17 @@ function frontFacingLandmarks(): NormalizedLandmark[] {
   landmarks[468] = { x: 0.43, y: 0.4, z: 0, visibility: 1 };
   landmarks[473] = { x: 0.57, y: 0.4, z: 0, visibility: 1 };
   return landmarks;
+}
+
+function positionedFace(centerX: number, scale: number, roll = 0, lookLeft = false): NormalizedLandmark[] {
+  const landmarks = frontFacingLandmarks();
+  if (lookLeft) { landmarks[468].x += 0.02; landmarks[473].x += 0.02; }
+  const angle = roll * Math.PI / 180;
+  return landmarks.map((point) => ({ ...point,
+    x: centerX + scale * ((point.x - 0.5) * Math.cos(angle) - (point.y - 0.5) * Math.sin(angle)),
+    y: 0.5 + scale * ((point.x - 0.5) * Math.sin(angle) + (point.y - 0.5) * Math.cos(angle)),
+    z: point.z * scale,
+  }));
 }
 vi.mock("@mediapipe/tasks-vision", () => ({
   FilesetResolver: { forVisionTasks: vision.resolve },
@@ -55,7 +68,7 @@ describe("browser face tracking lifecycle", () => {
     vi.stubGlobal("document", { createElement: vi.fn().mockReturnValue(video) });
     vision.resolve.mockResolvedValue({});
     vision.create.mockResolvedValue({ detect: vision.detect, close: vision.close });
-    vision.detect.mockReturnValue({ faceLandmarks: [[{ x: 0.5, y: 0.5, z: 0 }]] });
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
     onLandmarks = vi.fn();
     onError = vi.fn();
   });
@@ -101,15 +114,80 @@ describe("browser face tracking lifecycle", () => {
     expect(tracker.getPreviewFrame()).toBeNull(); expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("uses only the largest face for landmarks, measurements, samples and admin overlay", async () => {
+    const companion = positionedFace(0.8, 0.3);
+    const primary = positionedFace(0.25, 0.8, 15, true);
+    vision.detect.mockReturnValue({ faceLandmarks: [companion, primary] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    expect(onLandmarks).toHaveBeenLastCalledWith([primary]);
+    expect(tracker.getPreviewFrame()).toEqual(expect.objectContaining({
+      landmarks: primary, detectedFaceCount: 2, primaryFaceIndex: 1,
+    }));
+    const pose = calculateHeadPose(primary, 640, 480)!;
+    const eyeDirection = estimateEyeDirection(primary, 640, 480);
+    expect(tracker.getHeadPose()).toEqual(pose);
+    expect(tracker.getEyeDirection()).toBe(eyeDirection);
+    vision.detect.mockReturnValue({ faceLandmarks: [primary, companion] });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(onLandmarks).toHaveBeenLastCalledWith([primary]);
+    expect(tracker.getPreviewFrame()?.primaryFaceIndex).toBe(0);
+    tracker.stop();
+    const samples = tracker.getCompletedSamples();
+    expect(samples).toHaveLength(2);
+    expect(samples[0].roll).toBeCloseTo(pose.roll);
+    expect(samples[0].estimatedEyeDirection).toBe(eyeDirection);
+    expect(samples[0]).not.toHaveProperty("landmarks");
+    expect(samples[0]).not.toHaveProperty("primaryFaceIndex");
+    expect(getUserMedia).toHaveBeenCalledOnce();
+  });
+
+  it("resets pose and eye smoothing when switching to a persistently larger primary", async () => {
+    const initial = positionedFace(0.25, 0.75);
+    const companion = positionedFace(0.8, 0.25, 20, true);
+    vision.detect.mockReturnValue({ faceLandmarks: [initial, companion] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    expect(tracker.getEyeDirection()).toBe("center");
+    const larger = positionedFace(0.8, 0.95, 20, true);
+    vision.detect.mockReturnValue({ faceLandmarks: [larger, initial] });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(onLandmarks).toHaveBeenLastCalledWith([initial]);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onLandmarks).toHaveBeenLastCalledWith([larger]);
+    expect(tracker.getHeadPose()).toEqual(calculateHeadPose(larger, 640, 480));
+    expect(tracker.getEyeDirection()).toBe(estimateEyeDirection(larger, 640, 480));
+    tracker.stop();
+  });
+
+  it("immediately replaces a disappeared primary and clears data when all faces disappear", async () => {
+    const primary = positionedFace(0.25, 0.8), companion = positionedFace(0.8, 0.4, 20);
+    vision.detect.mockReturnValue({ faceLandmarks: [primary, companion] });
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
+    await tracker.start();
+    vision.detect.mockReturnValue({ faceLandmarks: [companion] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onLandmarks).toHaveBeenLastCalledWith([companion]);
+    expect(tracker.getHeadPose()).toEqual(calculateHeadPose(companion, 640, 480));
+    expect(tracker.getPreviewFrame()?.primaryFaceIndex).toBe(0);
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onLandmarks).toHaveBeenLastCalledWith([]);
+    expect(tracker.getHeadPose()).toBeNull();
+    expect(tracker.getEyeDirection()).toBeNull();
+    expect(tracker.getPreviewFrame()).toEqual(expect.objectContaining({ detectedFaceCount: 0, primaryFaceIndex: null, landmarks: [] }));
+    tracker.stop();
+  });
+
   it("detects landmarks without timestamps and releases all resources on stop", async () => {
     const tracker = createFaceTracking({ allowed: true, onLandmarks, onError });
     await tracker.start();
     expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: false }));
     expect(vision.create).toHaveBeenCalledWith({}, expect.objectContaining({
-      runningMode: "IMAGE", outputFaceBlendshapes: false, outputFacialTransformationMatrixes: false,
+      runningMode: "IMAGE", numFaces: 3, outputFaceBlendshapes: false, outputFacialTransformationMatrixes: false,
     }));
     expect(vision.detect).toHaveBeenCalledWith(video);
-    expect(onLandmarks).toHaveBeenLastCalledWith([[{ x: 0.5, y: 0.5, z: 0 }]]);
+    expect(onLandmarks).toHaveBeenLastCalledWith([frontFacingLandmarks()]);
     tracker.stop();
     tracker.stop();
     await vi.advanceTimersByTimeAsync(500);
@@ -206,7 +284,7 @@ describe("browser face tracking lifecycle", () => {
     await vi.advanceTimersByTimeAsync(4000);
     expect(console.info).toHaveBeenCalledTimes(4);
     expect(console.info).toHaveBeenCalledWith("[Face tracking] session recording completed", expect.objectContaining({
-      sampleCount: 8, durationMs: 4000,
+      sampleCount: 9, durationMs: 4000,
     }));
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -274,8 +352,8 @@ describe("browser face tracking lifecycle", () => {
     // This is the same stop method used by the hook's unmount/pagehide cleanup.
     tracker.stop();
     const completed = tracker.getCompletedSamples();
-    expect(completed).toHaveLength(2);
-    expect(completed.map((sample) => sample.timestamp)).toEqual([500, 1000]);
+    expect(completed).toHaveLength(3);
+    expect(completed.map((sample) => sample.timestamp)).toEqual([0, 500, 1000]);
     expect(completed[0].yaw).toBeCloseTo(0);
     expect(completed[0].estimatedEyeDirection).toBe("center");
     expect(onSessionComplete).toHaveBeenCalledExactlyOnceWith(completed);
@@ -299,6 +377,21 @@ describe("browser face tracking lifecycle", () => {
     expect(console.warn).toHaveBeenCalledExactlyOnceWith(
       `[Face tracking] ${reason}. The scenario can continue.`, { stage: "camera", errorName: name },
     );
+  });
+
+  it("waits through unavailable detections before notifying recording start and saving a zero-time point", async () => {
+    vision.detect.mockReturnValue({ faceLandmarks: [] });
+    const onRecordingStart = vi.fn();
+    const tracker = createFaceTracking({ allowed: true, onLandmarks, onRecordingStart, onError });
+    await tracker.start();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(onRecordingStart).not.toHaveBeenCalled();
+    vision.detect.mockReturnValue({ faceLandmarks: [frontFacingLandmarks()] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onRecordingStart).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(500);
+    tracker.stop();
+    expect(tracker.getCompletedSamples().map((sample) => sample.timestamp)).toEqual([0, 500]);
   });
 
   it("identifies MediaPipe initialization failures in development", async () => {

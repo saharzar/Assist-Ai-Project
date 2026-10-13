@@ -5,7 +5,7 @@ import atmImageUrl from "../../assets/atm-realistic.png";
 import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
 import { useTranslation } from "../../i18n";
 import { atmIntroductionTranslations } from "../../lib/atmIntroductionTranslations";
-import { unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
+import { ScenarioStartButton } from "../../components/ScenarioStartButton";
 
 const stepIcons = [UserRound, KeyRound, ShieldCheck, Banknote, CheckCircle2];
 const stepColors = [
@@ -49,16 +49,12 @@ export function AtmIntroductionPage() {
                 <p className="mt-2 max-w-xs text-[clamp(0.55rem,1.15vw,0.85rem)] font-semibold leading-snug text-[#5b5a78]">{text.simpleSubtitle}</p>
               </div>
             </div>
-            <Link
+            <ScenarioStartButton
               to="/scenario/atm-withdrawal/setup"
-              onPointerDown={() => { void unlockAssistantAudioPlayback(); }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
-              }}
               className="mx-auto mt-6 inline-flex min-h-16 w-full max-w-xl items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-8 py-4 text-xl font-extrabold text-white shadow-lg shadow-emerald-950/20 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2"
             >
               {text.start} <ArrowRight className="h-6 w-6" aria-hidden="true" />
-            </Link>
+            </ScenarioStartButton>
           </div>
           <AtmSetupVoiceAssistant language={language} message={text.assistantMessage} modeLabel={text.assistantMode} speechRequestId={0} />
         </div>

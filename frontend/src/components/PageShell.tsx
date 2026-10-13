@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Globe2 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { ComputerVisionConsentGate } from "./ComputerVisionConsent";
 
 import { useAuth } from "../context/AuthContext";
 import { languages, useTranslation, type LanguageCode } from "../i18n";
@@ -296,7 +297,7 @@ export function PageShell() {
               : `max-w-7xl px-5 ${isBrandedPublicPage ? "py-0" : "py-8 sm:py-10"}`
         }`}
       >
-        <Outlet />
+        <ComputerVisionConsentGate><Outlet /></ComputerVisionConsentGate>
       </main>
     </div>
   );

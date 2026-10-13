@@ -33,6 +33,7 @@ let currentSuccessAudio: HTMLAudioElement | null = null;
 let currentSuccessToneContext: AudioContext | null = null;
 let activeSpeechId = 0;
 let currentBrowserUtterance: SpeechSynthesisUtterance | null = null;
+let cancelPendingSonioxPlayback: (() => void) | null = null;
 
 export function unlockAssistantAudioPlayback() {
   if (assistantAudioUnlocked) return Promise.resolve();
@@ -64,6 +65,7 @@ export function isSpeechSynthesisSupported() {
 
 export function stopAssistantSpeech() {
   activeSpeechId += 1;
+  cancelPendingSonioxPlayback?.();
 
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
@@ -222,7 +224,54 @@ async function playSonioxHtmlAudio(
     }
     if (activeSpeechId === speechId) callbacks.onEnd?.();
   };
-  await audio.play();
+  try {
+    await audio.play();
+  } catch (error) {
+    if (!(error instanceof Error) || error.name !== "NotAllowedError") throw error;
+    if (activeSpeechId !== speechId) return;
+    // Refresh can reset autoplay permission. Keep the selected voice and resume
+    // its existing audio on user input instead of treating this as a provider failure.
+    await waitForSonioxPlayback(audio, speechId);
+  }
+}
+
+function waitForSonioxPlayback(audio: HTMLAudioElement, speechId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let retrying = false;
+    const cleanup = () => {
+      window.removeEventListener("click", retry, true);
+      window.removeEventListener("keydown", retry, true);
+      if (cancelPendingSonioxPlayback === cancel) cancelPendingSonioxPlayback = null;
+    };
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new DOMException("Assistant playback cancelled.", "AbortError"));
+    };
+    const retry = () => {
+      if (settled || retrying) return;
+      if (activeSpeechId !== speechId) { cancel(); return; }
+      retrying = true;
+      // Call play synchronously inside the input handler to retain user activation.
+      void audio.play().then(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      }, (error: unknown) => {
+        retrying = false;
+        if (settled || (error instanceof Error && error.name === "NotAllowedError")) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      });
+    };
+    cancelPendingSonioxPlayback = cancel;
+    window.addEventListener("click", retry, true);
+    window.addEventListener("keydown", retry, true);
+  });
 }
 
 function playBrowserTts(
@@ -276,7 +325,7 @@ async function getPreparedSpeech(
   message: string,
   language: LanguageCode,
   signal?: AbortSignal,
-) {
+): Promise<PreparedSpeech> {
   const isGuest = !localStorage.getItem("assist_ai_token") && Boolean(localStorage.getItem("assist_ai_guest_session"));
   if (isGuest) {
     notifySpeechProviderUsed("tts", "browser");
@@ -287,7 +336,18 @@ async function getPreparedSpeech(
   if (cached) return cached;
 
   const pending = pendingSpeechRequests.get(cacheKey);
-  if (pending) return pending;
+  if (pending) {
+    try {
+      return await pending;
+    } catch (error) {
+      // A previous component may have cancelled the shared request during a
+      // refresh/remount. A new, active caller must retry rather than fall back.
+      if (error instanceof Error && error.name === "AbortError" && !signal?.aborted) {
+        return getPreparedSpeech(message, language, signal);
+      }
+      throw error;
+    }
+  }
 
   const request = fetchPreparedSpeech(message, language, signal)
     .then((prepared) => {

@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
 import { ApiError } from "../services/api";
+import { unlockAssistantAudioPlayback } from "../services/speechSynthesisService";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export function LoginPage() {
     event.preventDefault();
     setErrorMessage("");
     setIsSubmitting(true);
+    // Unlock during the user's click so the post-login consent can be read aloud.
+    void unlockAssistantAudioPlayback();
 
     try {
       const loggedInUser = await login({ email, password });
