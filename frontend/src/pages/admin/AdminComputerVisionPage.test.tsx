@@ -103,7 +103,7 @@ describe("admin computer vision page", () => {
     expect(html).toContain("1 / 2");
     expect(html).toContain("Session Overview");
     expect(html).not.toContain("#42");
-    expect(html).toContain("Excluding keyboard/mouse activity");
+    expect(html).toContain("Excluding keyboard activity");
     expect(html.indexOf("Session Overview")).toBeLessThan(html.indexOf("Head movement over time"));
     expect(html.indexOf("Head movement over time")).toBeLessThan(html.indexOf("Show tracking data"));
     const disclosures = html.match(/<details[^>]*>/g);
@@ -148,7 +148,7 @@ describe("admin computer vision page", () => {
     expect(technical).toContain("Standard deviation");
     expect(technical).toContain("Valid tracking points");
     expect(technical).toContain("Tracking unavailable");
-    expect(technical).toContain("Excluding keyboard/mouse activity");
+    expect(technical).toContain("Excluding keyboard activity");
     expect(technical).toContain("12.34");
     expect(html).not.toContain("<details open");
   });

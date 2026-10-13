@@ -92,11 +92,11 @@ describe("scenario tracking recorder cleanup", () => {
     surface.dispatchEvent(new Event("pagehide"));
     expect(flow.getCompletedSamples()).toHaveLength(1);
     expect(flow.getCompletedSamples()[0].isUserInteracting).toBe(true);
-    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "mousedown", "mousemove"]);
+    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown"]);
     vi.advanceTimersByTime(3000);
     expect(flow.getCompletedSamples()).toHaveLength(1);
     cleanup();
-    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "mousedown", "mousemove", "pagehide"]);
+    expect(remove.mock.calls.map(([event]) => event)).toEqual(["keydown", "pagehide"]);
     surface.dispatchEvent(new Event("pagehide"));
     expect(lifecycle.trackers[0].stop).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);

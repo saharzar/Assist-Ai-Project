@@ -152,18 +152,18 @@ describe("in-memory tracking session recorder", () => {
     const remove = vi.spyOn(surface, "removeEventListener");
     const recorder = createTrackingSessionRecorder(true, { target: surface });
     recorder.start();
-    surface.dispatchEvent(new Event("mousedown"));
+    surface.dispatchEvent(new Event("keydown"));
     vi.advanceTimersByTime(500);
     expect(recorder.stop()[0].isUserInteracting).toBe(true);
-    expect(remove).toHaveBeenCalledTimes(3);
+    expect(remove).toHaveBeenCalledTimes(1);
     surface.dispatchEvent(new Event("keydown"));
     recorder.start();
     vi.advanceTimersByTime(500);
     expect(recorder.stop()[0].isUserInteracting).toBe(false);
     recorder.start();
     recorder.reset();
-    expect(add).toHaveBeenCalledTimes(9);
-    expect(remove).toHaveBeenCalledTimes(9);
+    expect(add).toHaveBeenCalledTimes(3);
+    expect(remove).toHaveBeenCalledTimes(3);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -176,5 +176,21 @@ describe("in-memory tracking session recorder", () => {
     vi.advanceTimersByTime(1000);
     expect(recorder.stop()).toEqual([]);
     expect(add).not.toHaveBeenCalled();
+  });
+
+  it("keeps recording normally while mouse activity leaves the interaction flag false", () => {
+    const surface = new EventTarget();
+    const recorder = createTrackingSessionRecorder(true, { target: surface });
+    recorder.start();
+    for (let index = 0; index < 4; index += 1) {
+      surface.dispatchEvent(new Event("mousedown"));
+      surface.dispatchEvent(Object.assign(new Event("mousemove"), { clientX: index * 100, clientY: 100 }));
+      recorder.update(values);
+      vi.advanceTimersByTime(500);
+    }
+    const samples = recorder.stop();
+    expect(samples).toHaveLength(4);
+    expect(samples.map((sample) => sample.isUserInteracting)).toEqual([false, false, false, false]);
+    expect(samples.map((sample) => sample.yaw)).toEqual([10, 10, 10, 10]);
   });
 });

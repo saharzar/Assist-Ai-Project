@@ -34,7 +34,7 @@ describe("saved head pose charts", () => {
     const html = render(rows);
     expect(html.match(/data-interaction="true"/g)).toHaveLength(3); // Adjacent samples merge into one band per chart.
     expect(html).toContain('opacity="0.16"');
-    expect(html).toContain("Amber areas: keyboard/mouse activity");
+    expect(html).toContain("Amber areas: keyboard activity");
     expect(html).toContain("Left / right movement");
     expect(html).toContain("Up / down movement");
     expect(html).toContain("Head tilt");

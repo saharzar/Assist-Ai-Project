@@ -50,7 +50,7 @@ describe("scenario admin preview control", () => {
     const html = render();
     expect(html).toContain('aria-checked="true"'); expect(html).toContain("<canvas");
     expect(html).toContain("478"); expect(html).toContain("10.0°"); expect(html).toContain("Left");
-    expect(html).toContain("Keyboard/mouse activity");
+    expect(html).toContain("Keyboard activity");
     expect(html).toContain("Faces detected");
     expect(html).toContain("Selected face (this frame)");
   });
