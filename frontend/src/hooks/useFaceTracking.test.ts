@@ -61,7 +61,8 @@ describe("scenario tracking recorder cleanup", () => {
     consent = "allowed";
     surface = new EventTarget();
     vi.stubGlobal("window", Object.assign(surface, { setTimeout, clearTimeout }));
-    vi.stubGlobal("sessionStorage", { getItem: () => consent });
+    vi.stubGlobal("localStorage", { getItem: () => "owner-token" });
+    vi.stubGlobal("sessionStorage", { getItem: () => JSON.stringify({ token: "owner-token", allowed: consent === "allowed" }) });
   });
   afterEach(() => {
     vi.useRealTimers();

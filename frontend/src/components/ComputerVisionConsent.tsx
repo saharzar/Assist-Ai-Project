@@ -1,37 +1,86 @@
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+
+import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n";
+import { atmTranslations } from "../lib/atmTranslations";
 import { computerVisionConsentTranslations } from "../lib/computerVisionConsentTranslations";
+import { speakAssistantMessage, stopAssistantSpeech, unlockAssistantAudioPlayback } from "../services/speechSynthesisService";
+import { AtmAssistantMessage } from "./atm/AtmAssistantMessage";
 
-type Props = {
-  value: boolean | null;
-  onChange: (allowed: boolean) => void;
-  showError?: boolean;
-};
+export function ComputerVisionConsentGate({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, computerVisionConsent, chooseComputerVisionConsent } = useAuth();
+  if (isAuthenticated && isLoading) return null;
+  if (isAuthenticated && computerVisionConsent === null) {
+    return <SessionConsentDialog onChoose={chooseComputerVisionConsent} />;
+  }
+  return children;
+}
 
-export function ComputerVisionConsent({ value, onChange, showError = false }: Props) {
+function SessionConsentDialog({ onChoose }: { onChoose: (allowed: boolean) => void }) {
   const { language } = useTranslation();
   const text = computerVisionConsentTranslations[language];
+  const voiceText = atmTranslations[language];
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const requestRef = useRef(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsError, setTtsError] = useState("");
+  const spokenMessage = `${text.legend}. ${text.description}`;
 
-  return (
-    <fieldset className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-      <legend className="px-1 text-base font-extrabold text-slate-800">{text.legend}</legend>
-      <p className="mt-1 text-sm text-slate-600">{text.description}</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={text.legend}>
-        {[{ allowed: true, label: text.yes }, { allowed: false, label: text.no }].map((choice) => (
-          <label key={String(choice.allowed)} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-bold transition ${value === choice.allowed ? "border-[#302992] bg-indigo-50 text-[#302992]" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200"}`}>
-            <input
-              type="radio"
-              name="computer-vision-consent"
-              value={String(choice.allowed)}
-              checked={value === choice.allowed}
-              onChange={() => onChange(choice.allowed)}
-              className="h-4 w-4 accent-[#302992]"
-            />
-            {choice.label}
-          </label>
-        ))}
-      </div>
-      {showError && <p role="alert" className="mt-3 text-sm font-semibold text-rose-700">{text.validation}</p>}
-      <p className="mt-3 text-xs leading-5 text-slate-500">{text.dataNote}</p>
-    </fieldset>
-  );
+  const stop = useCallback(() => {
+    requestRef.current += 1;
+    stopAssistantSpeech();
+    setIsSpeaking(false);
+  }, []);
+
+  const speak = useCallback(() => {
+    setTtsError("");
+    speakAssistantMessage(spokenMessage, {
+      allowBrowserFallback: true,
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => { setIsSpeaking(false); setTtsError(voiceText.assistantVoiceProblem); },
+    }, language);
+  }, [language, spokenMessage, voiceText.assistantVoiceProblem]);
+
+  const repeat = () => {
+    const request = ++requestRef.current;
+    void unlockAssistantAudioPlayback().then(() => {
+      if (requestRef.current === request) speak();
+    });
+  };
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    titleRef.current?.focus();
+    return () => { dialog?.close(); };
+  }, []);
+
+  useEffect(() => {
+    if (localStorage.getItem("assist_ai_sound_enabled") !== "false") speak();
+    return () => {
+      requestRef.current += 1;
+      stopAssistantSpeech();
+    };
+  }, [speak]);
+
+  return <dialog ref={dialogRef} aria-modal="true" aria-labelledby="computer-vision-consent-title"
+    aria-describedby="computer-vision-consent-message" onCancel={(event) => event.preventDefault()}
+    className="fixed inset-0 m-auto max-h-[85vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-3xl border-2 border-cyan-200 bg-white p-6 text-[#1d1a5e] shadow-2xl backdrop:bg-indigo-950/50 sm:p-8">
+    <p className="text-sm font-extrabold tracking-wide text-[#302992]">ASSIST-AI</p>
+    <h2 ref={titleRef} id="computer-vision-consent-title" tabIndex={-1} className="mb-5 mt-2 text-2xl font-extrabold outline-none">{text.legend}</h2>
+    <div id="computer-vision-consent-message">
+      <AtmAssistantMessage message={text.description} soundEnabled isSpeaking={isSpeaking}
+        repeatLabel={voiceText.repeatAssistant} stopLabel={voiceText.stopVoice} ttsError={ttsError}
+        onRepeat={repeat} onStop={stop} />
+    </div>
+    <div className="mt-6 grid gap-3">
+      {[{ allowed: true, label: text.yes }, { allowed: false, label: text.no }].map((choice) =>
+        <button key={String(choice.allowed)} type="button" onClick={() => { stop(); onChoose(choice.allowed); }}
+          className="min-h-14 rounded-xl border-2 border-indigo-200 bg-indigo-50 px-5 py-3 text-base font-extrabold text-[#302992] hover:border-cyan-400 hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2">
+          {choice.label}
+        </button>)}
+    </div>
+  </dialog>;
 }
