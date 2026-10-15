@@ -3,12 +3,16 @@ import { CreditCard, Eye, EyeOff, KeyRound, Mic, ShieldCheck, Square, UserRound 
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
+import { ScenarioAssistantColumn } from "../../components/ScenarioAssistantColumn";
+import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { atmSetupTranslations } from "../../lib/atmSetupTranslations";
 import { atmTranslations } from "../../lib/atmTranslations";
 import { createSpeechRecognizer, isSpeechRecognitionSupported } from "../../services/speechRecognitionService";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 export function AtmPracticeSetupPage() {
+  const faceTracking = useScenarioTracking();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [pin, setPin] = useState("");
@@ -176,13 +180,15 @@ export function AtmPracticeSetupPage() {
 
       <div className="border-t border-indigo-100 bg-slate-50/70 px-6 py-4 sm:px-8"><Link to="/scenario/atm-withdrawal" className="font-bold text-[#302992] hover:underline">{setupText.back}</Link></div>
     </div>
-    <AtmSetupVoiceAssistant
+    <ScenarioAssistantColumn breakpoint="lg" assistant={<AtmSetupVoiceAssistant
       language={language}
       message={setupAssistantMessage}
       modeLabel={setupText.assistantMode}
       speechRequestId={assistantSpeechRequestId}
       stopRequestId={assistantStopRequestId}
-    />
+    />}>
+    <AdminFaceTrackingPreview active scenario="atm-withdrawal" getFrame={faceTracking.getPreviewFrame} />
+    </ScenarioAssistantColumn>
     </section>
   );
 }

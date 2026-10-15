@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
+import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { useTranslation } from "../../i18n";
 import {
   isValidBillAccountName,
@@ -17,6 +19,7 @@ import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 export function BillPaymentSetupPage() {
+  const faceTracking = useScenarioTracking();
   const navigate = useNavigate();
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];
@@ -53,6 +56,7 @@ export function BillPaymentSetupPage() {
       title={text.setupTitle}
       subtitle={text.setupSubtitle}
       assistant={<BillVoiceAssistant message={validationSpeechMessage || text.setupAssistantMessage} speechRequestId={assistantSpeechRequestId} />}
+      trackingPreview={<AdminFaceTrackingPreview active scenario="online-bill-payment" getFrame={faceTracking.getPreviewFrame} />}
     >
       <div className="overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/70 shadow-[0_24px_55px_-40px_rgba(48,41,146,0.7)]">
         <div className="relative overflow-hidden bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-5 text-white sm:px-7">

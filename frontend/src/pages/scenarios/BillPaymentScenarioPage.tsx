@@ -7,7 +7,7 @@ import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { useBillAnalytics } from "../../hooks/useBillAnalytics";
-import { useFaceTracking } from "../../hooks/useFaceTracking";
+import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
@@ -68,7 +68,7 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
   const faceTrackingActive = state.step !== "success" && !loginLocked && !inactivityTimedOut;
-  const faceTracking = useFaceTracking("online-bill-payment", faceTrackingActive, analytics.getSessionId);
+  const faceTracking = useScenarioTracking(faceTrackingActive, analytics.getSessionId);
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];
   const currency = language === "tr" ? "TRY" : "EUR";
