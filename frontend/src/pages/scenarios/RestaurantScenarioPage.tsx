@@ -1,10 +1,10 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CircleMinus, CupSoda, GlassWater, LogOut } from "lucide-react";
+import { CircleMinus, LogOut, RotateCcw } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { restaurantTranslations } from "../../lib/restaurantTranslations";
 import { drinks, initialRestaurantState, meals, restaurantReducer, type Meal } from "../../lib/restaurantState";
-import { RestaurantStaff, FoodIllustration } from "../../components/restaurant/RestaurantArt";
+import { RestaurantStaff, FoodIllustration, DrinkIllustration } from "../../components/restaurant/RestaurantArt";
 import restaurantCounter from "../../assets/restaurant-counter.png";
 import "../../components/restaurant/restaurant.css";
 import { AtmSetupVoiceAssistant } from "../../components/atm/AtmSetupVoiceAssistant";
@@ -46,6 +46,11 @@ export function RestaurantShell({ message, children, preview, confirmation = fal
 export { RestaurantIntroductionPage } from "./RestaurantIntroductionPage";
 
 export function RestaurantScenarioPage() {
+  const [attempt, setAttempt] = useState(0);
+  return <RestaurantOrderAttempt key={attempt} onOrderAgain={() => setAttempt((current) => current + 1)} />;
+}
+
+export function RestaurantOrderAttempt({ onOrderAgain }: { onOrderAgain: () => void }) {
   const { language } = useTranslation(); const text = restaurantTranslations[language];
   const [state, dispatch] = useReducer(restaurantReducer, initialRestaurantState);
   // Keep the added frontend steps within the existing backend confirmation phase.
@@ -68,6 +73,20 @@ export function RestaurantScenarioPage() {
     : state.step === "drink" ? text.drinkQuestion : state.step === "orderConfirmation" ? orderMessage : text.success;
   const stepHeading = state.step === "drink" ? text.drinkHeading : state.step === "orderConfirmation" ? text.completeOrder
     : state.step === "alternative" ? text.alternativeHeading : state.step === "success" ? text.successHeading : text.steps[state.step];
+  const orderContents = state.selected && <>
+    <div className="flex items-end justify-center gap-4 sm:gap-8">
+      <div className="min-w-0 flex-1 max-w-48">
+        <FoodIllustration meal={state.selected} /><p className="text-lg font-bold text-[#1d1a5e]">{text.foods[state.selected]}</p>
+        {state.step === "orderConfirmation" && <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => { analytics.event("menu_reopened"); dispatch({ type: "changeMeal" }); }}>{text.changeMeal}</button>}
+      </div>
+      {state.drink && (state.drink !== "none" || state.step === "orderConfirmation") && <div className="min-w-0 flex-1 max-w-48">
+        {state.drink !== "none" ? <DrinkIllustration drink={state.drink} /> : <div className="h-[94px]" aria-hidden="true" />}
+        <p className="text-lg font-bold text-[#1d1a5e]">{text.drinks[state.drink]}</p>
+        {state.step === "orderConfirmation" && <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => dispatch({ type: "changeDrink" })}>{text.changeDrink}</button>}
+      </div>}
+    </div>
+    {state.drink === "none" && state.step !== "orderConfirmation" && <p className="mt-2 font-semibold text-slate-700">{text.drinks.none}</p>}
+  </>;
   const choose = (meal: Meal) => {
     if (meal === state.unavailable) return;
     analytics.event(state.step === "menu" ? "meal_selected" : "alternative_selected", meal);
@@ -90,19 +109,24 @@ export function RestaurantScenarioPage() {
     </>}
     {state.step === "drink" && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label={text.drinkHeading}>
       {drinks.map((drink) => {
-        const Icon = drink === "water" ? GlassWater : drink === "juice" ? CupSoda : CircleMinus;
         return <button key={drink} type="button" onClick={() => dispatch({ type: "chooseDrink", drink })}
           className={`restaurant-food-option flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-indigo-100 bg-white p-4 text-center text-base font-bold text-[#302992] focus:outline-none focus:ring-4 focus:ring-cyan-300 ${drink === "none" ? "col-span-2 sm:col-span-1" : ""}`}>
-          <Icon className="restaurant-drink-icon" strokeWidth={1.5} aria-hidden="true" /><span>{text.drinks[drink]}</span>
+          {drink === "none" ? <CircleMinus className="restaurant-drink-icon" strokeWidth={1.5} aria-hidden="true" /> : <DrinkIllustration drink={drink} />}<span>{text.drinks[drink]}</span>
         </button>;
       })}
     </div>}
     {state.step === "orderConfirmation" && <>
-      <div className="rounded-2xl border border-indigo-100 bg-white p-4 text-center"><FoodIllustration meal={state.selected!} /><p className="text-lg font-bold text-[#302992]">{text.foods[state.selected!]}</p><p className="mt-2 font-semibold text-slate-700">{text.drinks[state.drink!]}</p></div>
-      <div className="mt-5 flex flex-wrap gap-6"><button type="button" className={primary} onClick={() => { analytics.event("order_confirmed", state.selected!); dispatch({ type: "placeOrder" }); }}>{text.confirm}</button><button type="button" className={secondary} onClick={() => dispatch({ type: "changeDrink" })}>{text.changeChoice}</button></div>
+      <div className="rounded-2xl border border-indigo-100 bg-white p-4 text-center">{orderContents}</div>
+      <button type="button" className={`${primary} mt-5 w-full`} onClick={() => { analytics.event("order_confirmed", state.selected!); dispatch({ type: "placeOrder" }); }}>{text.confirm}</button>
     </>}
-    {state.step === "success" && <><div className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-center"><FoodIllustration meal={state.selected!} /><p className="text-lg font-bold text-[#1d1a5e]">{text.foods[state.selected!]}</p></div><Link to="/scenarios" className={primary}>{text.finish}</Link></>}
-    {state.step !== "success" && <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    {state.step === "success" && <>
+      <div className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-center">{orderContents}</div>
+      <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <button type="button" className={`${primary} gap-2`} onClick={onOrderAgain}><RotateCcw className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.orderAgain}</button>
+        <Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-3 text-base font-bold text-amber-950 hover:border-amber-400 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>
+      </div>
+    </>}
+    {state.step !== "success" && <div className={`mt-6 flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center ${state.step === "orderConfirmation" ? "border-t border-indigo-100 pt-5 sm:justify-end" : "sm:justify-between"}`}>
       {state.step === "alternative" && !state.fullMenu && <button type="button" className={primary} onClick={() => { analytics.event("menu_reopened"); dispatch({ type: "menu" }); }}>{text.showMenu}</button>}
       <Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-3 text-base font-bold text-amber-950 hover:border-amber-400 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>
     </div>}

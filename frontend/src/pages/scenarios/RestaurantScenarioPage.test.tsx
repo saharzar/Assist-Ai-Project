@@ -1,17 +1,22 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RestaurantIntroductionPage, RestaurantScenarioPage } from "./RestaurantScenarioPage";
+import { RestaurantIntroductionPage, RestaurantOrderAttempt, RestaurantScenarioPage as RestaurantPage } from "./RestaurantScenarioPage";
 import { initialRestaurantState, restaurantReducer, type RestaurantAction, type RestaurantState } from "../../lib/restaurantState";
 import { restaurantTranslations } from "../../lib/restaurantTranslations";
 import { useFaceTracking } from "../../hooks/useFaceTracking";
 import { playSuccessSound, stopSuccessSound } from "../../services/speechSynthesisService";
 import type { LanguageCode } from "../../i18n";
-const state = vi.hoisted(() => ({ current: null as RestaurantState | null, language: "en" as LanguageCode, event: vi.fn(), getSessionId: () => "restaurant-attempt", effects: [] as (() => void | (() => void))[] }));
-vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(),
+const state = vi.hoisted(() => ({ current: null as RestaurantState | null, language: "en" as LanguageCode, event: vi.fn(), restart: vi.fn(), wrapperMode: false, attempt: 0, getSessionId: () => "restaurant-attempt", effects: [] as (() => void | (() => void))[] }));
+vi.mock("react", async (original) => {
+  const react = await original<typeof import("react")>();
+  return { ...react,
+  useState: (initial: unknown) => state.wrapperMode && typeof initial === "number"
+    ? [state.attempt, (update: (current: number) => number) => { state.attempt = update(state.attempt); }]
+    : react.useState(initial),
   useReducer: (_reducer: unknown, initial: RestaurantState) => [state.current ?? initial, (action: RestaurantAction) => { state.current = restaurantReducer(state.current ?? initial, action); }],
   useRef: () => ({ current: null }), useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); },
-}));
+}; });
 vi.mock("react-router-dom", () => ({ Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a> }));
 vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: state.language }) }));
 vi.mock("../../hooks/useRestaurantAnalytics", () => ({ useRestaurantAnalytics: () => ({ event: state.event, getSessionId: state.getSessionId }) }));
@@ -25,14 +30,73 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
   if (!isValidElement<{ children?: ReactNode }>(node)) return [];
   return [node as ReactElement<Record<string, unknown>>, ...Children.toArray(node.props.children).flatMap(elements)];
 }
+function RestaurantScenarioPage() { return RestaurantOrderAttempt({ onOrderAgain: state.restart }); }
 function click(label: string) {
   const element = elements(RestaurantScenarioPage()).find((node) => node.type === "button" && renderToStaticMarkup(node).includes(label));
   expect(element).toBeDefined(); (element!.props.onClick as () => void)();
 }
-beforeEach(() => { vi.clearAllMocks(); state.current = initialRestaurantState; state.language = "en"; state.effects = []; });
+beforeEach(() => { vi.clearAllMocks(); state.current = initialRestaurantState; state.language = "en"; state.effects = []; state.wrapperMode = false; state.attempt = 0; });
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("restaurant scenario UI", () => {
+  it.each(["en", "es", "de", "tr", "pt", "fr"] as const)("changes the meal while keeping the chosen drink in %s", (language) => {
+    state.language = language;
+    const text = restaurantTranslations[language];
+    click(text.foods.pasta); click(text.foods.soup); click(text.confirmMeal); click(text.drinks.juice);
+    click(text.changeMeal);
+    expect(state.current).toMatchObject({ step: "alternative", selected: null, drink: "juice", unavailable: "pasta" });
+    const menu = renderToStaticMarkup(RestaurantScenarioPage());
+    expect(menu).not.toContain(renderToStaticMarkup(<span>{text.unavailable}</span>).slice(6, -7));
+    click(text.foods.salad); click(text.confirmMeal);
+    expect(state.current).toMatchObject({ step: "orderConfirmation", selected: "salad", drink: "juice" });
+    const html = renderToStaticMarkup(RestaurantScenarioPage());
+    const message = text.orderWithDrink.replace("{meal}", text.foods.salad).replace("{drink}", text.drinks.juice);
+    expect(html).toContain(renderToStaticMarkup(<span>{message}</span>).slice(6, -7));
+    click(text.confirm);
+    expect(state.event.mock.calls[state.event.mock.calls.length - 1]).toEqual(["order_confirmed", "salad"]);
+    expect(state.current?.step).toBe("success");
+  });
+  it.each(["water", "juice", "none"] as const)("shows only the chosen drink artwork on order confirmation and completion (%s)", (drink) => {
+    for (const step of ["orderConfirmation", "success"] as const) {
+      state.current = { ...initialRestaurantState, step, selected: "soup", drink };
+      const html = renderToStaticMarkup(RestaurantScenarioPage());
+      expect(html).toContain("Soup");
+      if (drink === "none") {
+        expect(html).not.toContain("data-drink-illustration");
+        expect(html).toContain("No, thank you");
+      } else {
+        expect(html).toContain(`data-drink-illustration="${drink}"`);
+        expect(html).not.toContain(`data-drink-illustration="${drink === "water" ? "juice" : "water"}"`);
+      }
+    }
+  });
+  it("starts a fresh mounted attempt when ordering again", () => {
+    state.wrapperMode = true;
+    const first = RestaurantPage();
+    first.props.onOrderAgain();
+    const second = RestaurantPage();
+    expect(second.key).not.toBe(first.key);
+    expect(second.type).toBe(RestaurantOrderAttempt);
+    state.wrapperMode = false;
+    state.current = null;
+    const html = renderToStaticMarkup(second);
+    expect(html).toContain(restaurantTranslations.en.welcome);
+    for (const meal of Object.values(restaurantTranslations.en.foods)) expect(html).toContain(meal);
+    expect(html).not.toContain(restaurantTranslations.en.unavailableLabel);
+    expect(html).not.toContain(restaurantTranslations.en.orderAgain);
+    expect(useFaceTracking).toHaveBeenLastCalledWith("restaurant-ordering", true, state.getSessionId);
+  });
+  it.each(["en", "es", "de", "tr", "pt", "fr"] as const)("offers a new order and exit only after completion in %s", (language) => {
+    state.language = language;
+    const text = restaurantTranslations[language];
+    expect(renderToStaticMarkup(RestaurantScenarioPage())).not.toContain(text.orderAgain);
+    click(text.foods.pasta); click(text.foods.soup); click(text.confirmMeal); click(text.drinks.juice); click(text.confirm);
+    const html = renderToStaticMarkup(RestaurantScenarioPage());
+    expect(html).toContain(renderToStaticMarkup(<span>{text.leave}</span>).slice(6, -7));
+    click(text.orderAgain);
+    expect(state.restart).toHaveBeenCalledOnce();
+    expect(state.event.mock.calls.filter(([event]) => event === "order_confirmed")).toHaveLength(1);
+  });
   it.each([false, true])("plays completion applause only when sound is enabled and stops it on exit (muted: %s)", (muted) => {
     vi.stubGlobal("localStorage", { getItem: () => String(!muted) });
     state.current = { ...initialRestaurantState, step: "success", selected: "soup", unavailable: "pasta" };
@@ -138,7 +202,7 @@ describe("restaurant scenario UI", () => {
       expect(html).toContain(renderToStaticMarkup(<span>{label}</span>).slice(6, -7));
     }
     click(text.drinks.water);
-    click(text.changeChoice);
+    click(text.changeDrink);
     expect(state.current).toMatchObject({ step: "drink", selected: "soup", unavailable: "pasta" });
     click(text.drinks.none);
     const message = text.orderWithoutDrink.replace("{meal}", text.foods.soup);

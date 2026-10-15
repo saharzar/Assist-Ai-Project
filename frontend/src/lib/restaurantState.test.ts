@@ -36,9 +36,15 @@ describe("guided restaurant ordering", () => {
     const order = restaurantReducer(drinkStep, { type: "chooseDrink", drink });
     expect(order).toMatchObject({ step: "orderConfirmation", selected: "soup", drink, unavailable: "pasta" });
     expect(restaurantReducer(order, { type: "changeDrink" })).toMatchObject({ step: "drink", selected: "soup", drink: null, unavailable: "pasta" });
+    const changeMeal = restaurantReducer(order, { type: "changeMeal" });
+    expect(changeMeal).toMatchObject({ step: "alternative", selected: null, drink, unavailable: "pasta", fullMenu: true });
+    expect(restaurantReducer(changeMeal, { type: "choose", meal: "pasta" })).toBe(changeMeal);
+    const newMeal = restaurantReducer(changeMeal, { type: "choose", meal: "salad" });
+    expect(restaurantReducer(newMeal, { type: "confirm" })).toMatchObject({ step: "orderConfirmation", selected: "salad", drink });
     const success = restaurantReducer(order, { type: "placeOrder" });
     expect(success).toMatchObject({ step: "success", selected: "soup", drink });
     expect(restaurantReducer(success, { type: "changeDrink" })).toBe(success);
+    expect(restaurantReducer(success, { type: "changeMeal" })).toBe(success);
   });
   it("provides complete text, food labels and steps in all six languages", () => {
     expect(Object.keys(restaurantTranslations).sort()).toEqual(["de", "en", "es", "fr", "pt", "tr"]);

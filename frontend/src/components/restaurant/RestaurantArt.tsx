@@ -1,4 +1,4 @@
-import type { Meal } from "../../lib/restaurantState";
+import type { Drink, Meal } from "../../lib/restaurantState";
 
 export function RestaurantSetting() {
   return <svg viewBox="0 0 600 120" aria-hidden="true" className="mb-5 h-24 w-full rounded-2xl bg-[#f3f7f6] sm:h-28">
@@ -45,6 +45,26 @@ export function FoodIllustration({ meal }: { meal: Meal }) {
       {meal === "pasta" && <><path d="M52 71q14-20 28-3t28-3 22 9M51 81q14-20 28-3t28-3 22 9M62 62q14-20 28-3t28-3" fill="none" stroke="#e2bd6b" strokeWidth="9" strokeLinecap="round" /><ellipse cx="90" cy="70" rx="18" ry="10" fill="#bf7761" /><path d="M87 67q5-14 14-9-1 11-14 9" fill="#75926c" /></>}
       {meal === "chicken" && <><path d="M53 74q0-32 41-27 39 6 28 33-12 19-49 13-20-3-20-19" fill="#d6a075" /><path d="M73 57l-8 25m27-28l-8 30m29-22l-7 23" stroke="#986e4d" strokeWidth="4" strokeLinecap="round" /><circle cx="132" cy="77" r="10" fill="#92ae73" /><circle cx="133" cy="88" r="7" fill="#a2bc84" /></>}
       {meal === "salad" && <><path d="M49 75q-5-22 18-14 9-24 23-7 25-20 28 4 26-2 13 22-14 19-34 9-28 17-48-14" fill="#97b582" /><path d="M63 72l19 10m9-21l7 25m17-18l-9 15" stroke="#c8d8b6" strokeWidth="4" strokeLinecap="round" /><circle cx="71" cy="66" r="8" fill="#c68170" /><circle cx="114" cy="82" r="8" fill="#c68170" /><circle cx="92" cy="76" r="7" fill="#d6c27a" /></>}
+    </>}
+  </svg>;
+}
+
+/** Original glass illustrations using the food cards' soft colors and shadow. */
+export function DrinkIllustration({ drink }: { drink: Exclude<Drink, "none"> }) {
+  const juice = drink === "juice";
+  return <svg viewBox="0 0 180 120" aria-hidden="true" data-drink-illustration={drink} className="mx-auto h-28 w-full max-w-48">
+    <ellipse cx="90" cy="105" rx="43" ry="8" fill="#e5ecec" />
+    <path d="M60 24h60l-7 76q-23 10-46 0z" fill="#f9fbfc" stroke="#b7d3d4" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M64 51h52l-5 46q-21 8-42 0z" fill={juice ? "#e2bd6b" : "#b8d7d2"} />
+    <ellipse cx="90" cy="51" rx="26" ry="5" fill={juice ? "#edcf8b" : "#dcecee"} />
+    <path d="M70 32l4 53" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+    {juice ? <>
+      <circle cx="125" cy="83" r="18" fill="#e6d3b1" stroke="#dba466" strokeWidth="3" />
+      <circle cx="125" cy="83" r="12" fill="#edcf8b" />
+      <path d="M125 71v24m-12-12h24m-20-8l16 16m0-16l-16 16" stroke="#fff4d9" strokeWidth="2" />
+    </> : <>
+      <rect x="78" y="46" width="13" height="12" rx="3" fill="#f9fbfc" opacity=".75" />
+      <rect x="94" y="55" width="12" height="12" rx="3" fill="#f9fbfc" opacity=".65" />
     </>}
   </svg>;
 }
