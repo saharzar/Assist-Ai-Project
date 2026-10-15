@@ -17,7 +17,7 @@ from app.routes.atm_analytics import _analytics_filters
 from app.services.atm_analytics_service import resolve_analytics_actor
 
 router = APIRouter(tags=["Bill payment analytics"])
-Step = Literal["login", "bill-selection", "bill-details", "card-payment", "success"]
+Step = Literal["setup", "login", "bill-selection", "bill-details", "card-payment", "success"]
 
 
 class Start(BaseModel):

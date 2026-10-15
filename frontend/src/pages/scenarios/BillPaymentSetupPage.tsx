@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
 import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
-import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
+import { useScenarioBillAnalytics, useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { useTranslation } from "../../i18n";
 import {
   isValidBillAccountName,
@@ -20,6 +20,7 @@ import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../ser
 
 export function BillPaymentSetupPage() {
   const faceTracking = useScenarioTracking();
+  useScenarioBillAnalytics("setup");
   const navigate = useNavigate();
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];

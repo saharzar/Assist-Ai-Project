@@ -16,6 +16,9 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 }));
 vi.mock("react-router-dom", () => ({ Outlet: () => null }));
 vi.mock("../hooks/useFaceTracking", () => ({ useFaceTracking: vi.fn(() => state.tracking) }));
+vi.mock("../i18n", () => ({ useTranslation: () => ({ language: "en" }) }));
+vi.mock("../hooks/useBillAnalytics", () => ({ useBillAnalytics: () => ({ getSessionId: () => "bill-setup-id" }) }));
+vi.mock("../hooks/useAtmSetupAnalytics", () => ({ useAtmSetupAnalytics: () => ({ getSessionId: () => "atm-setup-id", claim: vi.fn() }) }));
 
 function layout(scenario: "atm-withdrawal" | "online-bill-payment" = "atm-withdrawal") {
   const element = ScenarioTrackingLayout({ scenario });
@@ -59,8 +62,8 @@ describe("shared setup and activity tracking", () => {
     expect(useFaceTracking).toHaveBeenLastCalledWith("atm-withdrawal", false, expect.any(Function));
   });
 
-  it("keeps setup-only recordings unlinked when the user exits before an activity attempt exists", () => {
-    layout(); const setup = page(); setup.leave();
-    expect(vi.mocked(useFaceTracking).mock.calls[0][2]!()).toBeNull();
+  it.each(["atm-withdrawal", "online-bill-payment"] as const)("links setup-only recordings to the %s analytics attempt", (scenario) => {
+    layout(scenario); const setup = page(); setup.leave();
+    expect(vi.mocked(useFaceTracking).mock.calls[0][2]!()).toBe(scenario === "atm-withdrawal" ? "atm-setup-id" : "bill-setup-id");
   });
 });

@@ -1,9 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createBillAnalyticsTracker } from "./billAnalyticsTracker";
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("bill analytics lifecycle", () => {
+  it("records setup exit without requiring login or payment", async () => {
+    const post = vi.fn(async (path: string, _body: object) => path === "start" ? { session_id: "setup-id" } : {});
+    const tracker = createBillAnalyticsTracker(post, "en");
+    tracker.event("progress", "setup");
+    await tracker.finish("exit", "setup");
+    expect(post).toHaveBeenLastCalledWith("setup-id/finish", expect.objectContaining({
+      final_step_reached: "setup", pending_events: [expect.objectContaining({ step: "setup" })],
+    }));
+    expect(post.mock.calls.filter(([path]) => path === "start")).toHaveLength(1);
+  });
   it("exposes its attempt ID through completion without starting a new analytics session", async () => {
     const calls: string[] = [];
     const tracker = createBillAnalyticsTracker(async (path) => {

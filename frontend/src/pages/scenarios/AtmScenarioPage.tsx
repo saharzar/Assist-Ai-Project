@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
+import { useScenarioAtmAnalytics, useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { Mic, Square } from "lucide-react";
 import atmCardInsertSound from "../../assets/atm-card-insert.mp3";
@@ -42,7 +42,6 @@ import {
   abandonAtmAnalyticsSession,
   completeAtmAnalyticsSession,
   recordAtmAnalyticsEvent,
-  startAtmAnalyticsSession,
   terminateAtmAnalyticsSession,
   type AtmInputMode,
   type AtmPinOutcome,
@@ -322,6 +321,7 @@ export function AtmScenarioPage() {
   const cashDispenseStartedRef = useRef(false);
   const cardEjectionStartedRef = useRef(false);
   const analyticsSessionIdRef = useRef<string | null>(null);
+  const setupAnalytics = useScenarioAtmAnalytics();
   const analyticsStartRef = useRef<Promise<string | null> | null>(null);
   const computerVisionAttemptRef = useRef<Promise<string | null> | null>(null);
   const faceTrackingActive = !inactivityTimedOut && !pinSessionEnded && !leaveFromMenu &&
@@ -378,7 +378,7 @@ export function AtmScenarioPage() {
     analyticsSessionIdRef.current = null;
     recordedInputModesRef.current = new Set();
     analyticsCredentialsRef.current = { token, guestToken: guestSessionToken };
-    const startPromise = startAtmAnalyticsSession(language).catch(() => null);
+    const startPromise = setupAnalytics.claim();
     computerVisionAttemptRef.current = startPromise;
     analyticsStartRef.current = startPromise;
     void startPromise.then((sessionId) => {
@@ -386,7 +386,12 @@ export function AtmScenarioPage() {
         analyticsSessionIdRef.current = sessionId;
       }
     });
-  }, [guestSessionToken, language, token]);
+  }, [guestSessionToken, setupAnalytics.claim, token]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(beginAnalyticsSession, 0);
+    return () => window.clearTimeout(timer);
+  }, [beginAnalyticsSession]);
 
   const abandonCurrentAnalyticsSession = useCallback(() => {
     if (latestStatusRef.current === "success" || latestStatusRef.current === "security_terminated") {

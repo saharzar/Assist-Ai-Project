@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTranslation } from "../../i18n";
+import { atmSetupTranslations } from "../../lib/atmSetupTranslations";
 import {
   adminAnalyticsTranslations,
   type AdminAnalyticsText,
@@ -22,7 +23,9 @@ const initialFilters: AtmAnalyticsFilters = {
 export function AdminAtmAnalyticsPage() {
   const { user, isAuthenticated } = useAuth();
   const { language } = useTranslation();
-  const text = adminAnalyticsTranslations[language];
+  const text = { ...adminAnalyticsTranslations[language], stepNames: {
+    ...adminAnalyticsTranslations[language].stepNames, setup: atmSetupTranslations[language].title,
+  } };
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [filters, setFilters] = useState(initialFilters);
   const [sessions, setSessions] = useState<AtmAnalyticsSession[]>([]);

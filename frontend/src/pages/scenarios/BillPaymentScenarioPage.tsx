@@ -6,8 +6,7 @@ import { BillCardPreview, type ActiveCardField, type CardPreviewDetails } from "
 import { BillPaymentReceipt } from "../../components/bill/BillPaymentReceipt";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
-import { useBillAnalytics } from "../../hooks/useBillAnalytics";
-import { useScenarioTracking } from "../../context/ScenarioTrackingContext";
+import { useScenarioBillAnalytics, useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
 import { useTranslation } from "../../i18n";
 import { billAssistantTranslations, billCardPaymentGuidance, type BillAssistantStep } from "../../lib/billAssistantTranslations";
@@ -53,7 +52,7 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(billPaymentReducer, initialBillPaymentState);
   const { language } = useTranslation();
-  const analytics = useBillAnalytics(language, state.step);
+  const analytics = useScenarioBillAnalytics(state.step);
   const text = billPaymentTranslations[language];
   const assistantText = billAssistantTranslations[language];
   const loginSecurityText = billLoginSecurityTranslations[language];
@@ -67,7 +66,9 @@ function BillPaymentPractice({ setup }: { setup: BillSetupDetails }) {
   const [, setInactivitySeconds] = useState(0);
   const [inactivityWarningRemaining, setInactivityWarningRemaining] = useState<number | null>(null);
   const [inactivityTimedOut, setInactivityTimedOut] = useState(false);
-  const faceTrackingActive = state.step !== "success" && !loginLocked && !inactivityTimedOut;
+  // A receipt still belongs to this visit: the user may pay another bill.
+  // Both analytics and CV end when the visit is finished/left, locked or timed out.
+  const faceTrackingActive = !loginLocked && !inactivityTimedOut;
   const faceTracking = useScenarioTracking(faceTrackingActive, analytics.getSessionId);
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const statementText = billStatementTranslations[language];

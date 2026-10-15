@@ -145,6 +145,22 @@ def test_first_pin_result_is_recorded_and_verification_events_are_idempotent():
         assert db.query(AtmScenarioEvent).count() == 3
 
 
+def test_setup_abandonment_is_saved_without_pin_or_withdrawal():
+    with test_context() as (client, db):
+        headers = auth_headers(make_user(db, email="setup-atm@example.com"))
+        sid = start_session(client, headers)
+        result = client.post(f"/api/atm-sessions/{sid}/abandon", headers=headers,
+                             json={"final_step_reached": "setup"})
+        assert result.status_code == 200
+        row = db.scalar(select(AtmScenarioSession).where(AtmScenarioSession.public_id == sid))
+        assert row.completion_status == "abandoned" and row.final_step_reached == "setup"
+        assert row.total_pin_submission_count == 0 and row.duration_seconds >= 0
+        completed_at = row.completed_at
+        client.post(f"/api/atm-sessions/{sid}/abandon", headers=headers, json={"final_step_reached": "setup"})
+        db.refresh(row)
+        assert row.completed_at == completed_at
+
+
 def test_completion_is_idempotent_and_duration_is_calculated_server_side():
     with test_context() as (client, db):
         user = make_user(db, email="complete@example.com")
