@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CircleMinus, LogOut, RotateCcw } from "lucide-react";
+import { CircleMinus, LogOut } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { restaurantTranslations } from "../../lib/restaurantTranslations";
 import { drinks, initialRestaurantState, meals, restaurantReducer, type Meal } from "../../lib/restaurantState";
@@ -13,6 +13,9 @@ import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPrev
 import { useFaceTracking } from "../../hooks/useFaceTracking";
 import { useRestaurantAnalytics } from "../../hooks/useRestaurantAnalytics";
 import { playSuccessSound, stopSuccessSound } from "../../services/speechSynthesisService";
+import { formatRestaurantPrice, getRestaurantDrinkPrice, getRestaurantMealPrice, getRestaurantReceipt, initialRestaurantPayment, RESTAURANT_PAYMENT_DELAY_MS, RESTAURANT_RECEIPT_DELAY_MS, restaurantPaymentReducer } from "../../lib/restaurantPayment";
+import { restaurantPaymentTranslations } from "../../lib/restaurantPaymentTranslations";
+import { RestaurantPaymentPanel, restaurantPaymentMessage } from "../../components/restaurant/RestaurantPaymentPanel";
 
 const primary = "inline-flex min-h-14 items-center justify-center rounded-xl bg-[#302992] px-6 py-3 text-base font-bold text-white hover:bg-[#211c72] focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2";
 const secondary = "inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-indigo-200 bg-white px-6 py-3 font-bold text-[#302992] hover:bg-indigo-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2";
@@ -36,7 +39,6 @@ export function RestaurantShell({ message, children, preview, confirmation = fal
             {children}
           </div>
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-600">{text.practice}</p>
       </div>
       <ScenarioAssistantColumn assistant={<AtmSetupVoiceAssistant language={language} message={message} modeLabel={text.title} speechRequestId={0} onSpeakingChange={setSpeaking} />}>{preview}</ScenarioAssistantColumn>
     </div>
@@ -53,35 +55,47 @@ export function RestaurantScenarioPage() {
 export function RestaurantOrderAttempt({ onOrderAgain }: { onOrderAgain: () => void }) {
   const { language } = useTranslation(); const text = restaurantTranslations[language];
   const [state, dispatch] = useReducer(restaurantReducer, initialRestaurantState);
+  const [payment, dispatchPayment] = useReducer(restaurantPaymentReducer, initialRestaurantPayment);
+  const paymentText = restaurantPaymentTranslations[language];
   // Keep the added frontend steps within the existing backend confirmation phase.
   const analyticsStep = state.step === "drink" || state.step === "orderConfirmation" ? "confirmation" : state.step;
   const analytics = useRestaurantAnalytics(language, analyticsStep);
   const active = state.step !== "success";
   const tracking = useFaceTracking("restaurant-ordering", active, analytics.getSessionId);
   useEffect(() => {
-    if (state.step !== "success") return;
+    if (state.step !== "success" || payment.phase !== "receipt") return;
     if (localStorage.getItem("assist_ai_sound_enabled") !== "false") playSuccessSound();
     return stopSuccessSound;
-  }, [state.step]);
+  }, [state.step, payment.phase]);
+  useEffect(() => {
+    if (state.step !== "success" || (payment.phase !== "processing" && payment.phase !== "paid")) return;
+    const timer = window.setTimeout(() => dispatchPayment({ type: payment.phase === "processing" ? "complete" : "receipt" }), payment.phase === "processing" ? RESTAURANT_PAYMENT_DELAY_MS : RESTAURANT_RECEIPT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [state.step, payment.phase]);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { heading.current?.focus(); }, [state.step, state.fullMenu]);
+  useEffect(() => { heading.current?.focus(); }, [state.step, state.fullMenu, payment.phase]);
   const orderMessage = (state.drink === "none" ? text.orderWithoutDrink : text.orderWithDrink)
     .replace("{meal}", state.selected ? text.foods[state.selected] : "")
     .replace("{drink}", state.drink ? text.drinks[state.drink] : "");
+  const orderTotal = formatRestaurantPrice(state.selected ? getRestaurantReceipt(state.selected, state.drink ?? "none", language).totalCents : 0, language);
   const message = state.step === "menu" ? text.welcome : state.step === "alternative" ? (state.fullMenu ? text.chooseAgain : text.unavailable)
     : state.step === "confirmation" ? text.selectedMealMessage.replace("{meal}", text.foods[state.selected!])
-    : state.step === "drink" ? text.drinkQuestion : state.step === "orderConfirmation" ? orderMessage : text.success;
+    : state.step === "drink" ? text.drinkQuestion : state.step === "orderConfirmation" ? orderMessage : restaurantPaymentMessage(payment, paymentText, orderTotal);
   const stepHeading = state.step === "drink" ? text.drinkHeading : state.step === "orderConfirmation" ? text.completeOrder
-    : state.step === "alternative" ? text.alternativeHeading : state.step === "success" ? text.successHeading : text.steps[state.step];
+    : state.step === "alternative" ? text.alternativeHeading : state.step === "success"
+      ? payment.phase === "receipt" ? paymentText.receipt : payment.phase === "method" ? paymentText.heading : payment.phase === "card" ? paymentText.card : payment.phase === "cash" ? paymentText.cash : restaurantPaymentMessage(payment, paymentText, orderTotal)
+      : text.steps[state.step];
   const orderContents = state.selected && <>
     <div className="flex items-end justify-center gap-4 sm:gap-8">
       <div className="min-w-0 flex-1 max-w-48">
         <FoodIllustration meal={state.selected} /><p className="text-lg font-bold text-[#1d1a5e]">{text.foods[state.selected]}</p>
+        <p className="mt-1 font-semibold text-slate-600">{formatRestaurantPrice(getRestaurantMealPrice(state.selected, language), language)}</p>
         {state.step === "orderConfirmation" && <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => { analytics.event("menu_reopened"); dispatch({ type: "changeMeal" }); }}>{text.changeMeal}</button>}
       </div>
       {state.drink && (state.drink !== "none" || state.step === "orderConfirmation") && <div className="min-w-0 flex-1 max-w-48">
         {state.drink !== "none" ? <DrinkIllustration drink={state.drink} /> : <div className="h-[94px]" aria-hidden="true" />}
         <p className="text-lg font-bold text-[#1d1a5e]">{text.drinks[state.drink]}</p>
+        <p className="mt-1 font-semibold text-slate-600">{formatRestaurantPrice(getRestaurantDrinkPrice(state.drink, language), language)}</p>
         {state.step === "orderConfirmation" && <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => dispatch({ type: "changeDrink" })}>{text.changeDrink}</button>}
       </div>}
     </div>
@@ -99,7 +113,7 @@ export function RestaurantOrderAttempt({ onOrderAgain }: { onOrderAgain: () => v
       <div className="grid grid-cols-2 gap-3" aria-label={state.step === "menu" ? text.menu : text.alternatives}>
         {meals.filter((meal) => state.fullMenu || meal !== state.unavailable).map((meal) => <button key={meal} type="button" disabled={meal === state.unavailable} onClick={() => choose(meal)}
           className="restaurant-food-option rounded-2xl border-2 border-indigo-100 bg-white p-3 text-center text-base font-bold text-[#302992] hover:border-[#302992] focus:outline-none focus:ring-4 focus:ring-cyan-300 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500">
-          <FoodIllustration meal={meal} /><span>{text.foods[meal]}</span>{meal === state.unavailable && <span className="mt-2 block text-sm font-medium">{text.unavailableLabel}</span>}
+          <FoodIllustration meal={meal} /><span>{text.foods[meal]}</span><span className="mt-1 block text-sm font-semibold text-slate-600">{formatRestaurantPrice(getRestaurantMealPrice(meal, language), language)}</span>{meal === state.unavailable && <span className="mt-2 block text-sm font-medium">{text.unavailableLabel}</span>}
         </button>)}
       </div>
     </>}
@@ -111,7 +125,7 @@ export function RestaurantOrderAttempt({ onOrderAgain }: { onOrderAgain: () => v
       {drinks.map((drink) => {
         return <button key={drink} type="button" onClick={() => dispatch({ type: "chooseDrink", drink })}
           className={`restaurant-food-option flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-indigo-100 bg-white p-4 text-center text-base font-bold text-[#302992] focus:outline-none focus:ring-4 focus:ring-cyan-300 ${drink === "none" ? "col-span-2 sm:col-span-1" : ""}`}>
-          {drink === "none" ? <CircleMinus className="restaurant-drink-icon" strokeWidth={1.5} aria-hidden="true" /> : <DrinkIllustration drink={drink} />}<span>{text.drinks[drink]}</span>
+          {drink === "none" ? <CircleMinus className="restaurant-drink-icon" strokeWidth={1.5} aria-hidden="true" /> : <DrinkIllustration drink={drink} />}<span>{text.drinks[drink]}</span><span className="text-sm font-semibold text-slate-600">{formatRestaurantPrice(getRestaurantDrinkPrice(drink, language), language)}</span>
         </button>;
       })}
     </div>}
@@ -119,13 +133,7 @@ export function RestaurantOrderAttempt({ onOrderAgain }: { onOrderAgain: () => v
       <div className="rounded-2xl border border-indigo-100 bg-white p-4 text-center">{orderContents}</div>
       <button type="button" className={`${primary} mt-5 w-full`} onClick={() => { analytics.event("order_confirmed", state.selected!); dispatch({ type: "placeOrder" }); }}>{text.confirm}</button>
     </>}
-    {state.step === "success" && <>
-      <div className="mb-5 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-center">{orderContents}</div>
-      <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <button type="button" className={`${primary} gap-2`} onClick={onOrderAgain}><RotateCcw className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.orderAgain}</button>
-        <Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-3 text-base font-bold text-amber-950 hover:border-amber-400 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>
-      </div>
-    </>}
+    {state.step === "success" && <RestaurantPaymentPanel payment={payment} meal={state.selected!} drink={state.drink!} language={language} onAction={dispatchPayment} onOrderAgain={onOrderAgain} />}
     {state.step !== "success" && <div className={`mt-6 flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center ${state.step === "orderConfirmation" ? "border-t border-indigo-100 pt-5 sm:justify-end" : "sm:justify-between"}`}>
       {state.step === "alternative" && !state.fullMenu && <button type="button" className={primary} onClick={() => { analytics.event("menu_reopened"); dispatch({ type: "menu" }); }}>{text.showMenu}</button>}
       <Link to="/scenarios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-3 text-base font-bold text-amber-950 hover:border-amber-400 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>

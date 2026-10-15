@@ -2,16 +2,15 @@
 .restaurant-introduction .restaurant-menu { padding: 24px; }
 .restaurant-introduction .restaurant-menu .restaurant-intro-food svg { height: 78px; }
 .restaurant-introduction .restaurant-dialogue { border-color: #d7e6e1; background: #fffffff7; }
-@media (min-width: 700px) { .restaurant-introduction .restaurant-scene-waiter { position: absolute; height: 300px; bottom: 34%; left: 50%; margin: 0; transform: translateX(-50%); } }
-.restaurant-scene { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); min-height: 620px; overflow: hidden; border: 1px solid #c7b39c; border-radius: 24px; background: #eee3d5; box-shadow: 0 14px 35px -24px #514438; }
-.restaurant-environment { position: absolute; inset: 0; pointer-events: none; }
+.restaurant-scene { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); min-height: 620px; overflow: hidden; border: 1px solid #c7b39c; border-radius: 24px; background: #eee3d5 url("../../assets/restaurant-counter.png") center bottom / 100% auto no-repeat; box-shadow: 0 14px 35px -24px #514438; }
+.restaurant-environment { position: absolute; inset: 0; bottom: auto; height: 620px; pointer-events: none; }
 .restaurant-background, .restaurant-counter-front { position: absolute; width: 100%; height: 100%; object-fit: fill; }
 .restaurant-background { z-index: 0; }
 /* The same counter pixels sit in front of the avatar, not in front of the UI. */
 .restaurant-counter-front { z-index: 2; clip-path: inset(66% 0 0); }
-.restaurant-staff-zone { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; z-index: auto; }
+.restaurant-staff-zone { position: relative; display: flex; flex-direction: column; align-items: center; align-self: start; height: 620px; min-width: 0; z-index: auto; }
 .restaurant-dialogue { position: relative; z-index: 3; margin: 22px 14px 0 22px; padding: 16px 18px; border: 1px solid #e8dfd3; border-radius: 16px 16px 16px 4px; background: #fffffff5; box-shadow: 0 5px 14px #51443812; overflow-wrap: anywhere; }
-.restaurant-scene-waiter { position: relative; z-index: 1; height: 300px; width: auto; max-width: 90%; margin-top: 8px; filter: drop-shadow(0 4px 3px #382b2420); }
+.restaurant-scene-waiter { position: absolute; z-index: 1; height: 260px; width: 200px; bottom: calc(34% - 24px); left: 50%; margin: 0; transform: translateX(-50%); flex-shrink: 0; filter: drop-shadow(0 4px 3px #382b2420); }
 .restaurant-menu { position: relative; z-index: 3; align-self: start; margin: 22px 22px 22px 0; padding: 20px; min-width: 0; border: 1px solid #ddd7cc; border-radius: 18px; background: #fffffff5; box-shadow: 0 8px 22px #382b2420; }
 .restaurant-menu h2 { margin-bottom: 14px; }
 .restaurant-menu svg:not(.restaurant-waiter) { height: 94px; }
@@ -23,13 +22,55 @@
 .restaurant-food-option:active { border-color: #302992; background: #eef2ff; }
 .restaurant-waiter-mouth { transform-box: fill-box; transform-origin: center; animation: restaurant-mouth 650ms ease-in-out infinite; }
 @keyframes restaurant-mouth { 0%, 100% { transform: scaleY(.2); } 25%, 75% { transform: scaleY(.55); } 50% { transform: scaleY(1); } }
+@media (min-width: 700px) and (max-width: 999px) { .restaurant-scene-waiter { height: 220px; width: 169.23px; } }
 @media (max-width: 699px) {
   .restaurant-scene { display: block; min-height: 0; }
   .restaurant-environment { height: 310px; bottom: auto; }
   .restaurant-staff-zone { height: 310px; }
-  .restaurant-scene-waiter { position: absolute; height: 210px; left: 24%; bottom: 34%; max-width: 43%; margin: 0; transform: translateX(-50%); }
+  .restaurant-scene-waiter { height: 210px; width: 161.54px; left: 24%; bottom: 34%; max-width: 43%; }
   .restaurant-dialogue { position: absolute; top: 22px; right: 12px; width: 51%; margin: 0; padding: 12px; }
   .restaurant-dialogue p:last-child { font-size: 14px; line-height: 1.6; }
   .restaurant-menu { margin: 14px; padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .restaurant-waiter-mouth { animation: none; transform: scaleY(.4); } }
+
+.restaurant-payment { color: #1d1a5e; }
+.restaurant-menu svg.restaurant-payment-art { display: block; width: 100%; max-width: 260px; height: 160px; margin: 0 auto; }
+.restaurant-menu svg.restaurant-payment-symbol { width: 48px; height: 48px; }
+.restaurant-menu svg.restaurant-receipt-check { width: 20px; height: 20px; flex-shrink: 0; }
+.restaurant-payment-choice { display: inline-flex; min-height: 160px; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; border: 2px solid #c7d2fe; border-radius: 12px; background: #fff; color: #302992; font-weight: 700; }
+.restaurant-payment-choice:hover { background: #f6f4fa; border-color: #b5a6cf; }
+.restaurant-payment-choice-card { border-color: #c4b5fd; background: #f3efff; color: #40258a; }
+.restaurant-payment-choice-card:hover { border-color: #a78bfa; background: #eae2ff; }
+.restaurant-payment-choice-cash { border-color: #9bcbb8; background: #edf8f2; color: #205b45; }
+.restaurant-payment-choice-cash:hover { border-color: #6ead92; background: #dff1e7; }
+.restaurant-menu svg.restaurant-method-art { width: 100%; max-width: 200px; height: 120px; }
+.restaurant-payment-primary, .restaurant-payment-exit { display: inline-flex; min-height: 56px; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 12px; font-size: 16px; font-weight: 700; }
+.restaurant-payment-primary { background: #302992; color: #fff; }
+.restaurant-payment-primary:hover { background: #211c72; }
+.restaurant-payment-exit { border: 2px solid #fcd34d; background: #fffbeb; color: #451a03; }
+.restaurant-payment-exit:hover { background: #fef3c7; }
+.restaurant-payment-choice:focus-visible, .restaurant-payment-object:focus-visible, .restaurant-payment-primary:focus-visible, .restaurant-payment-exit:focus-visible { outline: 3px solid #22d3ee; outline-offset: 3px; }
+.restaurant-receipt { padding: 20px; border: 1px solid #ddd7cc; border-radius: 12px; background: #fff; color: #1d1a5e; box-shadow: 0 8px 22px #382b2410; animation: restaurant-receipt-arrive 500ms ease-out both; }
+.restaurant-payment-counter { position: relative; height: 300px; max-width: 420px; margin: 0 auto; overflow: hidden; border-radius: 14px; background: linear-gradient(to bottom, transparent 62%, #ecd8bc 62%, #dac3a4 100%); }
+.restaurant-pos { position: absolute; left: 3%; top: 0; width: 48%; max-width: 190px; }
+.restaurant-menu svg.restaurant-pos-art, .restaurant-menu svg.restaurant-card-art { display: block; width: 100%; height: auto; }
+.restaurant-payment-object { padding: 0; border: 0; border-radius: 12px; background: transparent; color: #302992; cursor: pointer; }
+.restaurant-payment-object:disabled { cursor: default; }
+.restaurant-payment-object:hover:not(:disabled) svg { filter: drop-shadow(0 3px 5px #30299230); }
+.restaurant-object-label { display: block; margin-top: 4px; padding: 4px; font-size: 14px; font-weight: 700; line-height: 1.4; }
+.restaurant-card-object { position: absolute; right: 2%; bottom: 14px; width: 40%; max-width: 150px; }
+.restaurant-cash-object { position: absolute; bottom: 14px; left: 50%; width: 75%; max-width: 260px; transform: translateX(-50%); }
+.restaurant-cashier-tray { position: absolute; top: 36px; left: 50%; width: 175px; height: 28px; transform: translateX(-50%); border: 5px solid #b7d3d4; border-top: 0; border-radius: 0 0 50% 50%; background: #edf3ef; }
+.restaurant-payment-status { display: flex; min-height: 32px; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; color: #285c51; font-weight: 700; text-align: center; }
+.restaurant-receipt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.restaurant-receipt-actions > * { min-width: 0; padding: 12px; }
+.restaurant-card-tap { animation: restaurant-card-tap 1100ms ease-in-out both; }
+.restaurant-cash-give { animation: restaurant-cash-give 1100ms ease-in-out both; }
+.restaurant-card-tap .restaurant-object-label, .restaurant-cash-give .restaurant-object-label { visibility: hidden; }
+.restaurant-terminal-check { animation: restaurant-confirmation 400ms ease-out both; }
+@keyframes restaurant-card-tap { to { transform: translate(-75%, -120px) rotate(-8deg); } }
+@keyframes restaurant-cash-give { to { transform: translate(-50%, -110px); opacity: .35; } }
+@keyframes restaurant-confirmation { from { opacity: .3; } to { opacity: 1; } }
+@keyframes restaurant-receipt-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .restaurant-card-tap, .restaurant-cash-give, .restaurant-receipt, .restaurant-terminal-check { animation: none; } }
