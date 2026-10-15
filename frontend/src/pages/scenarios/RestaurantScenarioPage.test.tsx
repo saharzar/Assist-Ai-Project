@@ -249,7 +249,7 @@ describe("restaurant scenario UI", () => {
     expect(html).toContain('/scenario/restaurant-ordering/run');
     expect(html).toContain("data-spoken-message=");
     expect(html).toContain('data-waiter-state="idle"');
-    expect(html.match(/<li(?: |>)/g)).toHaveLength(3);
+    expect(html.match(/<li(?: |>)/g)).toHaveLength(4);
     expect(html).not.toContain("restaurant-menu");
     const spoken = renderToStaticMarkup(<span>{restaurantTranslations[language].introSpoken}</span>).slice(6, -7);
     expect(html).toContain(spoken);
@@ -270,7 +270,7 @@ describe("restaurant scenario UI", () => {
     click("Yes, place my order");
     html = renderToStaticMarkup(RestaurantScenarioPage()); expect(html).toContain("Your total is €9.00. How would you like to pay?");
     finishPayment();
-    expect(renderToStaticMarkup(RestaurantScenarioPage())).toContain("your order is complete");
+    expect(renderToStaticMarkup(RestaurantScenarioPage())).toContain("prepare your meal shortly.");
     expect(state.event.mock.calls).toEqual([["meal_selected", "pasta"], ["menu_reopened"], ["alternative_selected", "soup"], ["order_confirmed", "soup"]]);
     expect(useFaceTracking).toHaveBeenLastCalledWith("restaurant-ordering", false, state.getSessionId);
   });
