@@ -5,7 +5,7 @@ import { scenarios } from "../../data/scenarios";
 import { useTranslation } from "../../i18n";
 import { adminAnalyticsTranslations } from "../../lib/adminAnalyticsTranslations";
 
-const analyticsRoutes: Record<string, string> = { "atm-withdrawal": "/admin/atm-analytics", "online-bill-payment": "/admin/bill-analytics" };
+const analyticsRoutes: Record<string, string> = { "atm-withdrawal": "/admin/atm-analytics", "online-bill-payment": "/admin/bill-analytics", "restaurant-ordering": "/admin/restaurant-analytics" };
 
 export function AdminScenarioAnalyticsPage() {
   const { user, isAuthenticated } = useAuth();

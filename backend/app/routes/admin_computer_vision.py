@@ -10,6 +10,7 @@ from app.core.security import get_current_admin
 from app.database import get_db
 from app.services.computer_vision_summary import summarize_samples
 from app.models import AtmScenarioSession, BillScenarioSession, ComputerVisionSample, ComputerVisionSession, User
+from app.models.restaurant_scenario_session import RestaurantScenarioSession
 from app.schemas.admin_computer_vision import (
     ComputerVisionSampleRead, ComputerVisionSessionDetail, ComputerVisionSessionList, ComputerVisionSessionRead,
 )
@@ -30,20 +31,21 @@ def metadata_query():
     counts = (select(ComputerVisionSample.session_id, func.count().label("sample_count"))
               .group_by(ComputerVisionSample.session_id).subquery())
     return (select(ComputerVisionSession, User.full_name, AtmScenarioSession.public_id,
-                   BillScenarioSession.public_id, func.coalesce(counts.c.sample_count, 0))
+                   BillScenarioSession.public_id, RestaurantScenarioSession.public_id, func.coalesce(counts.c.sample_count, 0))
             .outerjoin(User, User.id == ComputerVisionSession.user_id)
             .outerjoin(AtmScenarioSession, AtmScenarioSession.id == ComputerVisionSession.atm_session_id)
             .outerjoin(BillScenarioSession, BillScenarioSession.id == ComputerVisionSession.bill_session_id)
+            .outerjoin(RestaurantScenarioSession, RestaurantScenarioSession.id == ComputerVisionSession.restaurant_session_id)
             .outerjoin(counts, counts.c.session_id == ComputerVisionSession.id))
 
 
 def metadata(row):
-    record, name, atm_attempt, bill_attempt, count = row
+    record, name, atm_attempt, bill_attempt, restaurant_attempt, count = row
     return ComputerVisionSessionRead(
         session_id=record.public_id, actor_type="registered" if record.user_id else "guest",
         actor_reference=str(record.user_id if record.user_id else record.guest_session_id),
         display_name=name, scenario_key=record.scenario_key,
-        scenario_session_id=atm_attempt or bill_attempt,
+        scenario_session_id=atm_attempt or bill_attempt or restaurant_attempt,
         started_at=record.started_at.replace(tzinfo=timezone.utc) if record.started_at.tzinfo is None else record.started_at,
         ended_at=record.ended_at.replace(tzinfo=timezone.utc) if record.ended_at.tzinfo is None else record.ended_at,
         duration_ms=record.duration_ms, sample_count=count,

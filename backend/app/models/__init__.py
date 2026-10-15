@@ -1,4 +1,5 @@
 from app.models.bill_scenario_session import BillScenarioEvent, BillScenarioSession
+from app.models.restaurant_scenario_session import RestaurantScenarioEvent, RestaurantScenarioSession
 from app.models.computer_vision_session import ComputerVisionSample, ComputerVisionSession
 from app.models.atm_scenario_session import AtmScenarioEvent, AtmScenarioSession
 from app.models.guest_session import GuestSession
@@ -16,6 +17,8 @@ from app.models.user import User
 from app.models.user_speech_quota import QuotaAdjustmentHistory, QuotaIncreaseRequest, UserNotification, UserQuotaDefaults, UserSpeechUsagePeriod
 
 __all__ = [
+    "RestaurantScenarioEvent",
+    "RestaurantScenarioSession",
     "ComputerVisionSample",
     "ComputerVisionSession",
     "BillScenarioEvent",

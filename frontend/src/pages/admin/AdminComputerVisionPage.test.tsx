@@ -168,6 +168,8 @@ describe("admin computer vision page", () => {
     state.values = [1, null, null, false, true];
     const html = render();
     expect(html).toContain('role="alert"');
+    expect(html).toContain("Computer vision recordings could not be loaded. Please try again.");
+    expect(html).not.toContain("ATM analytics could not be loaded");
     expect(html).not.toContain("<table");
   });
 

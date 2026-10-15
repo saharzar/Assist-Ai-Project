@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.atm_scenario_session import AtmScenarioSession
 from app.models.bill_scenario_session import BillScenarioSession
+from app.models.restaurant_scenario_session import RestaurantScenarioSession
 from app.models.computer_vision_session import ComputerVisionSample, ComputerVisionSession
 from app.schemas.computer_vision import ComputerVisionSessionCreate, ComputerVisionSessionSaved
 from app.services.atm_analytics_service import resolve_analytics_actor
@@ -63,7 +64,8 @@ def save_session(payload: ComputerVisionSessionCreate, db: Session = Depends(get
 
     attempt = None
     if payload.scenario_session_id:
-        model = AtmScenarioSession if payload.scenario_key == "atm-withdrawal" else BillScenarioSession
+        model = {"atm-withdrawal": AtmScenarioSession, "online-bill-payment": BillScenarioSession,
+                 "restaurant-ordering": RestaurantScenarioSession}[payload.scenario_key]
         attempt = db.scalar(select(model).where(model.public_id == str(payload.scenario_session_id)))
         if attempt is None or not owned_by(attempt, owner):
             raise HTTPException(404, "Scenario attempt not found.")
@@ -74,6 +76,7 @@ def save_session(payload: ComputerVisionSessionCreate, db: Session = Depends(get
         scenario_key=payload.scenario_key, consent_given=True,
         atm_session_id=attempt.id if attempt and payload.scenario_key == "atm-withdrawal" else None,
         bill_session_id=attempt.id if attempt and payload.scenario_key == "online-bill-payment" else None,
+        restaurant_session_id=attempt.id if attempt and payload.scenario_key == "restaurant-ordering" else None,
         started_at=payload.started_at.astimezone(timezone.utc), ended_at=payload.ended_at.astimezone(timezone.utc),
         duration_ms=payload.duration_ms,
     )

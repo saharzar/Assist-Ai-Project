@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "./api";
 import type { TrackingRecordingStart, TrackingSample } from "./trackingSessionRecorder";
 
-export type ComputerVisionScenario = "atm-withdrawal" | "online-bill-payment";
+export type ComputerVisionScenario = "atm-withdrawal" | "online-bill-payment" | "restaurant-ordering";
 export type ScenarioAttemptId = string | null | Promise<string | null>;
 type CompletedSession = {
   client_session_id: string;

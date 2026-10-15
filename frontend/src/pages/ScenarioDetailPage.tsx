@@ -4,6 +4,7 @@ import { scenarios } from "../data/scenarios";
 import { useTranslation } from "../i18n";
 import { AtmIntroductionPage } from "./scenarios/AtmIntroductionPage";
 import { BillPaymentIntroductionPage } from "./scenarios/BillPaymentIntroductionPage";
+import { RestaurantIntroductionPage } from "./scenarios/RestaurantScenarioPage";
 
 export function ScenarioDetailPage() {
   const { t, translateScenario } = useTranslation();
@@ -18,6 +19,7 @@ export function ScenarioDetailPage() {
   if (slug === "online-bill-payment") {
     return <BillPaymentIntroductionPage />;
   }
+  if (slug === "restaurant-ordering") return <RestaurantIntroductionPage />;
 
   if (!translatedScenario || scenario) {
     return (

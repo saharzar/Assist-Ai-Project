@@ -11,7 +11,8 @@ class ComputerVisionSession(Base):
     __table_args__ = (
         CheckConstraint("(user_id IS NOT NULL AND guest_session_id IS NULL) OR "
                         "(user_id IS NULL AND guest_session_id IS NOT NULL)", name="ck_cv_session_single_owner"),
-        CheckConstraint("scenario_key IN ('atm-withdrawal', 'online-bill-payment')", name="ck_cv_session_scenario"),
+        CheckConstraint("scenario_key IN ('atm-withdrawal', 'online-bill-payment', 'restaurant-ordering')", name="ck_cv_session_scenario"),
+        CheckConstraint("restaurant_session_id IS NULL OR scenario_key = 'restaurant-ordering'", name="ck_cv_session_restaurant_attempt"),
         CheckConstraint("atm_session_id IS NULL OR scenario_key = 'atm-withdrawal'", name="ck_cv_session_atm_attempt"),
         CheckConstraint("bill_session_id IS NULL OR scenario_key = 'online-bill-payment'", name="ck_cv_session_bill_attempt"),
         CheckConstraint("duration_ms >= 0", name="ck_cv_session_duration"),
@@ -25,6 +26,7 @@ class ComputerVisionSession(Base):
     scenario_key: Mapped[str] = mapped_column(String(64), index=True)
     atm_session_id: Mapped[int | None] = mapped_column(ForeignKey("atm_scenario_sessions.id", ondelete="SET NULL"), index=True)
     bill_session_id: Mapped[int | None] = mapped_column(ForeignKey("bill_scenario_sessions.id", ondelete="SET NULL"), index=True)
+    restaurant_session_id: Mapped[int | None] = mapped_column(ForeignKey("restaurant_scenario_sessions.id", ondelete="SET NULL"), index=True)
     consent_given: Mapped[bool] = mapped_column(Boolean)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

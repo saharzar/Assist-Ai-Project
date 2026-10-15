@@ -17,6 +17,7 @@ import { fetchComputerVisionSession, fetchComputerVisionSessions,
 const supportedScenarios: Record<string, true> = {
   "atm-withdrawal": true,
   "online-bill-payment": true,
+  "restaurant-ordering": true,
 };
 export function AdminComputerVisionPage({ view = "detail" }: { view?: "index" | "route" | "detail" }) {
   const { isAuthenticated, user } = useAuth();
@@ -92,7 +93,7 @@ function ComputerVisionRecordings({ view }: { view: "index" | "route" | "detail"
       labels={{ comingSoon: text.comingSoon, action: text.viewRecordings }}
       translateScenario={translateScenario} />}
     {loading && <p role="status" className="py-10 text-center">{common.loading}</p>}
-    {error && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4">{common.loadError}</p>}
+    {error && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4">{text.loadError}</p>}
     {!loading && !error && list && <><DataTable headings={[common.user, text.scenario, text.date, common.duration, text.open]}>
       {list.items.map((session) => <tr key={session.session_id} className="hover:bg-[#fafbff]">
         <Cell>{session.display_name && <span className="block font-bold">{session.display_name}</span>}{session.actor_type === "guest" ? common.guest : common.registered}</Cell>

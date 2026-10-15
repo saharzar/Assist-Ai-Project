@@ -29,7 +29,7 @@ class ComputerVisionSessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     client_session_id: UUID
     consent: StrictBool
-    scenario_key: Literal["atm-withdrawal", "online-bill-payment"]
+    scenario_key: Literal["atm-withdrawal", "online-bill-payment", "restaurant-ordering"]
     scenario_session_id: UUID | None = None
     started_at: AwareDatetime
     ended_at: AwareDatetime

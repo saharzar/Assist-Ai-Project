@@ -8,7 +8,7 @@ import { billPaymentTranslations } from "../lib/billPaymentTranslations";
 import { preloadAssistantMessage } from "../services/speechSynthesisService";
 import type { Scenario } from "../types/scenario";
 
-const ACTIVE_SCENARIO_SLUGS = new Set(["atm-withdrawal", "online-bill-payment"]);
+const ACTIVE_SCENARIO_SLUGS = new Set(["atm-withdrawal", "online-bill-payment", "restaurant-ordering"]);
 
 export function ScenarioCataloguePage() {
   const { language, t, translateScenario } = useTranslation();

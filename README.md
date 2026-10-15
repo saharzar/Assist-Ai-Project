@@ -69,7 +69,7 @@ This version includes:
 - Console email logging or real SMTP notifications for account request, approval, denial, suspension, and activation notices
 - PostgreSQL users and guest sessions
 - User category selection during sign up
-- Scenario catalogue with the ATM and online bill-payment scenarios enabled
+- Scenario catalogue with ATM, online bill payment, and restaurant ordering enabled
 - Realistic ATM interface with clickable controls, card/receipt/cash animations, and synchronized sound effects
 - ATM input through on-screen controls, a computer keyboard, or voice where supported
 - Step-by-step online bill-payment draft with guided account setup, secured login attempts, localized bill details, automatic card-field guidance, spoken validation, and PDF receipts
@@ -129,7 +129,7 @@ Scenario analytics include registered and guest sessions and classify outcomes a
 
 Online Bill Payment is also available under **Admin → Scenario Analytics**. Tracking starts when the practice run opens and respects guest progress consent. It records login attempts and failures, card-validation errors, payment attempts, paid-bill counts, back navigation, language, duration, final step, and exit/timeout reasons. Credentials and card details are never sent to analytics. A visit can include multiple bills; on exit it is successful if at least one bill was paid, otherwise abandoned (or security terminated after login lockout). Active visits remain visible as in progress. Administrators can filter sessions and open each user's or guest's history. Existing visits before this feature cannot be reconstructed.
 
-Bill-payment analytics were introduced in migration `20260930_0015`. Before running this version against an existing database, apply all migrations with `alembic upgrade head`; the current head is `20261001_0017`.
+Bill-payment analytics were introduced in migration `20260930_0015`. Before running this version against an existing database, apply all migrations with `alembic upgrade head`; the current head is `20261015_0018`.
 
 ## Online Bill-Payment Draft Flow
 
@@ -168,6 +168,16 @@ When an administrator runs either scenario, **Computer Vision Preview** appears 
 
 Production camera access requires HTTPS. MediaPipe currently downloads its WASM files from `cdn.jsdelivr.net` and its face model from `storage.googleapis.com`. Computer vision adds no backend environment variable. Apply migration `20261001_0017` for `computer_vision_sessions` and `computer_vision_samples`.
 
+## Restaurant Ordering
+
+Open **Restaurant Ordering** from the scenario catalogue (`/scenario/restaurant-ordering`). The introduction explains the activity, and Start uses the existing consent-aware camera and face checks. The practice route is `/scenario/restaurant-ordering/run`.
+
+Choose pasta, grilled chicken, salad, or soup. The first choice becomes unavailable for this practice attempt. Choose one of the other meals, or reopen the menu (the unavailable dish remains disabled). Confirm the meal, choose water, juice, or no drink, then confirm the complete order. The drink choice can be changed without restarting. There is no payment, reservation, pricing, real order, or AI conversation. The restaurant counter background stays visible throughout; the staff avatar and four food illustrations are original lightweight SVGs. The waiter's mouth animates during assistant speech. Instructions, food and drink names, assistant messages, and actions support English, Spanish, German, Turkish, Portuguese, and French.
+
+The existing speech assistant reads staff messages and provides sound/stop/repeat controls. Scenario analytics use the same actor authorization, guest progress consent, queued events, duplicate protection, and final-flush conventions as bill payment. Registered users and consenting guests have completed or abandoned attempts saved from the menu onward. Admin → Scenario Analytics → Restaurant Ordering shows paginated attempts at `/admin/restaurant-analytics`.
+
+Existing computer vision consent, recording, and admin preview behavior also apply. Restaurant recordings are linked to their attempt and appear under the restaurant card in Computer Vision Recordings. Migration `20261015_0018` adds restaurant sessions/events and their CV link; it preserves existing ATM and bill recordings. It adds no environment variables. Scenario duration includes startup, while CV duration begins at the first valid measurement, so those durations may differ.
+
 ## User Roles
 
 - **Registered user:** accesses approved scenarios, profile preferences, personal speech usage, and quota requests.
@@ -193,7 +203,7 @@ cd backend
 alembic upgrade head
 ```
 
-Current migration head: `20261001_0017`. Back up an existing production database before applying pending migrations. The Docker backend runs `alembic upgrade head` automatically before starting Uvicorn.
+Current migration head: `20261015_0018`. Back up an existing production database before applying pending migrations. The Docker backend runs `alembic upgrade head` automatically before starting Uvicorn.
 
 ## Create the First Admin
 

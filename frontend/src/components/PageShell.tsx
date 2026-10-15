@@ -18,6 +18,7 @@ import {
   type TtsUsage,
 } from "../services/ttsUsageService";
 import atmWallBackground from "../assets/atm-wall-background.png";
+import restaurantBackground from "../assets/restaurant-counter.png";
 import assistAiLogo from "../assets/assist-ai-logo.png";
 import {
   fetchGlobalSpeechDashboard,
@@ -42,8 +43,10 @@ export function PageShell() {
     "/scenario/atm-withdrawal/practice",
     "/scenario/online-bill-payment/setup",
     "/scenario/online-bill-payment/run",
+    "/scenario/restaurant-ordering/run",
   ].includes(location.pathname);
   const isLandingPage = location.pathname === "/";
+  const isRestaurantScenario = location.pathname === "/scenario/restaurant-ordering" || location.pathname.startsWith("/scenario/restaurant-ordering/");
   const isAuthPage =
     location.pathname === "/login" ||
     location.pathname === "/register" ||
@@ -158,7 +161,14 @@ export function PageShell() {
             : "brand-atmosphere text-slate-800"
       }`}
       style={
-        isAtmScenario
+        isRestaurantScenario
+          ? {
+              backgroundImage: `linear-gradient(rgba(244, 241, 237, 0.92), rgba(244, 241, 237, 0.96)), url(${restaurantBackground})`,
+              backgroundPosition: "center top",
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "cover",
+            }
+          : isAtmScenario
           ? {
               backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.22)), url(${atmWallBackground})`,
               backgroundPosition: "center top",
@@ -272,7 +282,7 @@ export function PageShell() {
             <div className="mx-auto flex min-h-[46px] max-w-6xl items-center justify-between gap-4 overflow-x-auto px-5">
               <div className="flex h-full items-center gap-1">
                 <AdminNavLink to="/admin/users" label={adminMenuText(language).users} active={location.pathname === "/admin/users"} />
-                <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics")} />
+                <AdminNavLink to="/admin/scenario-analytics" label={adminMenuText(language).analytics} active={location.pathname.startsWith("/admin/scenario-analytics") || location.pathname.startsWith("/admin/analytics") || location.pathname === "/admin/restaurant-analytics"} />
                 <AdminNavLink to="/admin/computer-vision" label={adminComputerVisionTranslations[language].title} active={location.pathname.startsWith("/admin/computer-vision")} />
                 <AdminNavLink to="/admin/speech-providers" label={adminMenuText(language).speech} active={location.pathname === "/admin/speech-providers"} />
                 <AdminNavLink to="/admin/user-quotas" label={adminMenuText(language).quotas} active={location.pathname === "/admin/user-quotas"} />

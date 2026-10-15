@@ -1,0 +1,35 @@
+.restaurant-page { background: #f4f1eded; border-radius: 24px; }
+.restaurant-introduction .restaurant-menu { padding: 24px; }
+.restaurant-introduction .restaurant-menu .restaurant-intro-food svg { height: 78px; }
+.restaurant-introduction .restaurant-dialogue { border-color: #d7e6e1; background: #fffffff7; }
+@media (min-width: 700px) { .restaurant-introduction .restaurant-scene-waiter { position: absolute; height: 300px; bottom: 34%; left: 50%; margin: 0; transform: translateX(-50%); } }
+.restaurant-scene { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); min-height: 620px; overflow: hidden; border: 1px solid #c7b39c; border-radius: 24px; background: #eee3d5; box-shadow: 0 14px 35px -24px #514438; }
+.restaurant-environment { position: absolute; inset: 0; pointer-events: none; }
+.restaurant-background, .restaurant-counter-front { position: absolute; width: 100%; height: 100%; object-fit: fill; }
+.restaurant-background { z-index: 0; }
+/* The same counter pixels sit in front of the avatar, not in front of the UI. */
+.restaurant-counter-front { z-index: 2; clip-path: inset(66% 0 0); }
+.restaurant-staff-zone { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; z-index: auto; }
+.restaurant-dialogue { position: relative; z-index: 3; margin: 22px 14px 0 22px; padding: 16px 18px; border: 1px solid #e8dfd3; border-radius: 16px 16px 16px 4px; background: #fffffff5; box-shadow: 0 5px 14px #51443812; overflow-wrap: anywhere; }
+.restaurant-scene-waiter { position: relative; z-index: 1; height: 300px; width: auto; max-width: 90%; margin-top: 8px; filter: drop-shadow(0 4px 3px #382b2420); }
+.restaurant-menu { position: relative; z-index: 3; align-self: start; margin: 22px 22px 22px 0; padding: 20px; min-width: 0; border: 1px solid #ddd7cc; border-radius: 18px; background: #fffffff5; box-shadow: 0 8px 22px #382b2420; }
+.restaurant-menu h2 { margin-bottom: 14px; }
+.restaurant-menu svg:not(.restaurant-waiter) { height: 94px; }
+.restaurant-menu svg.restaurant-exit-icon { height: 20px; width: 20px; }
+.restaurant-menu svg.restaurant-drink-icon { height: 48px; width: 48px; }
+.restaurant-food-option { min-height: 145px; }
+.restaurant-food-option:not(:disabled):hover { border-color: #b5a6cf; background: #f6f4fa; }
+.restaurant-food-option:disabled { cursor: not-allowed; }
+.restaurant-food-option:active { border-color: #302992; background: #eef2ff; }
+.restaurant-waiter-mouth { transform-box: fill-box; transform-origin: center; animation: restaurant-mouth 650ms ease-in-out infinite; }
+@keyframes restaurant-mouth { 0%, 100% { transform: scaleY(.2); } 25%, 75% { transform: scaleY(.55); } 50% { transform: scaleY(1); } }
+@media (max-width: 699px) {
+  .restaurant-scene { display: block; min-height: 0; }
+  .restaurant-environment { height: 310px; bottom: auto; }
+  .restaurant-staff-zone { height: 310px; }
+  .restaurant-scene-waiter { position: absolute; height: 210px; left: 24%; bottom: 34%; max-width: 43%; margin: 0; transform: translateX(-50%); }
+  .restaurant-dialogue { position: absolute; top: 22px; right: 12px; width: 51%; margin: 0; padding: 12px; }
+  .restaurant-dialogue p:last-child { font-size: 14px; line-height: 1.6; }
+  .restaurant-menu { margin: 14px; padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .restaurant-waiter-mouth { animation: none; transform: scaleY(.4); } }

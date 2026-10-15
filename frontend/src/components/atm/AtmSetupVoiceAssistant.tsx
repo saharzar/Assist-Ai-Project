@@ -19,12 +19,14 @@ export function AtmSetupVoiceAssistant({
   modeLabel,
   speechRequestId,
   stopRequestId = 0,
+  onSpeakingChange,
 }: {
   language: LanguageCode;
   message: string;
   modeLabel: string;
   speechRequestId: number;
   stopRequestId?: number;
+  onSpeakingChange?: (speaking: boolean) => void;
 }) {
   const text = atmTranslations[language];
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_STORAGE_KEY) !== "false");
@@ -38,26 +40,31 @@ export function AtmSetupVoiceAssistant({
     speechRequestRef.current += 1;
     stopAssistantSpeech();
     setIsSpeaking(false);
-  }, []);
+    onSpeakingChange?.(false);
+  }, [onSpeakingChange]);
 
   const speak = useCallback(() => {
     if (!soundEnabled || !message.trim()) return;
     const requestId = speechRequestRef.current + 1;
     speechRequestRef.current = requestId;
+    setIsSpeaking(false);
+    onSpeakingChange?.(false);
     setTtsError("");
     void unlockAssistantAudioPlayback().then(() => {
       if (speechRequestRef.current !== requestId) return;
       speakAssistantMessage(message, {
         allowBrowserFallback: true,
-        onStart: () => setIsSpeaking(true),
-        onEnd: () => setIsSpeaking(false),
+        onStart: () => { if (speechRequestRef.current !== requestId) return; setIsSpeaking(true); onSpeakingChange?.(true); },
+        onEnd: () => { if (speechRequestRef.current !== requestId) return; setIsSpeaking(false); onSpeakingChange?.(false); },
         onError: () => {
+          if (speechRequestRef.current !== requestId) return;
           setIsSpeaking(false);
+          onSpeakingChange?.(false);
           setTtsError(text.assistantVoiceProblem);
         },
       }, language);
     });
-  }, [language, message, soundEnabled, text.assistantVoiceProblem]);
+  }, [language, message, onSpeakingChange, soundEnabled, text.assistantVoiceProblem]);
 
   useEffect(() => {
     const speechKey = `${language}:${speechRequestId}:${message}`;
@@ -76,7 +83,8 @@ export function AtmSetupVoiceAssistant({
     speechRequestRef.current += 1;
     lastSpokenRef.current = "";
     stopAssistantSpeech();
-  }, []);
+    onSpeakingChange?.(false);
+  }, [onSpeakingChange]);
 
   const toggleSound = () => {
     setSoundEnabled((current) => {

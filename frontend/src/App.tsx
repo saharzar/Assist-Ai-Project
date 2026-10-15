@@ -25,6 +25,8 @@ import { AtmScenarioPage } from "./pages/scenarios/AtmScenarioPage";
 import { AtmPracticeSetupPage } from "./pages/scenarios/AtmPracticeSetupPage";
 import { BillPaymentScenarioPage } from "./pages/scenarios/BillPaymentScenarioPage";
 import { BillPaymentSetupPage } from "./pages/scenarios/BillPaymentSetupPage";
+import { RestaurantScenarioPage } from "./pages/scenarios/RestaurantScenarioPage";
+import { AdminRestaurantAnalyticsPage } from "./pages/admin/AdminRestaurantAnalyticsPage";
 
 export function App() {
   return (
@@ -40,6 +42,7 @@ export function App() {
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute allowGuest />}>
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="scenario/restaurant-ordering/run" element={<RestaurantScenarioPage />} />
               <Route element={<ScenarioTrackingLayout key="atm-withdrawal" scenario="atm-withdrawal" />}>
                 <Route path="scenario/atm-withdrawal/practice" element={<AtmScenarioPage />} />
                 <Route path="scenario/atm-withdrawal/setup" element={<AtmPracticeSetupPage />} />
@@ -61,6 +64,7 @@ export function App() {
               <Route path="admin/computer-vision/:routeKey" element={<AdminComputerVisionPage view="route" />} />
               <Route path="admin/scenario-analytics" element={<AdminScenarioAnalyticsPage />} />
               <Route path="admin/bill-analytics" element={<AdminBillAnalyticsPage />} />
+              <Route path="admin/restaurant-analytics" element={<AdminRestaurantAnalyticsPage />} />
               <Route path="admin/atm-analytics" element={<AdminAtmAnalyticsPage />} />
               <Route path="admin/speech-providers" element={<AdminSpeechProvidersPage />} />
               <Route path="admin/user-quotas" element={<AdminUserQuotasPage />} />

@@ -1,0 +1,27 @@
+/* Intro-only layout. No selectors here affect the restaurant activity. */
+.restaurant-intro-page { width: 100%; color: #1d1a5e; }
+.restaurant-intro-layout { display: grid; align-items: start; gap: 24px; }
+.restaurant-intro-card { display: grid; overflow: hidden; border: 1px solid #e2e5ed; border-radius: 24px; background: #fff; box-shadow: 0 18px 45px -30px #30299245; }
+.restaurant-intro-visual { position: relative; isolation: isolate; min-height: 260px; overflow: hidden; background: #e8d8c6; }
+.restaurant-intro-background, .restaurant-intro-counter { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 35% center; }
+.restaurant-intro-background { z-index: 0; }
+.restaurant-intro-counter { z-index: 2; clip-path: inset(66% 0 0); }
+.restaurant-intro-waiter { position: absolute; z-index: 1; height: 170px; width: auto; max-width: 80%; left: 50%; bottom: 34%; transform: translateX(-50%); filter: drop-shadow(0 3px 3px #382b2420); }
+.restaurant-intro-content { min-width: 0; padding: 26px; }
+.restaurant-intro-label { margin-bottom: 10px; font-size: 13px; font-weight: 700; line-height: 1.5; color: #087f8c; }
+.restaurant-intro-explanation { display: grid; gap: 8px; margin-top: 18px; font-size: 16px; line-height: 1.65; color: #5b5a78; }
+.restaurant-intro-steps { display: grid; gap: 12px; margin: 22px 0; }
+.restaurant-intro-steps li { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.restaurant-intro-steps li > span { display: flex; flex: 0 0 28px; align-items: center; justify-content: center; height: 28px; border-radius: 50%; background: #edf7f4; color: #20675d; font-size: 12px; }
+.restaurant-intro-ready { margin-bottom: 12px; font-size: 14px; line-height: 1.6; color: #5b5a78; }
+.restaurant-intro-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; padding: 6px 2px; border-radius: 6px; color: #302992; font-size: 14px; font-weight: 600; }
+.restaurant-intro-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+.restaurant-intro-back:focus-visible { outline: 3px solid #22d3ee; outline-offset: 3px; }
+.restaurant-intro-assistant { min-width: 0; }
+@media (min-width: 768px) {
+  .restaurant-intro-card { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
+  .restaurant-intro-visual { min-height: 560px; }
+  .restaurant-intro-waiter { height: 280px; }
+  .restaurant-intro-content { align-self: center; padding: 28px; }
+}
+@media (min-width: 1280px) { .restaurant-intro-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
