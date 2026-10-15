@@ -153,4 +153,15 @@ describe("post-login camera analysis consent", () => {
     state.effects[1]();
     expect(speakAssistantMessage).toHaveBeenCalledWith(`${text.cameraUnavailable}. ${text.cameraUnavailableMessage}`, expect.any(Object), language);
   });
+
+  it.each(Object.keys(computerVisionConsentTranslations) as LanguageCode[])("reads the face-not-detected message without the button in %s", (language) => {
+    state.language = language;
+    const text = computerVisionConsentTranslations[language];
+    const html = renderToStaticMarkup(<ComputerVisionDialog title={text.faceNotDetected} message={text.faceNotDetectedMessage}>
+      <button>{text.cameraRetry}</button>
+    </ComputerVisionDialog>);
+    expect(html).toContain('aria-modal="true"'); expect(html).toContain(text.faceNotDetected);
+    state.effects[1]();
+    expect(speakAssistantMessage).toHaveBeenCalledWith(`${text.faceNotDetected}. ${text.faceNotDetectedMessage}`, expect.any(Object), language);
+  });
 });

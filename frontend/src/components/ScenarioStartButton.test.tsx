@@ -4,6 +4,8 @@ import { ScenarioStartButton } from "./ScenarioStartButton";
 import { ComputerVisionDialog } from "./ComputerVisionDialog";
 import { computerVisionConsentTranslations } from "../lib/computerVisionConsentTranslations";
 import type { LanguageCode } from "../i18n";
+import { checkFacePresence } from "../services/facePresenceService";
+vi.mock("../services/facePresenceService", () => ({ checkFacePresence: vi.fn() }));
 
 const state = vi.hoisted(() => ({ consent: true as boolean | null, token: "login-one", navigate: vi.fn(),
   language: "en" as LanguageCode, values: [] as unknown[], refs: [] as Array<{ current: unknown }>,
@@ -44,6 +46,7 @@ function click(tree: ReactNode, index = 0) {
 }
 beforeEach(() => {
   vi.clearAllMocks(); state.consent = true; state.token = "login-one"; state.language = "en";
+  vi.mocked(checkFacePresence).mockResolvedValue(true);
   state.values = []; state.refs = []; state.effects = [];
   track = { readyState: "live", enabled: true, stop: vi.fn() };
   stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
@@ -75,6 +78,7 @@ describe("camera validation on scenario Start", () => {
     state.consent = consent;
     const tree = render(); state.effects[0](); click(tree); await flush();
     expect(getUserMedia).not.toHaveBeenCalled();
+    expect(checkFacePresence).not.toHaveBeenCalled();
     expect(state.navigate).toHaveBeenCalledExactlyOnceWith("/scenario/atm-withdrawal/setup");
   });
 
@@ -108,6 +112,24 @@ describe("camera validation on scenario Start", () => {
     state.token = "login-two";
     const second = render(); state.effects[0](); click(second); await flush();
     expect(getUserMedia).toHaveBeenCalledTimes(2);
+  });
+
+  it("requires a detected face on Start, retries after no face, and does not recheck during the scenario", async () => {
+    vi.mocked(checkFacePresence).mockResolvedValueOnce(false);
+    const tree = render(); state.effects[0](); click(tree); await flush();
+    expect(state.navigate).not.toHaveBeenCalled();
+    const failed = render();
+    const dialog = elements(failed).find((element) => element.type === ComputerVisionDialog)!;
+    expect(dialog.props).toEqual(expect.objectContaining({ title: computerVisionConsentTranslations.en.faceNotDetected,
+      message: computerVisionConsentTranslations.en.faceNotDetectedMessage }));
+    click(failed, 1); await flush();
+    expect(state.navigate).toHaveBeenCalledOnce();
+    expect(checkFacePresence).toHaveBeenCalledTimes(2);
+    const cleanup = state.effects[0](); if (cleanup) cleanup();
+    vi.mocked(checkFacePresence).mockResolvedValue(false);
+    await flush();
+    expect(checkFacePresence).toHaveBeenCalledTimes(2);
+    expect(state.navigate).toHaveBeenCalledOnce();
   });
 
   it.each(Object.keys(computerVisionConsentTranslations) as LanguageCode[])("passes simple translated camera errors to the voiced dialog in %s", async (language) => {

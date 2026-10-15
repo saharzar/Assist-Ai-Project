@@ -3,9 +3,9 @@ import { createHeadPoseEstimator, type HeadPose } from "./headPose";
 import { createEyeDirectionEstimator, type EyeDirection } from "./eyeDirection";
 import { createTrackingSessionRecorder, type TrackingRecordingStart, type TrackingSample } from "./trackingSessionRecorder";
 import { createPrimaryFaceSelector } from "./primaryFaceSelection";
+import { openBrowserCamera } from "./browserCamera";
 
-const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
-const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+import { FACE_LANDMARKER_OPTIONS, FACE_LANDMARKER_WASM_PATH } from "./faceLandmarkerConfig";
 
 /** Ephemeral browser-only view. Never include this object in recording payloads. */
 export type FaceTrackingPreviewFrame = {
@@ -144,10 +144,7 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
     recorder.start();
     let stage: "camera" | "initialization" | "playback" = "camera";
     try {
-      const camera = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-      });
+      const camera = await openBrowserCamera();
       // Permission can resolve after the scenario has already been left.
       if (stopped) {
         camera.getTracks().forEach((track) => track.stop());
@@ -157,15 +154,9 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       stage = "initialization";
       const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
       if (stopped) return;
-      const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+      const fileset = await FilesetResolver.forVisionTasks(FACE_LANDMARKER_WASM_PATH);
       if (stopped) return;
-      const instance = await FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: MODEL_PATH },
-        runningMode: "IMAGE",
-        numFaces: 3,
-        outputFaceBlendshapes: false,
-        outputFacialTransformationMatrixes: false,
-      });
+      const instance = await FaceLandmarker.createFromOptions(fileset, FACE_LANDMARKER_OPTIONS);
       if (stopped) {
         instance.close();
         return;

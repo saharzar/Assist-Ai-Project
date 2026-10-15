@@ -58,7 +58,8 @@ describe("browser face tracking lifecycle", () => {
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     stopTrack = vi.fn();
-    camera = { getTracks: () => [{ stop: stopTrack, kind: "video", readyState: "live" }] } as unknown as MediaStream;
+    const tracks = [{ stop: stopTrack, kind: "video", readyState: "live", label: "PC webcam" }];
+    camera = { getTracks: () => tracks, getVideoTracks: () => tracks } as unknown as MediaStream;
     getUserMedia = vi.fn().mockResolvedValue(camera);
     video = {
       readyState: 2, videoWidth: 640, videoHeight: 480, play: vi.fn().mockResolvedValue(undefined),
