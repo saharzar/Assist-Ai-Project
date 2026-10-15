@@ -255,6 +255,7 @@ def ensure_capability_configs(db: Session) -> list[SpeechProviderCapabilityConfi
             existing[key] = item
         item.available = True
         if provider_key != "browser":
+            recover_temporary_limit_block(db, item)
             configured = provider_is_configured(provider_key, service_type)
             if not configured:
                 item.health_status = "misconfigured"
@@ -528,9 +529,40 @@ def mark_provider_failure(db: Session, provider_key: str, service_type: str, rea
     )
 
 
+def is_temporary_limit_failure(detail: object) -> bool:
+    value = str(detail).lower()
+    return any(marker in value for marker in (
+        "concurrent", "concurrency", "requests per minute", "rate limit", "rate_limit", "too many requests",
+    ))
+
+
+def recover_temporary_limit_block(db: Session, capability: SpeechProviderCapabilityConfig) -> None:
+    """Repair month-long blocks created by the old HTTP 429 classification."""
+    if capability.quota_blocked_until is None:
+        return
+    failure = db.scalar(select(SpeechProviderEvent).where(
+        SpeechProviderEvent.service_type == capability.service_type,
+        SpeechProviderEvent.provider_key == capability.provider_key,
+        SpeechProviderEvent.event_type == "quota_exceeded",
+    ).order_by(SpeechProviderEvent.created_at.desc(), SpeechProviderEvent.id.desc()).limit(1))
+    if failure is None or not is_temporary_limit_failure(failure.reason):
+        return
+    failed_at = capability.last_failure_at or failure.created_at
+    if failed_at.tzinfo is None:
+        failed_at = failed_at.replace(tzinfo=timezone.utc)
+    retry_at = failed_at + timedelta(seconds=get_settings().speech_provider_cooldown_seconds)
+    capability.quota_blocked_until = None
+    capability.cooldown_until = retry_at
+    log_provider_event(db, capability.service_type, "provider_retry_enabled",
+                       "Temporary request limit reclassified; normal retry cooldown applies.",
+                       provider_key=capability.provider_key)
+
+
 def is_quota_failure(detail: object) -> bool:
     value = str(detail).lower()
-    return any(marker in value for marker in ("quota", "limit exceeded", "too many requests", "429", "balance"))
+    if is_temporary_limit_failure(value):
+        return False
+    return any(marker in value for marker in ("quota", "limit exceeded", "balance"))
 
 
 def save_global_routing(db: Session, payload: GlobalSpeechRoutingUpdate, administrator_id: int) -> None:

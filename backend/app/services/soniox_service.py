@@ -10,7 +10,8 @@ from app.core.config import get_settings
 
 SONIOX_BASE_URL = "https://api.soniox.com/v1"
 SONIOX_TTS_URL = "https://tts-rt.soniox.com/tts"
-QUOTA_STATUS_CODES = {402, 429}
+# HTTP 429 also covers temporary concurrency/request-rate limits, not just quota.
+QUOTA_STATUS_CODES = {402}
 SUPPORTED_STT_LANGUAGES = ("en", "es", "de", "tr", "pt", "fr")
 MIN_NAME_CONFIDENCE = 0.35
 NAME_EDGE_PUNCTUATION = " \t\r\n.,!?;:\u2026"

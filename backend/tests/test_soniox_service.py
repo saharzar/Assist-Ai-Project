@@ -160,8 +160,8 @@ def test_error_credentials_do_not_reach_api_responses_or_stored_events(monkeypat
         assert "private-test-key" not in dashboard.text
 
 
-@pytest.mark.parametrize("status_code", [402, 429])
-def test_soniox_tts_marks_quota_errors(monkeypatch, status_code):
+@pytest.mark.parametrize("status_code,quota_error", [(402, True), (429, False)])
+def test_soniox_tts_distinguishes_payment_errors_from_temporary_limits(monkeypatch, status_code, quota_error):
     def fake_post(url, **kwargs):
         return httpx.Response(
             status_code,
@@ -175,4 +175,4 @@ def test_soniox_tts_marks_quota_errors(monkeypatch, status_code):
     with pytest.raises(soniox_service.SonioxProviderError) as error:
         soniox_service.synthesize_soniox_tts("Hello", "en", "request-2")
 
-    assert error.value.quota_error is True
+    assert error.value.quota_error is quota_error

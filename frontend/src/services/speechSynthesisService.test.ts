@@ -132,4 +132,15 @@ describe("Soniox voice after refresh", () => {
     expect(browserSpeak).toHaveBeenCalledOnce();
     expect(mediaPlay).not.toHaveBeenCalled();
   });
+  it("retries Soniox for the same message after backend fallback recovers", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204, headers: { "X-Speech-Provider": "browser" } }));
+    service.speakAssistantMessage("Hello", { allowBrowserFallback: true }); await flush();
+    expect(browserSpeak).toHaveBeenCalledOnce();
+    const onStart = vi.fn();
+    service.speakAssistantMessage("Hello", { onStart, allowBrowserFallback: true }); await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mediaPlay).toHaveBeenCalledOnce();
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(browserSpeak).toHaveBeenCalledOnce();
+  });
 });

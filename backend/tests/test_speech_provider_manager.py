@@ -1,6 +1,7 @@
 from contextlib import AbstractContextManager
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
+import pytest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -97,6 +98,56 @@ def test_soniox_warning_switch_and_failure_fallback(monkeypatch):
         db.commit()
         assert manager.resolve_global_provider(db, "tts").provider == "browser"
         assert db.scalar(select(SpeechProviderEvent).where(SpeechProviderEvent.event_type == "provider_failure"))
+
+
+@pytest.mark.parametrize("reason", [
+    "Concurrent requests limit for text-to-speech has been exceeded for your organization.",
+    "Requests per minute limit for text-to-speech has been exceeded for your project.",
+    "429 Too many requests", "Rate limit exceeded", "Concurrency quota exceeded",
+])
+def test_temporary_limits_use_cooldown_and_return_to_soniox(monkeypatch, reason):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    now = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr(manager, "utc_now", lambda: now)
+    with SpeechTestContext() as (_, db):
+        assert not manager.is_quota_failure(reason)
+        manager.mark_provider_failure(db, "soniox", "tts", reason, quota_error=manager.is_quota_failure(reason))
+        db.commit()
+        capability = manager.get_capability(db, "soniox", "tts")
+        assert capability.quota_blocked_until is None
+        assert manager.resolve_global_provider(db, "tts").provider == "browser"
+        now += timedelta(seconds=301)
+        assert manager.resolve_global_provider(db, "tts").provider == "soniox"
+
+
+@pytest.mark.parametrize("elapsed,expected", [(30, "browser"), (600, "soniox")])
+def test_existing_monthly_block_from_concurrency_error_is_repaired_once(monkeypatch, elapsed, expected):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    now = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr(manager, "utc_now", lambda: now)
+    with SpeechTestContext() as (_, db):
+        capability = manager.get_capability(db, "soniox", "tts")
+        # Reproduce a stored block written by the previous version.
+        manager.mark_provider_failure(db, "soniox", "tts", "Concurrent requests limit for text-to-speech has been exceeded for your organization.", quota_error=True)
+        capability.health_status = "healthy"
+        db.commit()
+        now += timedelta(seconds=elapsed)
+        assert manager.resolve_global_provider(db, "tts").provider == expected
+        assert capability.quota_blocked_until is None
+        manager.resolve_global_provider(db, "tts")
+        db.commit()
+        assert db.query(SpeechProviderEvent).filter_by(event_type="provider_retry_enabled").count() == 1
+
+
+def test_real_balance_failure_stays_blocked(monkeypatch):
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    with SpeechTestContext() as (_, db):
+        manager.mark_provider_failure(db, "soniox", "tts", "Insufficient balance", quota_error=True)
+        db.commit()
+        capability = manager.get_capability(db, "soniox", "tts")
+        capability.health_status = "healthy"
+        assert capability.quota_blocked_until is not None
+        assert manager.resolve_global_provider(db, "tts").provider == "browser"
 
 
 def test_admin_dashboard_and_settings_permissions(monkeypatch):
