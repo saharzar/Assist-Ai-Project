@@ -18,8 +18,8 @@ export function restaurantPaymentReducer(state: RestaurantPaymentState, action: 
 
 // Fixed training prices in minor currency units; never live exchange rates.
 const prices = {
-  eur: { meals: { pasta: 1000, chicken: 1400, salad: 800, soup: 700 }, drinks: { water: 200, juice: 300, none: 0 } },
-  try: { meals: { pasta: 32000, chicken: 42000, salad: 26000, soup: 22000 }, drinks: { water: 5000, juice: 8000, none: 0 } },
+  eur: { meals: { pasta: 1000, chicken: 1400, pizza: 1200, rice: 1100, burger: 1350, fish: 1550, steak: 2200, wrap: 1200, lasagna: 1450, risotto: 1400, salad: 800, caesar: 950, tomatoCucumber: 850, greekSalad: 1000, tunaSalad: 1150, quinoaSalad: 1050, chickenSalad: 1200, avocadoSalad: 1100, pastaSalad: 1000, soup: 700, lentil: 750, vegetableSoup: 750, tomatoSoup: 800, mushroomSoup: 850, chickenSoup: 900, pumpkinSoup: 800, minestrone: 850, broccoliSoup: 800 }, drinks: { water: 200, juice: 300, none: 0 } },
+  try: { meals: { pasta: 32000, chicken: 42000, pizza: 38000, rice: 35000, burger: 41000, fish: 47000, steak: 68000, wrap: 38000, lasagna: 45000, risotto: 43000, salad: 26000, caesar: 30000, tomatoCucumber: 27000, greekSalad: 32000, tunaSalad: 36000, quinoaSalad: 33000, chickenSalad: 38000, avocadoSalad: 35000, pastaSalad: 32000, soup: 22000, lentil: 24000, vegetableSoup: 24000, tomatoSoup: 26000, mushroomSoup: 28000, chickenSoup: 30000, pumpkinSoup: 26000, minestrone: 28000, broccoliSoup: 26000 }, drinks: { water: 5000, juice: 8000, none: 0 } },
 };
 export function getRestaurantMealPrice(meal: Meal, language: string) {
   return prices[language === "tr" ? "try" : "eur"].meals[meal];

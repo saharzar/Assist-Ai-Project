@@ -42,6 +42,73 @@ beforeEach(async () => {
 afterEach(async () => { service?.stopAssistantSpeech(); await flush(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Soniox voice after refresh", () => {
+  it("analyses the one existing player and closes on end, stop, error and repeat", async () => {
+    let tick: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { tick = cb; return 1; });
+    const cancelFrame = vi.fn();
+    vi.stubGlobal("cancelAnimationFrame", cancelFrame);
+    const createSource = vi.fn(() => ({ connect: vi.fn() }));
+    Object.assign(surface, { AudioContext: class {
+      state = "running"; destination = {};
+      resume = () => Promise.resolve();
+      createAnalyser = () => ({ fftSize: 1024, getFloatTimeDomainData: (data: Float32Array) => data.fill(.2) });
+      createMediaElementSource = createSource;
+    } });
+    const mouth = await import("./restaurantSpeechAudio");
+    for (const action of ["end", "stop", "error"] as const) {
+      service.speakAssistantMessage("One restaurant message", { scenario: "restaurant" });
+      await flush();
+      for (let now = 33; now <= 330; now += 33) tick!(now);
+      expect(mouth.getRestaurantMouth()).toBe("wide");
+      if (action === "end") audios[0].onended?.();
+      else if (action === "error") audios[0].onerror?.();
+      else service.stopAssistantSpeech();
+      expect(mouth.getRestaurantMouth()).toBe("closed");
+    }
+    expect(createSource).toHaveBeenCalledOnce();
+    expect(audios).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(mediaPlay).toHaveBeenCalledTimes(3);
+    expect(cancelFrame).toHaveBeenCalled();
+  });
+
+  it("waits for activation if Web Audio is suspended without switching voices", async () => {
+    let tick: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { tick = cb; return 1; });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    let activated = false;
+    Object.assign(surface, { AudioContext: class {
+      state = "suspended"; destination = {};
+      resume = () => { if (activated) this.state = "running"; return Promise.resolve(); };
+      createAnalyser = () => ({ fftSize: 1024, getFloatTimeDomainData: (data: Float32Array) => data.fill(.2) });
+      createMediaElementSource = () => ({ connect: vi.fn() });
+    } });
+    service.speakAssistantMessage("Activation", { scenario: "restaurant" });
+    await flush();
+    expect(audios[0].pause).toHaveBeenCalled();
+    expect(browserSpeak).not.toHaveBeenCalled();
+    activated = true;
+    surface.dispatchEvent(new Event("click"));
+    await flush();
+    for (let now = 33; now <= 330; now += 33) tick!(now);
+    expect((await import("./restaurantSpeechAudio")).getRestaurantMouth()).toBe("wide");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(audios).toHaveLength(1);
+  });
+  it.each(["en", "es", "de", "tr", "pt", "fr"] as const)("scopes restaurant audio and cache independently in %s", async (language) => {
+    service.speakAssistantMessage("Same text", { scenario: "restaurant" }, language);
+    await flush();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ text: "Same text", language, scenario: "restaurant" });
+    service.stopAssistantSpeech();
+    service.speakAssistantMessage("Same text", { scenario: "restaurant" }, language);
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(audios).toHaveLength(1);
+    service.speakAssistantMessage("Same text", {}, language);
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ text: "Same text", language });
+  });
   it("plays Soniox normally when autoplay is permitted", async () => {
     const onStart = vi.fn();
     service.speakAssistantMessage("Hello", { onStart });

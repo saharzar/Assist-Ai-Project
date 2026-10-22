@@ -10,6 +10,7 @@ TtsLanguage = Literal["en", "es", "de", "tr", "pt", "fr"]
 class TtsRequest(BaseModel):
     text: str = Field(min_length=1)
     language: TtsLanguage = "en"
+    scenario: Literal["restaurant"] | None = None
 
 
 class TtsUsageResponse(BaseModel):

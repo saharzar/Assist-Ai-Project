@@ -3,8 +3,10 @@ import type { LanguageCode } from "../i18n";
 import { API_BASE_URL, ApiError, getSessionHeaders } from "./api";
 import { notifyTtsUsageUpdated, type TtsUsage } from "./ttsUsageService";
 import { notifySpeechProviderUsed, type GlobalSpeechProvider } from "./speechProviderService";
+import { prepareRestaurantAudio, resumeRestaurantAudio, restaurantAudioSuspended, startRestaurantAudioAnalysis, stopRestaurantAudioAnalysis } from "./restaurantSpeechAudio";
 
 type SpeechCallbacks = {
+  scenario?: "restaurant";
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (message: string) => void;
@@ -36,6 +38,7 @@ let currentBrowserUtterance: SpeechSynthesisUtterance | null = null;
 let cancelPendingSonioxPlayback: (() => void) | null = null;
 
 export function unlockAssistantAudioPlayback() {
+  void resumeRestaurantAudio().catch(() => {});
   if (assistantAudioUnlocked) return Promise.resolve();
   if (assistantAudioUnlockPromise) return assistantAudioUnlockPromise;
 
@@ -64,6 +67,7 @@ export function isSpeechSynthesisSupported() {
 }
 
 export function stopAssistantSpeech() {
+  stopRestaurantAudioAnalysis();
   activeSpeechId += 1;
   cancelPendingSonioxPlayback?.();
 
@@ -81,6 +85,7 @@ export function stopAssistantSpeech() {
     reusableSonioxAudio.onplay = null;
     reusableSonioxAudio.onended = null;
     reusableSonioxAudio.onerror = null;
+    reusableSonioxAudio.onpause = null;
     reusableSonioxAudio.pause();
     reusableSonioxAudio.currentTime = 0;
     reusableSonioxAudio.removeAttribute("src");
@@ -131,7 +136,7 @@ async function playBackendTts(
   language: LanguageCode,
 ) {
   try {
-    const prepared = await getPreparedSpeech(message, language, abortController.signal);
+    const prepared = await getPreparedSpeech(message, language, abortController.signal, callbacks.scenario);
     if (abortController.signal.aborted || activeSpeechId !== speechId) {
       return;
     }
@@ -206,15 +211,22 @@ async function playSonioxHtmlAudio(
   speechId: number,
 ) {
   const audio = getReusableSonioxAudio();
+  prepareRestaurantAudio(audio, callbacks.scenario === "restaurant");
+  if (activeSpeechId !== speechId) return;
   const audioUrl = URL.createObjectURL(audioBlob);
   currentSonioxAudioUrl = audioUrl;
   audio.src = audioUrl;
   audio.currentTime = 0;
   audio.volume = 1;
+  audio.onpause = stopRestaurantAudioAnalysis;
   audio.onplay = () => {
-    if (activeSpeechId === speechId) callbacks.onStart?.();
+    if (activeSpeechId === speechId) {
+      if (callbacks.scenario === "restaurant") startRestaurantAudioAnalysis(audio);
+      callbacks.onStart?.();
+    }
   };
   audio.onended = () => {
+    stopRestaurantAudioAnalysis();
     audio.onplay = null;
     audio.onended = null;
     audio.onerror = null;
@@ -224,9 +236,21 @@ async function playSonioxHtmlAudio(
     }
     if (activeSpeechId === speechId) callbacks.onEnd?.();
   };
+  audio.onerror = () => {
+    stopRestaurantAudioAnalysis();
+    if (activeSpeechId === speechId) {
+      callbacks.onError?.("Assistant audio could not play.");
+      callbacks.onEnd?.();
+    }
+  };
   try {
     await audio.play();
+    if (restaurantAudioSuspended()) {
+      audio.pause();
+      throw new DOMException("Audio context needs user activation.", "NotAllowedError");
+    }
   } catch (error) {
+    stopRestaurantAudioAnalysis();
     if (!(error instanceof Error) || error.name !== "NotAllowedError") throw error;
     if (activeSpeechId !== speechId) return;
     // Refresh can reset autoplay permission. Keep the selected voice and resume
@@ -255,7 +279,7 @@ function waitForSonioxPlayback(audio: HTMLAudioElement, speechId: number): Promi
       if (activeSpeechId !== speechId) { cancel(); return; }
       retrying = true;
       // Call play synchronously inside the input handler to retain user activation.
-      void audio.play().then(() => {
+      void Promise.all([resumeRestaurantAudio(), audio.play()]).then(() => {
         if (settled) return;
         settled = true;
         cleanup();
@@ -325,13 +349,14 @@ async function getPreparedSpeech(
   message: string,
   language: LanguageCode,
   signal?: AbortSignal,
+  scenario?: "restaurant",
 ): Promise<PreparedSpeech> {
   const isGuest = !localStorage.getItem("assist_ai_token") && Boolean(localStorage.getItem("assist_ai_guest_session"));
   if (isGuest) {
     notifySpeechProviderUsed("tts", "browser");
     return { audioBlob: null, provider: "browser", remaining: null, usage: null };
   }
-  const cacheKey = getSpeechCacheKey(message, language);
+  const cacheKey = `${scenario ?? "default"}:${getSpeechCacheKey(message, language)}`;
   const cached = preparedSpeechCache.get(cacheKey);
   if (cached) return cached;
 
@@ -343,13 +368,13 @@ async function getPreparedSpeech(
       // A previous component may have cancelled the shared request during a
       // refresh/remount. A new, active caller must retry rather than fall back.
       if (error instanceof Error && error.name === "AbortError" && !signal?.aborted) {
-        return getPreparedSpeech(message, language, signal);
+        return getPreparedSpeech(message, language, signal, scenario);
       }
       throw error;
     }
   }
 
-  const request = fetchPreparedSpeech(message, language, signal)
+  const request = fetchPreparedSpeech(message, language, signal, scenario)
     .then((prepared) => {
       // Cache generated provider audio, but never remember a browser fallback.
       // Otherwise one temporary Soniox failure makes this message use the
@@ -373,6 +398,7 @@ async function fetchPreparedSpeech(
   message: string,
   language: LanguageCode,
   signal?: AbortSignal,
+  scenario?: "restaurant",
 ): Promise<PreparedSpeech> {
   const response = await fetch(`${API_BASE_URL}/api/tts`, {
     method: "POST",
@@ -382,7 +408,7 @@ async function fetchPreparedSpeech(
       "X-Speech-Request-ID": crypto.randomUUID(),
       "X-Browser-Speech-Supported": String("speechSynthesis" in window),
     },
-    body: JSON.stringify({ text: message, language }),
+    body: JSON.stringify({ text: message, language, ...(scenario ? { scenario } : {}) }),
     signal,
   });
 

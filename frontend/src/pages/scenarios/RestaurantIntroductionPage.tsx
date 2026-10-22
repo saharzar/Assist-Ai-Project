@@ -37,7 +37,7 @@ export function RestaurantIntroductionPage() {
           <Link to="/scenarios" className="restaurant-intro-back"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{text.back}</Link>
         </div>
       </div>
-      <div className="restaurant-intro-assistant"><AtmSetupVoiceAssistant language={language} message={text.introSpoken} modeLabel={text.title} speechRequestId={0} onSpeakingChange={setSpeaking} /></div>
+      <div className="restaurant-intro-assistant"><AtmSetupVoiceAssistant scenario="restaurant" language={language} message={text.introSpoken} modeLabel={text.title} speechRequestId={0} onSpeakingChange={setSpeaking} /></div>
     </div>
   </section>;
 }

@@ -6,7 +6,7 @@
 .restaurant-intro-background, .restaurant-intro-counter { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 35% center; }
 .restaurant-intro-background { z-index: 0; }
 .restaurant-intro-counter { z-index: 2; clip-path: inset(66% 0 0); }
-.restaurant-intro-waiter { position: absolute; z-index: 1; height: 170px; width: auto; max-width: 80%; left: 50%; bottom: 34%; transform: translateX(-50%); filter: drop-shadow(0 3px 3px #382b2420); }
+.restaurant-intro-waiter { position: absolute; z-index: 1; height: auto; width: 190px; max-width: 65%; left: 50%; bottom: calc(34% - 30px); transform: translateX(-50%); }
 .restaurant-intro-content { min-width: 0; padding: 26px; }
 .restaurant-intro-label { margin-bottom: 10px; font-size: 13px; font-weight: 700; line-height: 1.5; color: #087f8c; }
 .restaurant-intro-explanation { display: grid; gap: 8px; margin-top: 18px; font-size: 16px; line-height: 1.65; color: #5b5a78; }
@@ -21,7 +21,7 @@
 @media (min-width: 768px) {
   .restaurant-intro-card { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
   .restaurant-intro-visual { min-height: 560px; }
-  .restaurant-intro-waiter { height: 280px; }
+  .restaurant-intro-waiter { width: 280px; bottom: calc(34% - 48px); }
   .restaurant-intro-content { align-self: center; padding: 28px; }
 }
 @media (min-width: 1280px) { .restaurant-intro-layout { grid-template-columns: minmax(0, 1fr) 300px; } }

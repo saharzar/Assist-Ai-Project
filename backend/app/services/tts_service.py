@@ -270,8 +270,9 @@ def synthesize_tts_with_cache(
     *,
     request_id: str = "assist-ai-tts",
     cache_voice: str | None = None,
+    voice_override: str | None = None,
 ) -> TtsAudioResult:
-    voice = cache_voice or get_soniox_tts_cache_voice()
+    voice = cache_voice or get_soniox_tts_cache_voice(voice_override)
     full_cached_audio = get_cached_tts_audio(db, text, language, voice)
     if full_cached_audio is not None:
         usage = get_tts_usage_snapshot(db, user_id) if user_id is not None else TtsUsageSnapshot(0, 0, 0, get_next_weekly_reset_date())
@@ -300,7 +301,10 @@ def synthesize_tts_with_cache(
 
         reservation = reserve_tts_characters(db, user_id, len(segment)) if user_id is not None else TtsReservation(len(segment), 0, 0)
         try:
-            segment_audio = synthesize_soniox_tts(segment, language, f"{request_id}-{segment_index}")
+            segment_audio = synthesize_soniox_tts(
+                segment, language, f"{request_id}-{segment_index}",
+                **({"voice": voice_override} if voice_override else {}),
+            )
         except Exception:
             if user_id is not None:
                 refund_tts_characters(db, user_id, reservation.characters_used)

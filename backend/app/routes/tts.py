@@ -88,7 +88,9 @@ def create_tts_audio(
             record_request_result(db, request_id, "tts", "browser", "success")
             return Response(status_code=204, headers={"X-Speech-Provider": "browser", "X-Speech-Status": decision.status})
 
-        voice = get_soniox_tts_cache_voice()
+        # Official Soniox tts-rt-v1 voice ID; all other callers keep configured voice.
+        voice_override = "Emma" if payload.scenario == "restaurant" else None
+        voice = get_soniox_tts_cache_voice(voice_override) if voice_override else get_soniox_tts_cache_voice()
         cached_audio = get_cached_tts_audio(db, text, payload.language, voice)
         if cached_audio is not None:
             usage = get_or_create_tts_usage(db, user_id) if user_id is not None else None
@@ -106,6 +108,7 @@ def create_tts_audio(
                 payload.language,
                 request_id=request_id,
                 cache_voice=voice,
+                **({"voice_override": voice_override} if voice_override else {}),
             )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN and browser_speech_supported:

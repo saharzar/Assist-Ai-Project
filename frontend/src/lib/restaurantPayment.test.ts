@@ -21,8 +21,8 @@ describe("restaurant practice payments", () => {
   it("calculates exact practice totals including no drink", () => {
     expect(getRestaurantReceipt("pasta", "water")).toEqual({ mealCents: 1000, drinkCents: 200, totalCents: 1200 });
     expect(getRestaurantReceipt("pasta", "water", "tr")).toEqual({ mealCents: 32000, drinkCents: 5000, totalCents: 37000 });
-    expect(meals.map((meal) => getRestaurantReceipt(meal, "none", "en").mealCents)).toEqual([1000, 1400, 800, 700]);
-    expect(meals.map((meal) => getRestaurantReceipt(meal, "none", "tr").mealCents)).toEqual([32000, 42000, 26000, 22000]);
+    expect(meals.map((meal) => getRestaurantReceipt(meal, "none", "en").mealCents)).toEqual([1000, 1400, 1200, 1100, 1350, 1550, 2200, 1200, 1450, 1400, 800, 950, 850, 1000, 1150, 1050, 1200, 1100, 1000, 700, 750, 750, 800, 850, 900, 800, 850, 800]);
+    expect(meals.map((meal) => getRestaurantReceipt(meal, "none", "tr").mealCents)).toEqual([32000, 42000, 38000, 35000, 41000, 47000, 68000, 38000, 45000, 43000, 26000, 30000, 27000, 32000, 36000, 33000, 38000, 35000, 32000, 22000, 24000, 24000, 26000, 28000, 30000, 26000, 28000, 26000]);
     expect(drinks.map((drink) => getRestaurantReceipt("pasta", drink, "en").drinkCents)).toEqual([200, 300, 0]);
     expect(drinks.map((drink) => getRestaurantReceipt("pasta", drink, "tr").drinkCents)).toEqual([5000, 8000, 0]);
     for (const language of Object.keys(restaurantPaymentTranslations)) for (const meal of meals) for (const drink of drinks) {

@@ -168,7 +168,7 @@ def recognize_soniox_stt(audio: bytes, request_id: str, language: str, mode: str
                 pass
 
 
-def synthesize_soniox_tts(text: str, language: str, request_id: str) -> bytes:
+def synthesize_soniox_tts(text: str, language: str, request_id: str, *, voice: str | None = None) -> bytes:
     settings = get_settings()
     if not settings.soniox_api_key:
         raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is not configured.")
@@ -182,7 +182,7 @@ def synthesize_soniox_tts(text: str, language: str, request_id: str) -> bytes:
             json={
                 "model": settings.soniox_tts_model,
                 "language": language,
-                "voice": settings.soniox_tts_voice,
+                "voice": voice or settings.soniox_tts_voice,
                 "audio_format": "mp3",
                 "text": text,
                 "client_reference_id": request_id,
@@ -195,8 +195,8 @@ def synthesize_soniox_tts(text: str, language: str, request_id: str) -> bytes:
         raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is unavailable.") from exc
 
 
-def get_soniox_tts_cache_voice() -> str:
+def get_soniox_tts_cache_voice(voice: str | None = None) -> str:
     settings = get_settings()
     # Bump the cache namespace when the playback pipeline changes so older
     # generated files cannot keep breaking only certain languages or screens.
-    return f"soniox:{settings.soniox_tts_model}:{settings.soniox_tts_voice}:v2"
+    return f"soniox:{settings.soniox_tts_model}:{voice or settings.soniox_tts_voice}:v2"

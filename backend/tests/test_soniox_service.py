@@ -101,6 +101,38 @@ def test_soniox_tts_cache_voice_is_versioned(monkeypatch):
     assert soniox_service.get_soniox_tts_cache_voice() == "soniox:tts-rt-v1:Adrian:v2"
 
 
+@pytest.mark.parametrize("language", ["en", "es", "de", "tr", "pt", "fr"])
+def test_restaurant_emma_rest_request_and_cache_are_isolated(monkeypatch, language, tmp_path):
+    from app.services import tts_service
+    from app.services import speech_provider_manager as manager
+    from test_speech_provider_manager import SpeechTestContext, fake_config, headers, make_user
+    calls = []
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs["json"]))
+        return httpx.Response(200, content=b"test-mp3", request=httpx.Request("POST", url))
+    monkeypatch.setattr(manager, "get_settings", fake_config)
+    monkeypatch.setattr(tts_service, "get_tts_cache_dir", lambda: tmp_path)
+    monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
+    monkeypatch.setattr(soniox_service.httpx, "post", fake_post)
+    with SpeechTestContext() as (client, db):
+        admin = make_user(db, "restaurant-voice@example.com", "admin")
+        request_headers = {**headers(admin), "X-Browser-Speech-Supported": "false"}
+        payload = {"text": "Hello", "language": language, "scenario": "restaurant"}
+        response = client.post("/api/tts", headers=request_headers, json=payload)
+        assert response.status_code == 200
+        assert calls[-1][0] == "https://tts-rt.soniox.com/tts"
+        assert calls[-1][1]["voice"] == "Emma"
+        assert calls[-1][1]["language"] == language
+        count = len(calls)
+        assert client.post("/api/tts", headers=request_headers, json=payload).status_code == 200
+        assert len(calls) == count
+        payload.pop("scenario")
+        assert client.post("/api/tts", headers=request_headers, json=payload).status_code == 200
+        assert calls[-1][1]["voice"] == "Adrian"
+        assert len(calls) == count + 1
+        assert soniox_service.get_soniox_tts_cache_voice("Emma") != soniox_service.get_soniox_tts_cache_voice()
+
+
 @pytest.mark.parametrize("field", ["message", "error_message"])
 def test_provider_error_diagnostics_redact_credentials(monkeypatch, field):
     monkeypatch.setattr(soniox_service, "get_settings", soniox_config)
