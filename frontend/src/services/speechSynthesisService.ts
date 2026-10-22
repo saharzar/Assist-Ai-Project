@@ -3,7 +3,7 @@ import type { LanguageCode } from "../i18n";
 import { API_BASE_URL, ApiError, getSessionHeaders } from "./api";
 import { notifyTtsUsageUpdated, type TtsUsage } from "./ttsUsageService";
 import { notifySpeechProviderUsed, type GlobalSpeechProvider } from "./speechProviderService";
-import { prepareRestaurantAudio, resumeRestaurantAudio, restaurantAudioSuspended, startRestaurantAudioAnalysis, stopRestaurantAudioAnalysis } from "./restaurantSpeechAudio";
+import { prepareRestaurantAudio, resumeRestaurantAudio, restaurantAudioSuspended, startRestaurantAudioAnalysis, startRestaurantBrowserSpeechAnimation, stopRestaurantAudioAnalysis } from "./restaurantSpeechAudio";
 
 type SpeechCallbacks = {
   scenario?: "restaurant";
@@ -24,7 +24,7 @@ type PreparedSpeech = {
 
 const preparedSpeechCache = new Map<string, PreparedSpeech>();
 const pendingSpeechRequests = new Map<string, Promise<PreparedSpeech>>();
-const MAX_PREPARED_SPEECH_ITEMS = 8;
+const MAX_PREPARED_SPEECH_ITEMS = 24;
 
 let reusableSonioxAudio: HTMLAudioElement | null = null;
 let currentSonioxAudioUrl: string | null = null;
@@ -218,7 +218,9 @@ async function playSonioxHtmlAudio(
   audio.src = audioUrl;
   audio.currentTime = 0;
   audio.volume = 1;
-  audio.onpause = stopRestaurantAudioAnalysis;
+  audio.onpause = () => {
+    if (activeSpeechId === speechId) stopRestaurantAudioAnalysis();
+  };
   audio.onplay = () => {
     if (activeSpeechId === speechId) {
       if (callbacks.scenario === "restaurant") startRestaurantAudioAnalysis(audio);
@@ -325,15 +327,20 @@ function playBrowserTts(
     ?? null;
   currentBrowserUtterance = utterance;
   utterance.onstart = () => {
-    if (activeSpeechId === speechId) callbacks.onStart?.();
+    if (activeSpeechId === speechId) {
+      if (callbacks.scenario === "restaurant") startRestaurantBrowserSpeechAnimation();
+      callbacks.onStart?.();
+    }
   };
   utterance.onend = () => {
     if (activeSpeechId !== speechId) return;
+    if (callbacks.scenario === "restaurant") stopRestaurantAudioAnalysis();
     currentBrowserUtterance = null;
     callbacks.onEnd?.();
   };
   utterance.onerror = () => {
     if (activeSpeechId !== speechId) return;
+    if (callbacks.scenario === "restaurant") stopRestaurantAudioAnalysis();
     currentBrowserUtterance = null;
     callbacks.onError?.("Browser speech could not play.");
     callbacks.onEnd?.();
@@ -358,7 +365,11 @@ async function getPreparedSpeech(
   }
   const cacheKey = `${scenario ?? "default"}:${getSpeechCacheKey(message, language)}`;
   const cached = preparedSpeechCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    preparedSpeechCache.delete(cacheKey);
+    preparedSpeechCache.set(cacheKey, cached);
+    return cached;
+  }
 
   const pending = pendingSpeechRequests.get(cacheKey);
   if (pending) {

@@ -1,0 +1,1132 @@
+{
+  "items": [
+    {
+      "id": "pasta",
+      "category": "mains",
+      "prices": {
+        "EUR": 1000,
+        "TRY": 32000
+      },
+      "names": {
+        "en": "Pasta",
+        "es": "Pasta",
+        "de": "Pasta",
+        "tr": "Makarna",
+        "pt": "Massa",
+        "fr": "Pâtes"
+      },
+      "descriptions": {
+        "en": "Pasta with tomato sauce, herbs and parmesan",
+        "es": "Pasta con tomate, hierbas y parmesano",
+        "de": "Pasta mit Tomatensoße, Kräutern und Parmesan",
+        "tr": "Domates soslu, otlu ve parmesanlı makarna",
+        "pt": "Massa com tomate, ervas e parmesão",
+        "fr": "Pâtes à la tomate, aux herbes et au parmesan"
+      }
+    },
+    {
+      "id": "chicken",
+      "category": "mains",
+      "prices": {
+        "EUR": 1400,
+        "TRY": 42000
+      },
+      "names": {
+        "en": "Grilled chicken",
+        "es": "Pollo a la parrilla",
+        "de": "Gegrilltes Hähnchen",
+        "tr": "Izgara tavuk",
+        "pt": "Frango grelhado",
+        "fr": "Poulet grillé"
+      },
+      "descriptions": {
+        "en": "Grilled chicken with seasonal vegetables",
+        "es": "Pollo a la parrilla con verduras de temporada",
+        "de": "Gegrilltes Hähnchen mit Saisongemüse",
+        "tr": "Mevsim sebzeli ızgara tavuk",
+        "pt": "Frango grelhado com legumes da época",
+        "fr": "Poulet grillé et légumes de saison"
+      }
+    },
+    {
+      "id": "pizza",
+      "category": "mains",
+      "prices": {
+        "EUR": 1200,
+        "TRY": 38000
+      },
+      "names": {
+        "en": "Pizza",
+        "es": "Pizza",
+        "de": "Pizza",
+        "tr": "Pizza",
+        "pt": "Pizza",
+        "fr": "Pizza"
+      },
+      "descriptions": {
+        "en": "Tomato, mozzarella and fresh basil",
+        "es": "Tomate, mozzarella y albahaca fresca",
+        "de": "Tomaten, Mozzarella und frisches Basilikum",
+        "tr": "Domates, mozzarella ve taze fesleğen",
+        "pt": "Tomate, mozzarella e manjericão fresco",
+        "fr": "Tomate, mozzarella et basilic frais"
+      }
+    },
+    {
+      "id": "rice",
+      "category": "mains",
+      "prices": {
+        "EUR": 1100,
+        "TRY": 35000
+      },
+      "names": {
+        "en": "Vegetable rice bowl",
+        "es": "Bol de arroz con verduras",
+        "de": "Gemüsereisschale",
+        "tr": "Sebzeli pilav kasesi",
+        "pt": "Taça de arroz com legumes",
+        "fr": "Bol de riz aux légumes"
+      },
+      "descriptions": {
+        "en": "Rice with mixed seasonal vegetables",
+        "es": "Arroz con verduras de temporada",
+        "de": "Reis mit gemischtem Saisongemüse",
+        "tr": "Karışık mevsim sebzeli pilav",
+        "pt": "Arroz com legumes da época",
+        "fr": "Riz aux légumes de saison"
+      }
+    },
+    {
+      "id": "burger",
+      "category": "mains",
+      "prices": {
+        "EUR": 1350,
+        "TRY": 41000
+      },
+      "names": {
+        "en": "Beef burger",
+        "es": "Hamburguesa de ternera",
+        "de": "Rindfleischburger",
+        "tr": "Dana burger",
+        "pt": "Hambúrguer de vaca",
+        "fr": "Burger de bœuf"
+      },
+      "descriptions": {
+        "en": "Beef patty with lettuce, tomato and cheese",
+        "es": "Ternera con lechuga, tomate y queso",
+        "de": "Rindfleisch mit Salat, Tomate und Käse",
+        "tr": "Marul, domates ve peynirli dana burger",
+        "pt": "Hambúrguer de vaca com alface, tomate e queijo",
+        "fr": "Bœuf, salade, tomate et fromage"
+      }
+    },
+    {
+      "id": "fish",
+      "category": "mains",
+      "prices": {
+        "EUR": 1550,
+        "TRY": 47000
+      },
+      "names": {
+        "en": "Grilled fish",
+        "es": "Pescado a la parrilla",
+        "de": "Gegrillter Fisch",
+        "tr": "Izgara balık",
+        "pt": "Peixe grelhado",
+        "fr": "Poisson grillé"
+      },
+      "descriptions": {
+        "en": "Grilled fish with lemon and vegetables",
+        "es": "Pescado a la parrilla con limón y verduras",
+        "de": "Gegrillter Fisch mit Zitrone und Gemüse",
+        "tr": "Limon ve sebzeli ızgara balık",
+        "pt": "Peixe grelhado com limão e legumes",
+        "fr": "Poisson grillé au citron et légumes"
+      }
+    },
+    {
+      "id": "steak",
+      "category": "mains",
+      "prices": {
+        "EUR": 2200,
+        "TRY": 68000
+      },
+      "names": {
+        "en": "Grilled steak",
+        "es": "Bistec a la parrilla",
+        "de": "Gegrilltes Steak",
+        "tr": "Izgara biftek",
+        "pt": "Bife grelhado",
+        "fr": "Steak grillé"
+      },
+      "descriptions": {
+        "en": "Grilled beef with vegetables and potatoes",
+        "es": "Ternera a la parrilla con verduras y patatas",
+        "de": "Gegrilltes Rindfleisch mit Gemüse und Kartoffeln",
+        "tr": "Sebze ve patatesli ızgara dana eti",
+        "pt": "Vaca grelhada com legumes e batatas",
+        "fr": "Bœuf grillé avec légumes et pommes de terre"
+      }
+    },
+    {
+      "id": "wrap",
+      "category": "mains",
+      "prices": {
+        "EUR": 1200,
+        "TRY": 38000
+      },
+      "names": {
+        "en": "Chicken wrap",
+        "es": "Wrap de pollo",
+        "de": "Hähnchen-Wrap",
+        "tr": "Tavuk dürüm",
+        "pt": "Wrap de frango",
+        "fr": "Wrap au poulet"
+      },
+      "descriptions": {
+        "en": "Chicken, vegetables and greens in a flatbread",
+        "es": "Pollo, verduras y hojas verdes en tortilla",
+        "de": "Hähnchen und Gemüse im Fladenbrot",
+        "tr": "Lavaşta tavuk, sebze ve yeşillik",
+        "pt": "Frango e legumes em pão achatado",
+        "fr": "Poulet et légumes dans une galette"
+      }
+    },
+    {
+      "id": "lasagna",
+      "category": "mains",
+      "prices": {
+        "EUR": 1450,
+        "TRY": 45000
+      },
+      "names": {
+        "en": "Lasagna",
+        "es": "Lasaña",
+        "de": "Lasagne",
+        "tr": "Lazanya",
+        "pt": "Lasanha",
+        "fr": "Lasagnes"
+      },
+      "descriptions": {
+        "en": "Layered pasta with meat sauce and cheese",
+        "es": "Capas de pasta con carne y queso",
+        "de": "Geschichtete Pasta mit Fleischsoße und Käse",
+        "tr": "Et soslu ve peynirli kat kat makarna",
+        "pt": "Camadas de massa com carne e queijo",
+        "fr": "Pâtes en couches, sauce à la viande et fromage"
+      }
+    },
+    {
+      "id": "risotto",
+      "category": "mains",
+      "prices": {
+        "EUR": 1400,
+        "TRY": 43000
+      },
+      "names": {
+        "en": "Mushroom risotto",
+        "es": "Risotto de champiñones",
+        "de": "Pilzrisotto",
+        "tr": "Mantarlı risotto",
+        "pt": "Risoto de cogumelos",
+        "fr": "Risotto aux champignons"
+      },
+      "descriptions": {
+        "en": "Creamy rice with mushrooms and herbs",
+        "es": "Arroz cremoso con setas y hierbas",
+        "de": "Cremiger Reis mit Pilzen und Kräutern",
+        "tr": "Mantarlı ve otlu kremalı pirinç",
+        "pt": "Arroz cremoso com cogumelos e ervas",
+        "fr": "Riz crémeux aux champignons et herbes"
+      }
+    },
+    {
+      "id": "salad",
+      "category": "salads",
+      "prices": {
+        "EUR": 800,
+        "TRY": 26000
+      },
+      "names": {
+        "en": "Salad",
+        "es": "Ensalada",
+        "de": "Salat",
+        "tr": "Salata",
+        "pt": "Salada",
+        "fr": "Salade"
+      },
+      "descriptions": {
+        "en": "Mixed greens, tomato and cucumber",
+        "es": "Hojas verdes, tomate y pepino",
+        "de": "Blattsalat, Tomaten und Gurken",
+        "tr": "Karışık yeşillik, domates ve salatalık",
+        "pt": "Folhas verdes, tomate e pepino",
+        "fr": "Salade verte, tomate et concombre"
+      }
+    },
+    {
+      "id": "caesar",
+      "category": "salads",
+      "prices": {
+        "EUR": 950,
+        "TRY": 30000
+      },
+      "names": {
+        "en": "Caesar salad",
+        "es": "Ensalada César",
+        "de": "Caesar-Salat",
+        "tr": "Sezar salatası",
+        "pt": "Salada César",
+        "fr": "Salade César"
+      },
+      "descriptions": {
+        "en": "Lettuce, parmesan, croutons and Caesar dressing",
+        "es": "Lechuga, parmesano, picatostes y salsa César",
+        "de": "Salat, Parmesan, Croutons und Caesar-Dressing",
+        "tr": "Marul, parmesan, kruton ve Sezar sosu",
+        "pt": "Alface, parmesão, croutons e molho César",
+        "fr": "Laitue, parmesan, croûtons et sauce César"
+      }
+    },
+    {
+      "id": "tomatoCucumber",
+      "category": "salads",
+      "prices": {
+        "EUR": 850,
+        "TRY": 27000
+      },
+      "names": {
+        "en": "Tomato and cucumber salad",
+        "es": "Ensalada de tomate y pepino",
+        "de": "Tomaten-Gurken-Salat",
+        "tr": "Domates ve salatalık salatası",
+        "pt": "Salada de tomate e pepino",
+        "fr": "Salade de tomates et concombres"
+      },
+      "descriptions": {
+        "en": "Tomato and cucumber with fresh herbs",
+        "es": "Tomate y pepino con hierbas frescas",
+        "de": "Tomaten und Gurken mit frischen Kräutern",
+        "tr": "Taze otlu domates ve salatalık",
+        "pt": "Tomate e pepino com ervas frescas",
+        "fr": "Tomate et concombre aux herbes fraîches"
+      }
+    },
+    {
+      "id": "greekSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1000,
+        "TRY": 32000
+      },
+      "names": {
+        "en": "Greek salad",
+        "es": "Ensalada griega",
+        "de": "Griechischer Salat",
+        "tr": "Yunan salatası",
+        "pt": "Salada grega",
+        "fr": "Salade grecque"
+      },
+      "descriptions": {
+        "en": "Tomato, cucumber, olives and feta",
+        "es": "Tomate, pepino, aceitunas y feta",
+        "de": "Tomaten, Gurken, Oliven und Feta",
+        "tr": "Domates, salatalık, zeytin ve feta",
+        "pt": "Tomate, pepino, azeitonas e feta",
+        "fr": "Tomate, concombre, olives et feta"
+      }
+    },
+    {
+      "id": "tunaSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1150,
+        "TRY": 36000
+      },
+      "names": {
+        "en": "Tuna salad",
+        "es": "Ensalada de atún",
+        "de": "Thunfischsalat",
+        "tr": "Ton balıklı salata",
+        "pt": "Salada de atum",
+        "fr": "Salade de thon"
+      },
+      "descriptions": {
+        "en": "Tuna with greens and cherry tomatoes",
+        "es": "Atún con hojas verdes y tomates cherry",
+        "de": "Thunfisch mit Salat und Kirschtomaten",
+        "tr": "Yeşillik ve çeri domatesli ton balığı",
+        "pt": "Atum com folhas verdes e tomate cereja",
+        "fr": "Thon, salade verte et tomates cerises"
+      }
+    },
+    {
+      "id": "quinoaSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1050,
+        "TRY": 33000
+      },
+      "names": {
+        "en": "Quinoa salad",
+        "es": "Ensalada de quinoa",
+        "de": "Quinoasalat",
+        "tr": "Kinoa salatası",
+        "pt": "Salada de quinoa",
+        "fr": "Salade de quinoa"
+      },
+      "descriptions": {
+        "en": "Quinoa with vegetables and herbs",
+        "es": "Quinoa con verduras y hierbas",
+        "de": "Quinoa mit Gemüse und Kräutern",
+        "tr": "Sebze ve otlu kinoa",
+        "pt": "Quinoa com legumes e ervas",
+        "fr": "Quinoa aux légumes et herbes"
+      }
+    },
+    {
+      "id": "chickenSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1200,
+        "TRY": 38000
+      },
+      "names": {
+        "en": "Chicken salad",
+        "es": "Ensalada de pollo",
+        "de": "Hähnchensalat",
+        "tr": "Tavuklu salata",
+        "pt": "Salada de frango",
+        "fr": "Salade de poulet"
+      },
+      "descriptions": {
+        "en": "Grilled chicken over mixed greens",
+        "es": "Pollo a la parrilla sobre hojas verdes",
+        "de": "Gegrilltes Hähnchen auf Blattsalat",
+        "tr": "Karışık yeşillik üzerinde ızgara tavuk",
+        "pt": "Frango grelhado sobre folhas verdes",
+        "fr": "Poulet grillé sur salade verte"
+      }
+    },
+    {
+      "id": "avocadoSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1100,
+        "TRY": 35000
+      },
+      "names": {
+        "en": "Avocado salad",
+        "es": "Ensalada de aguacate",
+        "de": "Avocadosalat",
+        "tr": "Avokadolu salata",
+        "pt": "Salada de abacate",
+        "fr": "Salade d’avocat"
+      },
+      "descriptions": {
+        "en": "Avocado with greens and tomato",
+        "es": "Aguacate con hojas verdes y tomate",
+        "de": "Avocado mit Salat und Tomaten",
+        "tr": "Yeşillik ve domatesli avokado",
+        "pt": "Abacate com folhas verdes e tomate",
+        "fr": "Avocat, salade verte et tomate"
+      }
+    },
+    {
+      "id": "pastaSalad",
+      "category": "salads",
+      "prices": {
+        "EUR": 1000,
+        "TRY": 32000
+      },
+      "names": {
+        "en": "Pasta salad",
+        "es": "Ensalada de pasta",
+        "de": "Nudelsalat",
+        "tr": "Makarna salatası",
+        "pt": "Salada de massa",
+        "fr": "Salade de pâtes"
+      },
+      "descriptions": {
+        "en": "Pasta with tomato, olives and vegetables",
+        "es": "Pasta con tomate, aceitunas y verduras",
+        "de": "Pasta mit Tomaten, Oliven und Gemüse",
+        "tr": "Domates, zeytin ve sebzeli makarna",
+        "pt": "Massa com tomate, azeitonas e legumes",
+        "fr": "Pâtes, tomate, olives et légumes"
+      }
+    },
+    {
+      "id": "soup",
+      "category": "soups",
+      "prices": {
+        "EUR": 700,
+        "TRY": 22000
+      },
+      "names": {
+        "en": "Soup",
+        "es": "Sopa",
+        "de": "Suppe",
+        "tr": "Çorba",
+        "pt": "Sopa",
+        "fr": "Soupe"
+      },
+      "descriptions": {
+        "en": "Creamy vegetable soup with herbs",
+        "es": "Sopa cremosa de verduras con hierbas",
+        "de": "Cremige Gemüsesuppe mit Kräutern",
+        "tr": "Otlu kremalı sebze çorbası",
+        "pt": "Sopa cremosa de legumes com ervas",
+        "fr": "Soupe crémeuse de légumes aux herbes"
+      }
+    },
+    {
+      "id": "lentil",
+      "category": "soups",
+      "prices": {
+        "EUR": 750,
+        "TRY": 24000
+      },
+      "names": {
+        "en": "Lentil soup",
+        "es": "Sopa de lentejas",
+        "de": "Linsensuppe",
+        "tr": "Mercimek çorbası",
+        "pt": "Sopa de lentilhas",
+        "fr": "Soupe de lentilles"
+      },
+      "descriptions": {
+        "en": "Lentils with vegetables and mild spices",
+        "es": "Lentejas con verduras y especias suaves",
+        "de": "Linsen mit Gemüse und milden Gewürzen",
+        "tr": "Sebze ve hafif baharatlı mercimek",
+        "pt": "Lentilhas com legumes e especiarias suaves",
+        "fr": "Lentilles, légumes et épices douces"
+      }
+    },
+    {
+      "id": "vegetableSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 750,
+        "TRY": 24000
+      },
+      "names": {
+        "en": "Vegetable soup",
+        "es": "Sopa de verduras",
+        "de": "Gemüsesuppe",
+        "tr": "Sebze çorbası",
+        "pt": "Sopa de legumes",
+        "fr": "Soupe de légumes"
+      },
+      "descriptions": {
+        "en": "Mixed vegetables in a light broth",
+        "es": "Verduras variadas en caldo ligero",
+        "de": "Gemüse in einer leichten Brühe",
+        "tr": "Hafif sebze suyunda karışık sebze",
+        "pt": "Legumes em caldo leve",
+        "fr": "Légumes variés dans un bouillon léger"
+      }
+    },
+    {
+      "id": "tomatoSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 800,
+        "TRY": 26000
+      },
+      "names": {
+        "en": "Tomato soup",
+        "es": "Sopa de tomate",
+        "de": "Tomatensuppe",
+        "tr": "Domates çorbası",
+        "pt": "Sopa de tomate",
+        "fr": "Soupe de tomates"
+      },
+      "descriptions": {
+        "en": "Smooth tomato soup with basil",
+        "es": "Sopa de tomate suave con albahaca",
+        "de": "Feine Tomatensuppe mit Basilikum",
+        "tr": "Fesleğenli pürüzsüz domates çorbası",
+        "pt": "Sopa de tomate cremosa com manjericão",
+        "fr": "Velouté de tomate au basilic"
+      }
+    },
+    {
+      "id": "mushroomSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 850,
+        "TRY": 28000
+      },
+      "names": {
+        "en": "Mushroom soup",
+        "es": "Sopa de champiñones",
+        "de": "Pilzsuppe",
+        "tr": "Mantar çorbası",
+        "pt": "Sopa de cogumelos",
+        "fr": "Soupe aux champignons"
+      },
+      "descriptions": {
+        "en": "Creamy mushroom soup with herbs",
+        "es": "Sopa cremosa de setas con hierbas",
+        "de": "Cremige Pilzsuppe mit Kräutern",
+        "tr": "Otlu kremalı mantar çorbası",
+        "pt": "Sopa cremosa de cogumelos com ervas",
+        "fr": "Soupe crémeuse aux champignons et herbes"
+      }
+    },
+    {
+      "id": "chickenSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 900,
+        "TRY": 30000
+      },
+      "names": {
+        "en": "Chicken soup",
+        "es": "Sopa de pollo",
+        "de": "Hühnersuppe",
+        "tr": "Tavuk çorbası",
+        "pt": "Sopa de frango",
+        "fr": "Soupe de poulet"
+      },
+      "descriptions": {
+        "en": "Chicken and vegetables in a light broth",
+        "es": "Pollo y verduras en caldo ligero",
+        "de": "Hähnchen und Gemüse in leichter Brühe",
+        "tr": "Hafif suda tavuk ve sebze",
+        "pt": "Frango e legumes em caldo leve",
+        "fr": "Poulet et légumes dans un bouillon léger"
+      }
+    },
+    {
+      "id": "pumpkinSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 800,
+        "TRY": 26000
+      },
+      "names": {
+        "en": "Pumpkin soup",
+        "es": "Sopa de calabaza",
+        "de": "Kürbissuppe",
+        "tr": "Balkabağı çorbası",
+        "pt": "Sopa de abóbora",
+        "fr": "Soupe de potiron"
+      },
+      "descriptions": {
+        "en": "Smooth pumpkin soup with seeds",
+        "es": "Crema de calabaza con semillas",
+        "de": "Feine Kürbissuppe mit Kernen",
+        "tr": "Çekirdekli pürüzsüz balkabağı çorbası",
+        "pt": "Sopa cremosa de abóbora com sementes",
+        "fr": "Velouté de potiron aux graines"
+      }
+    },
+    {
+      "id": "minestrone",
+      "category": "soups",
+      "prices": {
+        "EUR": 850,
+        "TRY": 28000
+      },
+      "names": {
+        "en": "Minestrone",
+        "es": "Minestrone",
+        "de": "Minestrone",
+        "tr": "Minestrone",
+        "pt": "Minestrone",
+        "fr": "Minestrone"
+      },
+      "descriptions": {
+        "en": "Tomato broth with beans and vegetables",
+        "es": "Caldo de tomate con alubias y verduras",
+        "de": "Tomatenbrühe mit Bohnen und Gemüse",
+        "tr": "Fasulye ve sebzeli domates suyu",
+        "pt": "Caldo de tomate com feijão e legumes",
+        "fr": "Bouillon de tomate, haricots et légumes"
+      }
+    },
+    {
+      "id": "broccoliSoup",
+      "category": "soups",
+      "prices": {
+        "EUR": 800,
+        "TRY": 26000
+      },
+      "names": {
+        "en": "Broccoli soup",
+        "es": "Sopa de brócoli",
+        "de": "Brokkolisuppe",
+        "tr": "Brokoli çorbası",
+        "pt": "Sopa de brócolos",
+        "fr": "Soupe de brocoli"
+      },
+      "descriptions": {
+        "en": "Creamy broccoli soup with herbs",
+        "es": "Crema de brócoli con hierbas",
+        "de": "Cremige Brokkolisuppe mit Kräutern",
+        "tr": "Otlu kremalı brokoli çorbası",
+        "pt": "Sopa cremosa de brócolos com ervas",
+        "fr": "Soupe crémeuse de brocoli aux herbes"
+      }
+    },
+    {
+      "id": "cake",
+      "category": "desserts",
+      "prices": {
+        "EUR": 600,
+        "TRY": 19000
+      },
+      "names": {
+        "en": "Chocolate cake",
+        "es": "Pastel de chocolate",
+        "de": "Schokoladenkuchen",
+        "tr": "Çikolatalı kek",
+        "pt": "Bolo de chocolate",
+        "fr": "Gâteau au chocolat"
+      },
+      "descriptions": {
+        "en": "Chocolate sponge with chocolate cream",
+        "es": "Bizcocho de chocolate con crema de chocolate",
+        "de": "Schokoladenkuchen mit Schokoladencreme",
+        "tr": "Çikolata kremalı kakaolu kek",
+        "pt": "Bolo de chocolate com creme de chocolate",
+        "fr": "Génoise au chocolat et crème chocolatée"
+      }
+    },
+    {
+      "id": "cheesecake",
+      "category": "desserts",
+      "prices": {
+        "EUR": 650,
+        "TRY": 21000
+      },
+      "names": {
+        "en": "Cheesecake",
+        "es": "Tarta de queso",
+        "de": "Käsekuchen",
+        "tr": "Cheesecake",
+        "pt": "Cheesecake",
+        "fr": "Cheesecake"
+      },
+      "descriptions": {
+        "en": "Creamy cheesecake on a biscuit base",
+        "es": "Tarta cremosa sobre base de galleta",
+        "de": "Cremiger Käsekuchen auf Keksboden",
+        "tr": "Bisküvi tabanlı kremalı cheesecake",
+        "pt": "Cheesecake cremoso com base de bolacha",
+        "fr": "Cheesecake crémeux sur base biscuitée"
+      }
+    },
+    {
+      "id": "fruit",
+      "category": "desserts",
+      "prices": {
+        "EUR": 500,
+        "TRY": 16000
+      },
+      "names": {
+        "en": "Fruit bowl",
+        "es": "Bol de fruta",
+        "de": "Obstschale",
+        "tr": "Meyve kasesi",
+        "pt": "Taça de fruta",
+        "fr": "Bol de fruits"
+      },
+      "descriptions": {
+        "en": "Fresh seasonal fruit",
+        "es": "Fruta fresca de temporada",
+        "de": "Frisches Obst der Saison",
+        "tr": "Taze mevsim meyveleri",
+        "pt": "Fruta fresca da época",
+        "fr": "Fruits frais de saison"
+      }
+    },
+    {
+      "id": "iceCream",
+      "category": "desserts",
+      "prices": {
+        "EUR": 550,
+        "TRY": 18000
+      },
+      "names": {
+        "en": "Ice cream",
+        "es": "Helado",
+        "de": "Eiscreme",
+        "tr": "Dondurma",
+        "pt": "Gelado",
+        "fr": "Glace"
+      },
+      "descriptions": {
+        "en": "Scoops of creamy ice cream",
+        "es": "Bolas de helado cremoso",
+        "de": "Kugeln cremiges Eis",
+        "tr": "Kremalı dondurma topları",
+        "pt": "Bolas de gelado cremoso",
+        "fr": "Boules de glace crémeuse"
+      }
+    },
+    {
+      "id": "applePie",
+      "category": "desserts",
+      "prices": {
+        "EUR": 600,
+        "TRY": 19000
+      },
+      "names": {
+        "en": "Apple pie",
+        "es": "Tarta de manzana",
+        "de": "Apfelkuchen",
+        "tr": "Elmalı turta",
+        "pt": "Tarte de maçã",
+        "fr": "Tarte aux pommes"
+      },
+      "descriptions": {
+        "en": "Baked apples in a pastry crust",
+        "es": "Manzana horneada en masa crujiente",
+        "de": "Gebackene Äpfel in knusprigem Teig",
+        "tr": "Hamur içinde fırınlanmış elma",
+        "pt": "Maçãs assadas em massa estaladiça",
+        "fr": "Pommes cuites dans une pâte croustillante"
+      }
+    },
+    {
+      "id": "tiramisu",
+      "category": "desserts",
+      "prices": {
+        "EUR": 700,
+        "TRY": 22000
+      },
+      "names": {
+        "en": "Tiramisu",
+        "es": "Tiramisú",
+        "de": "Tiramisu",
+        "tr": "Tiramisu",
+        "pt": "Tiramisù",
+        "fr": "Tiramisu"
+      },
+      "descriptions": {
+        "en": "Coffee-soaked layers with mascarpone",
+        "es": "Capas de café y mascarpone",
+        "de": "Kaffeeschichten mit Mascarpone",
+        "tr": "Mascarponeli kahveli katlar",
+        "pt": "Camadas de café e mascarpone",
+        "fr": "Couches au café et mascarpone"
+      }
+    },
+    {
+      "id": "brownie",
+      "category": "desserts",
+      "prices": {
+        "EUR": 550,
+        "TRY": 18000
+      },
+      "names": {
+        "en": "Chocolate brownie",
+        "es": "Brownie de chocolate",
+        "de": "Schokoladenbrownie",
+        "tr": "Çikolatalı brownie",
+        "pt": "Brownie de chocolate",
+        "fr": "Brownie au chocolat"
+      },
+      "descriptions": {
+        "en": "Rich chocolate brownie",
+        "es": "Brownie intenso de chocolate",
+        "de": "Saftiger Schokoladenbrownie",
+        "tr": "Yoğun çikolatalı brownie",
+        "pt": "Brownie rico em chocolate",
+        "fr": "Brownie riche en chocolat"
+      }
+    },
+    {
+      "id": "pudding",
+      "category": "desserts",
+      "prices": {
+        "EUR": 500,
+        "TRY": 16000
+      },
+      "names": {
+        "en": "Vanilla pudding",
+        "es": "Pudin de vainilla",
+        "de": "Vanillepudding",
+        "tr": "Vanilyalı puding",
+        "pt": "Pudim de baunilha",
+        "fr": "Pudding à la vanille"
+      },
+      "descriptions": {
+        "en": "Smooth vanilla pudding",
+        "es": "Pudin suave de vainilla",
+        "de": "Feiner Vanillepudding",
+        "tr": "Pürüzsüz vanilyalı puding",
+        "pt": "Pudim suave de baunilha",
+        "fr": "Pudding doux à la vanille"
+      }
+    },
+    {
+      "id": "fruitTart",
+      "category": "desserts",
+      "prices": {
+        "EUR": 650,
+        "TRY": 21000
+      },
+      "names": {
+        "en": "Fruit tart",
+        "es": "Tarta de frutas",
+        "de": "Obsttarte",
+        "tr": "Meyveli tart",
+        "pt": "Tarte de fruta",
+        "fr": "Tarte aux fruits"
+      },
+      "descriptions": {
+        "en": "Pastry tart with fresh fruit",
+        "es": "Tarta de masa con fruta fresca",
+        "de": "Gebäck mit frischem Obst",
+        "tr": "Taze meyveli tart",
+        "pt": "Tarte de massa com fruta fresca",
+        "fr": "Tarte aux fruits frais"
+      }
+    },
+    {
+      "id": "water",
+      "category": "drinks",
+      "prices": {
+        "EUR": 200,
+        "TRY": 5000
+      },
+      "names": {
+        "en": "Water",
+        "es": "Agua",
+        "de": "Wasser",
+        "tr": "Su",
+        "pt": "Água",
+        "fr": "Eau"
+      },
+      "descriptions": {
+        "en": "Still water",
+        "es": "Agua sin gas",
+        "de": "Stilles Wasser",
+        "tr": "Durgun su",
+        "pt": "Água sem gás",
+        "fr": "Eau plate"
+      }
+    },
+    {
+      "id": "orangeJuice",
+      "category": "drinks",
+      "prices": {
+        "EUR": 300,
+        "TRY": 8000
+      },
+      "names": {
+        "en": "Orange juice",
+        "es": "Zumo de naranja",
+        "de": "Orangensaft",
+        "tr": "Portakal suyu",
+        "pt": "Sumo de laranja",
+        "fr": "Jus d’orange"
+      },
+      "descriptions": {
+        "en": "Juice from oranges",
+        "es": "Zumo de naranja",
+        "de": "Saft aus Orangen",
+        "tr": "Portakal suyu",
+        "pt": "Sumo de laranja",
+        "fr": "Jus d’orange"
+      }
+    },
+    {
+      "id": "appleJuice",
+      "category": "drinks",
+      "prices": {
+        "EUR": 300,
+        "TRY": 8000
+      },
+      "names": {
+        "en": "Apple juice",
+        "es": "Zumo de manzana",
+        "de": "Apfelsaft",
+        "tr": "Elma suyu",
+        "pt": "Sumo de maçã",
+        "fr": "Jus de pomme"
+      },
+      "descriptions": {
+        "en": "Juice from apples",
+        "es": "Zumo de manzana",
+        "de": "Saft aus Äpfeln",
+        "tr": "Elma suyu",
+        "pt": "Sumo de maçã",
+        "fr": "Jus de pomme"
+      }
+    },
+    {
+      "id": "tea",
+      "category": "drinks",
+      "prices": {
+        "EUR": 250,
+        "TRY": 7000
+      },
+      "names": {
+        "en": "Tea",
+        "es": "Té",
+        "de": "Tee",
+        "tr": "Çay",
+        "pt": "Chá",
+        "fr": "Thé"
+      },
+      "descriptions": {
+        "en": "Hot black tea",
+        "es": "Té negro caliente",
+        "de": "Heißer schwarzer Tee",
+        "tr": "Sıcak siyah çay",
+        "pt": "Chá preto quente",
+        "fr": "Thé noir chaud"
+      }
+    },
+    {
+      "id": "lemonade",
+      "category": "drinks",
+      "prices": {
+        "EUR": 350,
+        "TRY": 9000
+      },
+      "names": {
+        "en": "Lemonade",
+        "es": "Limonada",
+        "de": "Limonade",
+        "tr": "Limonata",
+        "pt": "Limonada",
+        "fr": "Limonade"
+      },
+      "descriptions": {
+        "en": "Lemon and citrus drink",
+        "es": "Bebida de limón y cítricos",
+        "de": "Zitronengetränk mit Zitrusfrüchten",
+        "tr": "Limon ve narenciye içeceği",
+        "pt": "Bebida de limão e citrinos",
+        "fr": "Boisson au citron et aux agrumes"
+      }
+    },
+    {
+      "id": "coffee",
+      "category": "drinks",
+      "prices": {
+        "EUR": 300,
+        "TRY": 8500
+      },
+      "names": {
+        "en": "Coffee",
+        "es": "Café",
+        "de": "Kaffee",
+        "tr": "Kahve",
+        "pt": "Café",
+        "fr": "Café"
+      },
+      "descriptions": {
+        "en": "Freshly brewed coffee",
+        "es": "Café recién hecho",
+        "de": "Frisch gebrühter Kaffee",
+        "tr": "Taze demlenmiş kahve",
+        "pt": "Café acabado de fazer",
+        "fr": "Café fraîchement préparé"
+      }
+    },
+    {
+      "id": "sparklingWater",
+      "category": "drinks",
+      "prices": {
+        "EUR": 250,
+        "TRY": 6500
+      },
+      "names": {
+        "en": "Sparkling water",
+        "es": "Agua con gas",
+        "de": "Sprudelwasser",
+        "tr": "Maden suyu",
+        "pt": "Água com gás",
+        "fr": "Eau gazeuse"
+      },
+      "descriptions": {
+        "en": "Carbonated water with lime",
+        "es": "Agua con gas y lima",
+        "de": "Sprudelwasser mit Limette",
+        "tr": "Limonlu maden suyu",
+        "pt": "Água com gás e lima",
+        "fr": "Eau gazeuse au citron vert"
+      }
+    },
+    {
+      "id": "icedTea",
+      "category": "drinks",
+      "prices": {
+        "EUR": 350,
+        "TRY": 9000
+      },
+      "names": {
+        "en": "Iced tea",
+        "es": "Té helado",
+        "de": "Eistee",
+        "tr": "Soğuk çay",
+        "pt": "Chá gelado",
+        "fr": "Thé glacé"
+      },
+      "descriptions": {
+        "en": "Chilled tea with citrus",
+        "es": "Té frío con cítricos",
+        "de": "Kalter Tee mit Zitrusfrüchten",
+        "tr": "Narenciyeli soğuk çay",
+        "pt": "Chá frio com citrinos",
+        "fr": "Thé froid aux agrumes"
+      }
+    },
+    {
+      "id": "hotChocolate",
+      "category": "drinks",
+      "prices": {
+        "EUR": 400,
+        "TRY": 11000
+      },
+      "names": {
+        "en": "Hot chocolate",
+        "es": "Chocolate caliente",
+        "de": "Heiße Schokolade",
+        "tr": "Sıcak çikolata",
+        "pt": "Chocolate quente",
+        "fr": "Chocolat chaud"
+      },
+      "descriptions": {
+        "en": "Hot cocoa with whipped cream",
+        "es": "Cacao caliente con nata",
+        "de": "Heißer Kakao mit Sahne",
+        "tr": "Kremalı sıcak kakao",
+        "pt": "Cacau quente com natas",
+        "fr": "Cacao chaud à la crème fouettée"
+      }
+    },
+    {
+      "id": "milkshake",
+      "category": "drinks",
+      "prices": {
+        "EUR": 500,
+        "TRY": 14000
+      },
+      "names": {
+        "en": "Milkshake",
+        "es": "Batido",
+        "de": "Milchshake",
+        "tr": "Milkshake",
+        "pt": "Batido",
+        "fr": "Milkshake"
+      },
+      "descriptions": {
+        "en": "Creamy strawberry milkshake",
+        "es": "Batido cremoso de fresa",
+        "de": "Cremiger Erdbeermilchshake",
+        "tr": "Kremalı çilekli milkshake",
+        "pt": "Batido cremoso de morango",
+        "fr": "Milkshake crémeux à la fraise"
+      }
+    }
+  ]
+}

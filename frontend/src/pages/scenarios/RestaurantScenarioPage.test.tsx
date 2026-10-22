@@ -20,20 +20,26 @@ import { playSuccessSound, stopSuccessSound } from "../../services/speechSynthes
 import type { LanguageCode } from "../../i18n";
 import { formatRestaurantPrice, initialRestaurantPayment, restaurantPaymentReducer, type RestaurantPaymentAction, type RestaurantPaymentState } from "../../lib/restaurantPayment";
 import { restaurantPaymentTranslations } from "../../lib/restaurantPaymentTranslations";
+import { chatWithRestaurantWaiter } from "../../services/restaurantWaiterChatService";
+import { restaurantWaiterSnapshot } from "../../services/restaurantWaiterChatService";
 
-const state = vi.hoisted(() => ({ current: null as RestaurantState | null, payment: { phase: "method", method: null } as RestaurantPaymentState, language: "en" as LanguageCode, event: vi.fn(), restart: vi.fn(), wrapperMode: false, voiceMode: false, speaking: false, voiceHook: 0, attempt: 0, getSessionId: () => "restaurant-attempt", effects: [] as (() => void | (() => void))[] }));
+const state = vi.hoisted(() => ({ current: null as RestaurantState | null, payment: { phase: "method", method: null } as RestaurantPaymentState, language: "en" as LanguageCode, event: vi.fn(), restart: vi.fn(), wrapperMode: false, voiceMode: false, chatMode: false, chatHooks: [] as unknown[], chatHookIndex: 0, chatRefs: [] as { current: unknown }[], chatRefIndex: 0, speaking: false, voiceHook: 0, attempt: 0, getSessionId: () => "restaurant-attempt", effects: [] as (() => void | (() => void))[] }));
 vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
   return { ...react,
-    useState: (initial: unknown) => state.wrapperMode && typeof initial === "number"
+    useState: (initial: unknown) => state.chatMode
+      ? (() => { const index = state.chatHookIndex++; if (index >= state.chatHooks.length) state.chatHooks[index] = initial; return [state.chatHooks[index], (value: unknown) => { state.chatHooks[index] = typeof value === "function" ? (value as (current: unknown) => unknown)(state.chatHooks[index]) : value; }]; })()
+      : state.wrapperMode && typeof initial === "number"
       ? [state.attempt, (update: (current: number) => number) => { state.attempt = update(state.attempt); }]
-      : state.voiceMode && typeof initial === "boolean"
-        ? state.voiceHook++ === 0 ? [state.speaking, (value: boolean) => { state.speaking = value; }] : [false, vi.fn()]
-        : react.useState(initial),
+      : state.voiceMode
+        ? typeof initial === "boolean" && state.voiceHook++ === 0 ? [state.speaking, (value: boolean) => { state.speaking = value; }] : [initial, vi.fn()]
+        : [initial, vi.fn()],
     useReducer: (_reducer: unknown, initial: RestaurantState | RestaurantPaymentState) => "phase" in initial
       ? [state.payment, (action: RestaurantPaymentAction) => { state.payment = restaurantPaymentReducer(state.payment, action); }]
       : [state.current ?? initial, (action: RestaurantAction) => { state.current = restaurantReducer(state.current ?? initial, action); }],
-    useRef: () => ({ current: null }), useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); },
+    useRef: (initial: unknown) => state.chatMode
+      ? (() => { const index = state.chatRefIndex++; if (!state.chatRefs[index]) state.chatRefs[index] = { current: initial }; return state.chatRefs[index]; })()
+      : { current: null }, useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); },
     useCallback: (callback: unknown) => callback,
   };
 });
@@ -42,6 +48,10 @@ vi.mock("../../i18n", () => ({ useTranslation: () => ({ language: state.language
 vi.mock("../../hooks/useRestaurantAnalytics", () => ({ useRestaurantAnalytics: () => ({ event: state.event, getSessionId: state.getSessionId }) }));
 vi.mock("../../hooks/useFaceTracking", () => ({ useFaceTracking: vi.fn(() => ({ getPreviewFrame: () => null })) }));
 vi.mock("../../services/speechSynthesisService", () => ({ playSuccessSound: vi.fn(), stopSuccessSound: vi.fn() }));
+vi.mock("../../services/restaurantWaiterChatService", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../services/restaurantWaiterChatService")>(),
+  chatWithRestaurantWaiter: vi.fn(),
+}));
 vi.mock("../../components/AdminFaceTrackingPreview", () => ({ AdminFaceTrackingPreview: () => null }));
 vi.mock("../../components/atm/AtmSetupVoiceAssistant", () => ({ AtmSetupVoiceAssistant: ({ message }: { message: string }) => <aside data-spoken-message={message} /> }));
 vi.mock("../../components/ScenarioStartButton", () => ({ ScenarioStartButton: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a> }));
@@ -73,7 +83,7 @@ function select(category: MenuCategory, id: string) {
   (button!.props.onClick as () => void)();
 }
 function makeComplete() { select("mains", "pasta"); select("mains", "pizza"); select("drinks", "water"); }
-beforeEach(() => { vi.clearAllMocks(); state.current = initialRestaurantState; state.payment = initialRestaurantPayment; state.language = "en"; state.effects = []; state.wrapperMode = false; state.voiceMode = false; state.speaking = false; state.voiceHook = 0; state.attempt = 0; });
+beforeEach(() => { vi.clearAllMocks(); state.current = initialRestaurantState; state.payment = initialRestaurantPayment; state.language = "en"; state.effects = []; state.wrapperMode = false; state.voiceMode = false; state.chatMode = false; state.chatHooks = []; state.chatHookIndex = 0; state.chatRefs = []; state.chatRefIndex = 0; state.speaking = false; state.voiceHook = 0; state.attempt = 0; });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("restaurant book and order", () => {
@@ -211,18 +221,80 @@ describe("restaurant book and order", () => {
       expect((markup.match(/restaurant-scene-waiter/g) ?? []).length).toBe(1);
     }
   });
-  it("keeps the future conversation controls disabled and without actions", () => {
-    const controls = elements(WaiterConversationBar({ language: "en" }));
+  it("enables waiter text chat while keeping the microphone disabled", () => {
+    const onChange = vi.fn(); const onSend = vi.fn();
+    const props = { language: "en" as const, value: "Hello", pending: false, onChange, onSend };
+    const controls = elements(WaiterConversationBar(props));
     const input = controls.find((node) => node.type === "input");
     const buttons = controls.filter((node) => node.type === "button");
-    expect(input?.props.disabled).toBe(true);
+    expect(input?.props.disabled).toBe(false);
     expect(buttons).toHaveLength(2);
-    for (const button of buttons) { expect(button.props.disabled).toBe(true); expect(button.props.onClick).toBeUndefined(); }
-    expect(input?.props.onChange).toBeUndefined();
-    expect(renderToStaticMarkup(<WaiterConversationBar language="en" />)).toContain('aria-label="Send"');
+    expect(buttons[0].props.disabled).toBe(true);
+    expect(buttons[1].props.disabled).toBe(false);
+    expect(input?.props.onChange).toBeTypeOf("function");
+    (input?.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: "Thanks" } });
+    expect(onChange).toHaveBeenCalledWith("Thanks");
+    const form = controls.find((node) => node.type === "form");
+    (form?.props.onSubmit as (event: { preventDefault: () => void }) => void)({ preventDefault: vi.fn() });
+    expect(onSend).toHaveBeenCalledOnce();
+    expect(renderToStaticMarkup(<WaiterConversationBar {...props} pending />)).toContain(restaurantOrderTranslations.en.conversationThinking);
+    expect(renderToStaticMarkup(<WaiterConversationBar {...props} value=" " />)).toContain('disabled=""');
+    expect(renderToStaticMarkup(<WaiterConversationBar {...props} />)).toContain('aria-label="Send"');
     for (const language of ["en", "es", "de", "tr", "pt", "fr"] as const) {
-      expect(renderToStaticMarkup(<WaiterConversationBar language={language} />)).toContain(restaurantOrderTranslations[language].conversationLabel);
+      expect(renderToStaticMarkup(<WaiterConversationBar {...props} language={language} />)).toContain(restaurantOrderTranslations[language].conversationLabel);
     }
+  });
+  it("marks the requested item for subtle focus inside the existing menu", () => {
+    const focusedState = { ...initialRestaurantState, step: "menu" as const, category: "desserts" as const };
+    const markup = renderToStaticMarkup(<RestaurantMenu state={focusedState} language="en" dispatch={vi.fn()} onSelect={vi.fn()} headingRef={{ current: null }} focusItemId="cheesecake" />);
+    expect(markup).toContain('class="restaurant-menu-items"');
+    expect(markup).toContain('data-menu-item-id="cheesecake"');
+    expect(markup).toContain("restaurant-menu-item-chat-focus");
+    expect(markup).toContain("Cheesecake");
+  });
+  it("displays a chat reply in the waiter area without changing spoken guidance", async () => {
+    state.chatMode = true;
+    const shell = () => { state.chatHookIndex = 0; state.chatRefIndex = 0; return RestaurantShell({ message: "Welcome", children: "Menu" }); };
+    const bar = () => elements(shell()).find((node) => node.type === WaiterConversationBar)!;
+    vi.mocked(chatWithRestaurantWaiter).mockResolvedValue({ reply: "Happy to help.", actions: [], state: restaurantWaiterSnapshot(initialRestaurantState, initialRestaurantPayment) });
+    (bar().props.onChange as (value: string) => void)("Hello");
+    await (bar().props.onSend as () => Promise<void>)();
+    const markup = renderToStaticMarkup(shell());
+    expect(markup).toContain('class="restaurant-llm-reply"');
+    expect(markup).toContain("Happy to help.");
+    expect(markup).toContain('data-spoken-message="Welcome"');
+    expect(markup).toContain("Menu");
+    expect(chatWithRestaurantWaiter).toHaveBeenCalledWith({ message: "Hello", language: "en", history: [], state: restaurantWaiterSnapshot(initialRestaurantState, initialRestaurantPayment), pending: null }, expect.any(AbortSignal));
+  });
+  it("sends a compact pending clarification on the next waiter turn", async () => {
+    state.chatMode = true;
+    const shell = () => { state.chatHookIndex = 0; state.chatRefIndex = 0; return RestaurantShell({ message: "Welcome", children: "Menu" }); };
+    const bar = () => elements(shell()).find((node) => node.type === WaiterConversationBar)!;
+    const snapshot = restaurantWaiterSnapshot(initialRestaurantState, initialRestaurantPayment);
+    const pending = { action: "add_item" as const, item_query: "pizza", replacement_query: null, matches: [], clarify_field: "item" as const };
+    vi.mocked(chatWithRestaurantWaiter)
+      .mockResolvedValueOnce({ reply: "Would you like me to add Pizza?", actions: [], state: snapshot, pending })
+      .mockResolvedValueOnce({ reply: "Okay.", actions: [], state: snapshot, pending: null });
+    (bar().props.onChange as (value: string) => void)("Pizza looks good");
+    await (bar().props.onSend as () => Promise<void>)();
+    (bar().props.onChange as (value: string) => void)("Yes");
+    await (bar().props.onSend as () => Promise<void>)();
+    expect(chatWithRestaurantWaiter).toHaveBeenLastCalledWith(expect.objectContaining({
+      message: "Yes", pending,
+    }), expect.any(AbortSignal));
+  });
+  it("shows a translated chat fallback while leaving the menu usable", async () => {
+    state.chatMode = true;
+    state.language = "fr";
+    const shell = () => { state.chatHookIndex = 0; state.chatRefIndex = 0; return RestaurantShell({ message: "Bienvenue", children: "Menu" }); };
+    const bar = () => elements(shell()).find((node) => node.type === WaiterConversationBar)!;
+    vi.mocked(chatWithRestaurantWaiter).mockRejectedValue(new Error("offline"));
+    (bar().props.onChange as (value: string) => void)("Bonjour");
+    await (bar().props.onSend as () => Promise<void>)();
+    const markup = renderToStaticMarkup(shell());
+    expect(markup).toContain(restaurantOrderTranslations.fr.conversationUnavailable);
+    expect(markup).toContain('data-spoken-message="Bienvenue"');
+    expect(markup).toContain("Menu");
   });
   it("can review and confirm with only an available main dish", () => {
     select("mains", "pasta"); select("mains", "pizza");

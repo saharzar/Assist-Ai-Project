@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -46,6 +47,9 @@ class Settings(BaseSettings):
     soniox_tts_monthly_limit_characters: int = 500000
     soniox_api_timeout_seconds: int = 30
     speech_provider_cooldown_seconds: int = 300
+    restaurant_llm_provider: str = "groq"
+    restaurant_llm_model: str = "qwen/qwen3.8-27b"
+    groq_api_key: SecretStr = SecretStr("")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

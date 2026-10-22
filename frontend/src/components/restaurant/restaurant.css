@@ -388,6 +388,7 @@
 .restaurant-page:not(.restaurant-introduction) .restaurant-environment { height: 100%; }
 .restaurant-page:not(.restaurant-introduction) .restaurant-background,
 .restaurant-page:not(.restaurant-introduction) .restaurant-counter-front { object-fit: cover; object-position: center; }
+.restaurant-page:not(.restaurant-introduction) .restaurant-counter-front { clip-path: inset(86% 0 0); }
 .restaurant-page:not(.restaurant-introduction) .restaurant-staff-zone { height: 100%; min-height: 0; }
 .restaurant-page:not(.restaurant-introduction) .restaurant-waiter-caption { top: 14px; max-width: 380px; }
 .restaurant-page:not(.restaurant-introduction) .restaurant-waiter-caption .restaurant-dialogue-message { -webkit-line-clamp: 3; }
@@ -460,7 +461,7 @@
 .restaurant-content-zone { position: relative; z-index: 3; display: block; min-width: 0; min-height: 0; height: 100%; }
 .restaurant-content-with-order { display: grid; grid-template-columns: minmax(210px, 26%) minmax(0, 74%); }
 .restaurant-page:not(.restaurant-introduction) .restaurant-scene-waiter {
-  left: 50%; bottom: 130px; width: 280px; height: 360px; max-width: calc(100% - 22px);
+  left: 50%; bottom: 50px; width: 360px; height: 420px; max-width: calc(100% - 22px);
 }
 .restaurant-page:not(.restaurant-introduction) .restaurant-waiter-frame { object-fit: contain; object-position: bottom center; }
 .restaurant-voice-controls { display: inline-flex; flex: none; align-items: center; gap: 5px; }
@@ -546,14 +547,21 @@
 .restaurant-receipt-actions { max-width: 580px; margin: 18px auto 0; gap: 10px; }
 .restaurant-receipt-actions > * { min-height: 48px; padding: 8px 12px; }
 .restaurant-page:not(.restaurant-introduction) .restaurant-waiter-caption .restaurant-dialogue-message { display: block; max-height: 132px; overflow-y: auto; -webkit-line-clamp: unset; font-size: 13px; line-height: 1.45; }
+.restaurant-conversation-controls input:not(:disabled) { background: #fff; color: #39312b; opacity: 1; }
+.restaurant-conversation-controls button:not(:disabled) { cursor: pointer; opacity: 1; }
+.restaurant-conversation-controls button[aria-pressed="true"] { background: #fff0ed; border-color: #bd4e44; color: #ad352d; }
+.restaurant-conversation-controls input:focus-visible, .restaurant-conversation-controls button:focus-visible { outline: 2px solid #087f8c; outline-offset: 2px; }
+.restaurant-conversation-controls .restaurant-conversation-send:not(:disabled) { background: #087f8c; border-color: #087f8c; color: #fff; opacity: 1; cursor: pointer; }
+.restaurant-conversation-controls .restaurant-conversation-send:not(:disabled):hover { background: #066b76; }
+.restaurant-menu-item-chat-focus { outline: 2px solid #087f8c; outline-offset: -3px; background: #f1faf8; }
 @media (max-width: 1100px) {
   .restaurant-content-zone, .restaurant-content-with-order { display: flex; width: 100%; height: auto; flex-direction: column; }
-  .restaurant-page:not(.restaurant-introduction) .restaurant-scene-waiter { left: 25%; bottom: 130px; width: 205px; height: 273px; }
+  .restaurant-page:not(.restaurant-introduction) .restaurant-scene-waiter { left: 25%; bottom: 50px; width: 245px; height: 305px; }
   .restaurant-content-surface { height: auto; margin: 14px; }
   .restaurant-review-stage, .restaurant-receipt-stage { width: calc(100% - 28px); margin: 14px auto; }
 }
 @media (max-width: 699px) {
-  .restaurant-page:not(.restaurant-introduction) .restaurant-scene-waiter { bottom: 125px; width: 190px; height: 253px; }
+  .restaurant-page:not(.restaurant-introduction) .restaurant-scene-waiter { bottom: 45px; width: 205px; height: 260px; }
   .restaurant-content-surface { padding: 14px; }
   .restaurant-content-surface .restaurant-order-review .restaurant-order-thumbnail { width: 74px; height: 74px; }
   .restaurant-payment-choice { min-height: 145px; }

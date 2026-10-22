@@ -4,11 +4,12 @@ import { notifySttUsageUpdated, type SttUsage } from "./sttUsageService";
 
 type SpeechRecognitionResultCallback = (transcript: string) => void;
 
-type SpeechRecognitionMode = "name" | "pin" | "amount" | "confirmation" | "letters";
+type SpeechRecognitionMode = "name" | "pin" | "amount" | "confirmation" | "letters" | "restaurant";
 type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 
 type SpeechRecognitionCallbacks = {
   onReady?: () => void;
+  onPartialResult?: SpeechRecognitionResultCallback;
   onResult: SpeechRecognitionResultCallback;
   onError: (message: string) => void;
   onEnd: () => void;
@@ -551,6 +552,8 @@ class BackendSpeechRecognizer {
 class BrowserSpeechRecognizer {
   private recognition: BrowserSpeechRecognition | null = null;
   private hasEnded = false;
+  private latestTranscript = "";
+  private failed = false;
 
   constructor(
     private readonly callbacks: SpeechRecognitionCallbacks,
@@ -576,10 +579,18 @@ class BrowserSpeechRecognizer {
     };
     const recognition = new Recognition();
     recognition.lang = localeByLanguage[this.language];
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = this.mode === "restaurant";
+    recognition.interimResults = this.mode === "restaurant";
     recognition.onstart = () => this.callbacks.onReady?.();
     recognition.onresult = (event) => {
+      if (this.mode === "restaurant") {
+        const transcript = Array.from(event.results, (result) => result[0]?.transcript ?? "").join(" ").trim();
+        if (transcript) {
+          this.latestTranscript = transcript;
+          this.callbacks.onPartialResult?.(transcript);
+        }
+        return;
+      }
       const transcript = event.results[0]?.[0]?.transcript ?? "";
       const cleaned = this.mode === "amount"
         ? cleanSpokenAmountTranscript(transcript)
@@ -594,11 +605,16 @@ class BrowserSpeechRecognizer {
       else this.callbacks.onError(this.errorMessages.problem);
     };
     recognition.onerror = (event) => {
+      this.failed = true;
       this.callbacks.onError(
         event.error === "not-allowed" ? this.errorMessages.microphoneBlocked : this.errorMessages.problem,
       );
     };
-    recognition.onend = () => this.endOnce();
+    recognition.onend = () => {
+      if (this.hasEnded) return;
+      if (this.mode === "restaurant" && this.latestTranscript && !this.failed) this.callbacks.onResult(this.latestTranscript);
+      this.endOnce();
+    };
     this.recognition = recognition;
     try {
       recognition.start();
@@ -642,6 +658,18 @@ class ManagedSpeechRecognizer {
   }
 
   private async selectAndStart() {
+    // The restaurant input needs interim words while the guest speaks. The batch
+    // Soniox endpoint only returns a transcript after recording stops.
+    if (this.mode === "restaurant" && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+      if (this.stopRequested) { this.endOnce(); return; }
+      notifySpeechProviderUsed("stt", "browser");
+      this.delegate = new BrowserSpeechRecognizer({
+        ...this.callbacks,
+        onEnd: () => this.endOnce(),
+      }, this.mode, this.language, this.errorMessages);
+      this.delegate.start();
+      return;
+    }
     try {
       const decision = await resolveSpeechProvider("stt");
       notifySpeechProviderUsed("stt", decision.provider);

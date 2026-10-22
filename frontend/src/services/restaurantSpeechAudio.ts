@@ -83,6 +83,7 @@ export function subscribeRestaurantMouth(listener: () => void) {
 }
 let graph: { context: AudioContext; source: MediaElementAudioSourceNode; analyser: AnalyserNode; audio: HTMLAudioElement } | null = null;
 let frame: number | null = null;
+const fallbackMouth: MouthState[] = ["slight", "open", "wide", "open", "rounded", "slight", "closed", "open"];
 /** One graph for the existing reusable player. Never make a second audible source.
  * Source -> destination is the only audible path; analyser is a silent side branch.
  * Keep the graph for the player's lifetime: a media element can be bound only once.
@@ -115,9 +116,28 @@ export function stopRestaurantAudioAnalysis() {
   frame = null;
   publish("closed");
 }
+/** Browser speech does not expose PCM. Animate only while its utterance is active. */
+export function startRestaurantBrowserSpeechAnimation() {
+  stopRestaurantAudioAnalysis();
+  let startedAt: number | null = null;
+  let lastStep = -1;
+  const tick = (now: number) => {
+    if (startedAt === null) startedAt = now;
+    const step = Math.floor((now - startedAt) / 105);
+    if (step !== lastStep) {
+      lastStep = step;
+      publish(fallbackMouth[step % fallbackMouth.length] ?? "closed");
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+}
 export function startRestaurantAudioAnalysis(audio: HTMLAudioElement) {
   stopRestaurantAudioAnalysis();
-  if (!graph || graph.audio !== audio) return;
+  if (!graph || graph.audio !== audio) {
+    startRestaurantBrowserSpeechAnimation();
+    return;
+  }
   const analyser = graph.analyser;
   const samples = new Float32Array(analyser.fftSize);
   const envelope = new MouthEnvelope();

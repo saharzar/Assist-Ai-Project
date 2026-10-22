@@ -5,7 +5,7 @@ from app.core.config import get_settings
 from app.routes import bill_analytics, admin, atm_analytics, auth, guests, speech_providers, stt, tts, users, user_quotas
 from app.scenarios import SCENARIOS
 from app.routes import computer_vision, admin_computer_vision
-from app.routes import restaurant_analytics
+from app.routes import restaurant_analytics, restaurant_waiter
 
 settings = get_settings()
 app = FastAPI(title="ASSIST-AI API")
@@ -45,6 +45,7 @@ app.include_router(stt.router)
 app.include_router(atm_analytics.router)
 app.include_router(bill_analytics.router)
 app.include_router(restaurant_analytics.router)
+app.include_router(restaurant_waiter.router)
 app.include_router(computer_vision.router)
 app.include_router(admin_computer_vision.router)
 app.include_router(admin_computer_vision.preview_router)
