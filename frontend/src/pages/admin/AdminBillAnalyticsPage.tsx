@@ -31,7 +31,7 @@ export function AdminBillAnalyticsPage() {
     loadError: adminAnalyticsTranslations[language].historyLoadError,
     loading: adminAnalyticsTranslations[language].loading.replace(/ATM/g, labels[0]),
     noSessions: adminAnalyticsTranslations[language].noSessions.replace(/ATM/g, labels[0]),
-    stepNames: { login: billText.loginTitle, "bill-selection": billText.selectTitle, "bill-details": billText.reviewTitle, "card-payment": billText.cardTitle, success: billText.completeTitle },
+    stepNames: { setup: billText.setupTitle, login: billText.loginTitle, "bill-selection": billText.selectTitle, "bill-details": billText.reviewTitle, "card-payment": billText.cardTitle, success: billText.completeTitle },
     terminationReasons: { inactivity_timeout: labels[7], login_locked: labels[8], exit: labels[9] },
   };
   const [draftFilters, setDraftFilters] = useState(initialFilters);

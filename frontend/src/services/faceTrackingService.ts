@@ -1,10 +1,11 @@
 import type { FaceLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { createHeadPoseEstimator, type HeadPose } from "./headPose";
 import { createEyeDirectionEstimator, type EyeDirection } from "./eyeDirection";
-import { createTrackingSessionRecorder, type TrackingSample } from "./trackingSessionRecorder";
+import { createTrackingSessionRecorder, type TrackingRecordingStart, type TrackingSample } from "./trackingSessionRecorder";
+import { createPrimaryFaceSelector } from "./primaryFaceSelection";
+import { openBrowserCamera } from "./browserCamera";
 
-const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
-const MODEL_PATH = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+import { FACE_LANDMARKER_OPTIONS, FACE_LANDMARKER_WASM_PATH } from "./faceLandmarkerConfig";
 
 /** Ephemeral browser-only view. Never include this object in recording payloads. */
 export type FaceTrackingPreviewFrame = {
@@ -13,6 +14,8 @@ export type FaceTrackingPreviewFrame = {
   headPose: HeadPose | null;
   estimatedEyeDirection: EyeDirection | null;
   isUserInteracting: boolean;
+  detectedFaceCount: number;
+  primaryFaceIndex: number | null;
 };
 
 type FaceTrackingOptions = {
@@ -21,14 +24,16 @@ type FaceTrackingOptions = {
   onHeadPose?: (pose: HeadPose | null) => void;
   onEyeDirection?: (direction: EyeDirection | null) => void;
   onSessionComplete?: (samples: TrackingSample[]) => void;
+  onRecordingStart?: (timing: TrackingRecordingStart) => void;
   onError: (error: unknown) => void;
 };
 
 /** Browser-only prototype: records derived values in memory, never raw media. */
-export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDirection, onSessionComplete, onError }: FaceTrackingOptions) {
-  const recorder = createTrackingSessionRecorder(allowed);
+export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDirection, onSessionComplete, onRecordingStart, onError }: FaceTrackingOptions) {
+  const recorder = createTrackingSessionRecorder(allowed, {}, onRecordingStart);
   const poseEstimator = createHeadPoseEstimator();
   const eyeEstimator = createEyeDirectionEstimator();
+  const primaryFaceSelector = createPrimaryFaceSelector();
   let headPose: HeadPose | null = null;
   let eyeDirection: EyeDirection | null = null;
   let stopped = false;
@@ -41,6 +46,8 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
   let landmarkCount = 0;
   let latestLandmarks: NormalizedLandmark[] = [];
   let lastDetectionAt: number | null = null;
+  let detectedFaceCount = 0;
+  let primaryFaceIndex: number | null = null;
 
   function stop() {
     if (stopped) return;
@@ -62,6 +69,9 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
     landmarkCount = 0;
     latestLandmarks = [];
     lastDetectionAt = null;
+    detectedFaceCount = 0;
+    primaryFaceIndex = null;
+    primaryFaceSelector.reset();
     poseEstimator.reset();
     headPose = null;
     eyeEstimator.reset();
@@ -103,16 +113,21 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       if (video.readyState >= 2 && video.videoWidth > 0) {
         // IMAGE mode does not require inference timestamps; the recorder samples separately.
         const landmarks = landmarker.detect(video).faceLandmarks;
-        latestLandmarks = landmarks[0] ?? [];
+        const primary = primaryFaceSelector.update(landmarks);
+        detectedFaceCount = landmarks.length;
+        primaryFaceIndex = primary?.index ?? null;
+        latestLandmarks = primary?.landmarks ?? [];
+        // Never mix smoothing state from different selected faces.
+        if (primary?.changed) { poseEstimator.reset(); eyeEstimator.reset(); }
         lastDetectionAt = performance.now();
-        headPose = poseEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
-        eyeDirection = eyeEstimator.update(landmarks[0], video.videoWidth, video.videoHeight);
+        headPose = poseEstimator.update(primary?.landmarks, video.videoWidth, video.videoHeight);
+        eyeDirection = eyeEstimator.update(primary?.landmarks, video.videoWidth, video.videoHeight);
         recorder.update({
           yaw: headPose?.yaw ?? null, pitch: headPose?.pitch ?? null, roll: headPose?.roll ?? null,
           estimatedEyeDirection: eyeDirection,
         });
-        if (import.meta.env.DEV) landmarkCount = landmarks[0]?.length ?? 0;
-        onLandmarks(landmarks);
+        if (import.meta.env.DEV) landmarkCount = latestLandmarks.length;
+        onLandmarks(primary ? [primary.landmarks] : []);
         onHeadPose?.(headPose);
         onEyeDirection?.(eyeDirection);
       }
@@ -129,10 +144,7 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
     recorder.start();
     let stage: "camera" | "initialization" | "playback" = "camera";
     try {
-      const camera = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-      });
+      const camera = await openBrowserCamera();
       // Permission can resolve after the scenario has already been left.
       if (stopped) {
         camera.getTracks().forEach((track) => track.stop());
@@ -142,15 +154,9 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       stage = "initialization";
       const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
       if (stopped) return;
-      const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+      const fileset = await FilesetResolver.forVisionTasks(FACE_LANDMARKER_WASM_PATH);
       if (stopped) return;
-      const instance = await FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: MODEL_PATH },
-        runningMode: "IMAGE",
-        numFaces: 1,
-        outputFaceBlendshapes: false,
-        outputFacialTransformationMatrixes: false,
-      });
+      const instance = await FaceLandmarker.createFromOptions(fileset, FACE_LANDMARKER_OPTIONS);
       if (stopped) {
         instance.close();
         return;
@@ -192,7 +198,8 @@ export function createFaceTracking({ allowed, onLandmarks, onHeadPose, onEyeDire
       if (stopped || !video || !stream || video.readyState < 2) return null;
       const fresh = lastDetectionAt !== null && performance.now() - lastDetectionAt <= 500;
       return { video, landmarks: fresh ? latestLandmarks : [], headPose: fresh ? headPose : null,
-        estimatedEyeDirection: fresh ? eyeDirection : null, isUserInteracting: recorder.isUserInteracting() };
+        estimatedEyeDirection: fresh ? eyeDirection : null, isUserInteracting: recorder.isUserInteracting(),
+        detectedFaceCount: fresh ? detectedFaceCount : 0, primaryFaceIndex: fresh ? primaryFaceIndex : null };
     },
   };
 }

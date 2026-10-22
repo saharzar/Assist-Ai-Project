@@ -28,6 +28,28 @@ def payload(scenario="atm-withdrawal", attempt=None):
 
 
 @pytest.mark.parametrize("scenario", ["atm-withdrawal", "online-bill-payment"])
+def test_setup_exit_can_link_cv_to_the_abandoned_analytics_attempt(scenario):
+    with test_context() as (client, db):
+        headers = auth_headers(make_user(db, email="cv-setup@test.example"))
+        if scenario == "atm-withdrawal":
+            attempt = start_session(client, headers)
+            response = client.post(f"/api/atm-sessions/{attempt}/abandon", headers=headers,
+                                   json={"final_step_reached": "setup"})
+            model = AtmScenarioSession
+        else:
+            attempt = client.post("/api/bill-sessions/start", headers=headers, json={"selected_language": "en"}).json()["session_id"]
+            response = client.post(f"/api/bill-sessions/{attempt}/finish", headers=headers,
+                                   json={"reason": "exit", "final_step_reached": "setup"})
+            model = BillScenarioSession
+        assert response.status_code == 200
+        assert client.post(ENDPOINT, headers=headers, json=payload(scenario, attempt)).status_code == 200
+        analytics = db.scalar(select(model))
+        cv = db.scalar(select(ComputerVisionSession))
+        assert analytics.final_step_reached == "setup" and analytics.completion_status == "abandoned"
+        assert (cv.atm_session_id if scenario == "atm-withdrawal" else cv.bill_session_id) == analytics.id
+
+
+@pytest.mark.parametrize("scenario", ["atm-withdrawal", "online-bill-payment"])
 def test_saves_registered_user_session_and_samples_with_owned_attempt(scenario):
     with test_context() as (client, db):
         user = make_user(db, email="cv-owner@test.example")

@@ -3,9 +3,9 @@ import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../services/api";
 import type { BillPaymentStep, BillType } from "../lib/billPaymentState";
 
-import { createBillAnalyticsTracker, type BillEventType, type BillFinishReason } from "../services/billAnalyticsTracker";
+import { createBillAnalyticsTracker, type BillEventType, type BillFinishReason, type BillAnalyticsStep } from "../services/billAnalyticsTracker";
 
-export function useBillAnalytics(language: string, step: BillPaymentStep) {
+export function useBillAnalytics(language: string, step: BillAnalyticsStep, enabled = true) {
   const { token, guestSessionToken } = useAuth();
   const currentStep = useRef(step);
   currentStep.current = step;
@@ -14,6 +14,7 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
   const attemptGetter = useRef<(() => string | null | Promise<string | null>) | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
     else if (guestSessionToken) headers["X-Guest-Session-Token"] = guestSessionToken;
@@ -46,13 +47,14 @@ export function useBillAnalytics(language: string, step: BillPaymentStep) {
       void current.finish("exit", currentStep.current);
       tracker.current = null;
     };
-  }, [token, guestSessionToken]);
+  }, [token, guestSessionToken, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     // Defer initial progress for the same StrictMode reason as session creation.
     const timer = window.setTimeout(() => tracker.current?.event("progress", step), 0);
     return () => window.clearTimeout(timer);
-  }, [step]);
+  }, [step, enabled]);
   const record = useCallback((type: BillEventType, eventStep: BillPaymentStep, bill?: BillType) => tracker.current?.event(type, eventStep, bill), []);
   const finish = useCallback((reason: BillFinishReason) => tracker.current?.finish(reason, currentStep.current), []);
   // Retain this getter through analytics cleanup so CV can still link its final upload.

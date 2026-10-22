@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
-import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
+import { preloadAssistantMessage } from "../../services/speechSynthesisService";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
+import { ScenarioStartButton } from "../../components/ScenarioStartButton";
 
 export function BillPaymentIntroductionPage() {
   const { language } = useTranslation();
@@ -51,16 +52,12 @@ export function BillPaymentIntroductionPage() {
                 <div><strong className="block text-sm">{text.introHelpTitle}</strong><p className="mt-1 text-sm leading-6 text-cyan-50/90">{text.introHelpBody}</p></div>
               </div>
             </div>
-            <Link
+            <ScenarioStartButton
               to="/scenario/online-bill-payment/setup"
-              onPointerDown={() => { void unlockAssistantAudioPlayback(); }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") void unlockAssistantAudioPlayback();
-              }}
               className="m-6 inline-flex min-h-16 w-[calc(100%-3rem)] items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-8 py-4 text-xl font-extrabold text-white shadow-lg shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2 sm:m-8 sm:w-[calc(100%-4rem)]"
             >
               {text.introStartButton} <ArrowRight className="h-6 w-6" aria-hidden="true" />
-            </Link>
+            </ScenarioStartButton>
           </section>
           <BillVoiceAssistant message={text.introAssistantMessage} />
         </div>

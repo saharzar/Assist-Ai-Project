@@ -93,7 +93,7 @@ export function AtmSetupVoiceAssistant({
   };
 
   return (
-    <aside className="flex flex-col gap-4 rounded-2xl border border-cyan-300/25 bg-[#111735]/95 p-5 shadow-[0_20px_55px_rgba(3,7,18,0.32)] lg:sticky lg:top-5">
+    <aside className="flex flex-col gap-4 rounded-2xl border border-cyan-300/25 bg-[#111735]/95 p-5 shadow-[0_20px_55px_rgba(3,7,18,0.32)]">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-display text-sm font-bold uppercase tracking-wide text-white">ASSIST-AI</p>

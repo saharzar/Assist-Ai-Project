@@ -6,6 +6,7 @@ import type { EyeDirection } from "./eyeDirection";
 export type PreviewSummary = {
   cameraTrackingActive: boolean; faceDetected: boolean; landmarkCount: number;
   headPose: HeadPose | null; estimatedEyeDirection: EyeDirection | null; isUserInteracting: boolean;
+  detectedFaceCount: number; primaryFaceIndex: number | null;
 };
 
 export async function authorizeAdminPreview(token: string): Promise<boolean> {
@@ -57,7 +58,8 @@ export function createAdminFaceTrackingPreview({ token, canvas, getFrame, onUpda
       }
       onUpdate({ cameraTrackingActive: frame !== null, faceDetected: Boolean(frame?.landmarks.length),
         landmarkCount: frame?.landmarks.length ?? 0, headPose: frame?.headPose ?? null,
-        estimatedEyeDirection: frame?.estimatedEyeDirection ?? null, isUserInteracting: frame?.isUserInteracting ?? false });
+        estimatedEyeDirection: frame?.estimatedEyeDirection ?? null, isUserInteracting: frame?.isUserInteracting ?? false,
+        detectedFaceCount: frame?.detectedFaceCount ?? 0, primaryFaceIndex: frame?.primaryFaceIndex ?? null });
       timer = setTimeout(draw, 100);
     } catch {
       stop();

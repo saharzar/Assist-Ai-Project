@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { PageShell } from "./components/PageShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import { ScenarioTrackingLayout } from "./context/ScenarioTrackingContext";
 import { TranslationProvider } from "./i18n";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminComputerVisionPage } from "./pages/admin/AdminComputerVisionPage";
@@ -39,10 +40,14 @@ export function App() {
             <Route path="scenarios" element={<ScenarioCataloguePage />} />
             <Route element={<ProtectedRoute allowGuest />}>
               <Route path="profile" element={<ProfilePage />} />
-              <Route path="scenario/atm-withdrawal/practice" element={<AtmScenarioPage />} />
-              <Route path="scenario/atm-withdrawal/setup" element={<AtmPracticeSetupPage />} />
-              <Route path="scenario/online-bill-payment/setup" element={<BillPaymentSetupPage />} />
-              <Route path="scenario/online-bill-payment/run" element={<BillPaymentScenarioPage />} />
+              <Route element={<ScenarioTrackingLayout key="atm-withdrawal" scenario="atm-withdrawal" />}>
+                <Route path="scenario/atm-withdrawal/practice" element={<AtmScenarioPage />} />
+                <Route path="scenario/atm-withdrawal/setup" element={<AtmPracticeSetupPage />} />
+              </Route>
+              <Route element={<ScenarioTrackingLayout key="online-bill-payment" scenario="online-bill-payment" />}>
+                <Route path="scenario/online-bill-payment/setup" element={<BillPaymentSetupPage />} />
+                <Route path="scenario/online-bill-payment/run" element={<BillPaymentScenarioPage />} />
+              </Route>
               <Route path="scenario/:slug" element={<ScenarioDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute allowedRoles={["user"]} />}>

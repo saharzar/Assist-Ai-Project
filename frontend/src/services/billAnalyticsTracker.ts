@@ -1,8 +1,9 @@
 import type { BillPaymentStep, BillType } from "../lib/billPaymentState";
+export type BillAnalyticsStep = BillPaymentStep | "setup";
 
 export type BillEventType = "progress" | "login_success" | "login_failed" | "validation_error" | "payment_success" | "back_navigation";
 export type BillFinishReason = "exit" | "inactivity_timeout" | "login_locked";
-type Event = { client_event_id: string; event_type: BillEventType; step: BillPaymentStep; bill_type?: BillType };
+type Event = { client_event_id: string; event_type: BillEventType; step: BillAnalyticsStep; bill_type?: BillType };
 type Post = (path: string, body: object) => Promise<{ session_id?: string | null }>;
 
 export function createBillAnalyticsTracker(post: Post, language: string) {
@@ -20,7 +21,7 @@ export function createBillAnalyticsTracker(post: Post, language: string) {
   return {
     start,
     getSessionId: () => sessionId ?? session,
-    event(event_type: BillEventType, step: BillPaymentStep, bill_type?: BillType) {
+    event(event_type: BillEventType, step: BillAnalyticsStep, bill_type?: BillType) {
       if (finished) return;
       const event = { client_event_id: crypto.randomUUID(), event_type, step, bill_type };
       pending.set(event.client_event_id, event);
@@ -32,7 +33,7 @@ export function createBillAnalyticsTracker(post: Post, language: string) {
         pending.delete(event.client_event_id);
       }).catch(() => { /* Preserve failed events for the final flush. */ });
     },
-    finish(reason: BillFinishReason, step: BillPaymentStep) {
+    finish(reason: BillFinishReason, step: BillAnalyticsStep) {
       if (finished || !session) return;
       finished = true;
       const body = { reason, final_step_reached: step, pending_events: [...pending.values()] };

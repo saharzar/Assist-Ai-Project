@@ -5,7 +5,7 @@ function move(surface: EventTarget, x: number, y = 100) {
   surface.dispatchEvent(Object.assign(new Event("mousemove"), { clientX: x, clientY: y }));
 }
 
-describe("recent keyboard and mouse interaction", () => {
+describe("recent keyboard interaction", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
@@ -26,18 +26,23 @@ describe("recent keyboard and mouse interaction", () => {
     tracker.stop();
   });
 
-  it("counts mouse clicks", () => {
+  it("ignores mouse clicks and does not extend keyboard activity for them", () => {
     const surface = new EventTarget();
     const tracker = createUserInteractionTracker({ target: surface });
     tracker.start();
     surface.dispatchEvent(new Event("mousedown"));
+    surface.dispatchEvent(new Event("click"));
+    expect(tracker.isUserInteracting()).toBe(false);
+    surface.dispatchEvent(new Event("keydown"));
     expect(tracker.isUserInteracting()).toBe(true);
-    vi.advanceTimersByTime(1500);
+    vi.advanceTimersByTime(1000);
+    surface.dispatchEvent(new Event("mousedown"));
+    vi.advanceTimersByTime(500);
     expect(tracker.isUserInteracting()).toBe(false);
     tracker.stop();
   });
 
-  it("counts meaningful movement but does not extend activity for tiny pointer jitter", () => {
+  it("ignores both tiny and large mouse movements without extending keyboard activity", () => {
     const surface = new EventTarget();
     const tracker = createUserInteractionTracker({ target: surface });
     tracker.start();
@@ -45,6 +50,9 @@ describe("recent keyboard and mouse interaction", () => {
     move(surface, 103);
     expect(tracker.isUserInteracting()).toBe(false);
     move(surface, 108);
+    move(surface, 1000);
+    expect(tracker.isUserInteracting()).toBe(false);
+    surface.dispatchEvent(new Event("keydown"));
     expect(tracker.isUserInteracting()).toBe(true);
     for (let i = 0; i < 6; i++) {
       vi.advanceTimersByTime(300);
@@ -52,7 +60,7 @@ describe("recent keyboard and mouse interaction", () => {
     }
     expect(tracker.isUserInteracting()).toBe(false);
     move(surface, 116);
-    expect(tracker.isUserInteracting()).toBe(true);
+    expect(tracker.isUserInteracting()).toBe(false);
     tracker.stop();
   });
 
@@ -63,7 +71,7 @@ describe("recent keyboard and mouse interaction", () => {
     const tracker = createUserInteractionTracker({ target: surface });
     tracker.start();
     tracker.start();
-    expect(add).toHaveBeenCalledTimes(3);
+    expect(add).toHaveBeenCalledExactlyOnceWith("keydown", expect.any(Function), { capture: true, passive: true });
     tracker.stop();
     tracker.stop();
     expect(remove.mock.calls).toEqual(add.mock.calls);
@@ -74,12 +82,11 @@ describe("recent keyboard and mouse interaction", () => {
     expect(tracker.isUserInteracting()).toBe(false);
   });
 
-  it("resets both the deadline and mouse anchor between sessions", () => {
+  it("resets the keyboard deadline between sessions", () => {
     const surface = new EventTarget();
     const tracker = createUserInteractionTracker({ target: surface });
     tracker.start();
-    move(surface, 100);
-    move(surface, 200);
+    surface.dispatchEvent(new Event("keydown"));
     expect(tracker.isUserInteracting()).toBe(true);
     tracker.stop();
     tracker.start();
@@ -89,14 +96,11 @@ describe("recent keyboard and mouse interaction", () => {
     tracker.stop();
   });
 
-  it("supports a configured timeout and movement threshold", () => {
+  it("supports a configured keyboard inactivity timeout", () => {
     const surface = new EventTarget();
-    const tracker = createUserInteractionTracker({ target: surface, timeoutMs: 2000, movementThresholdPx: 20 });
+    const tracker = createUserInteractionTracker({ target: surface, timeoutMs: 2000 });
     tracker.start();
-    move(surface, 100);
-    move(surface, 110);
-    expect(tracker.isUserInteracting()).toBe(false);
-    move(surface, 120);
+    surface.dispatchEvent(new Event("keydown"));
     vi.advanceTimersByTime(1500);
     expect(tracker.isUserInteracting()).toBe(true);
     vi.advanceTimersByTime(500);

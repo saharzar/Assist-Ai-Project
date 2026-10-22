@@ -35,6 +35,23 @@ def test_consent_and_ownership():
         assert client.post('/api/bill-sessions/start', json={'selected_language': 'en'}).status_code == 401
 
 
+def test_setup_exit_is_saved_without_login_and_continuation_reuses_attempt():
+    with test_context() as (client, db):
+        headers = auth_headers(make_user(db, email='setup@bill.test'))
+        sid = start(client, headers)
+        assert event(client, sid, headers, 'progress', step='setup').status_code == 200
+        assert finish(client, sid, headers, step='setup').json()['completion_status'] == 'abandoned'
+        row = db.scalar(select(BillScenarioSession).where(BillScenarioSession.public_id == sid))
+        assert row.final_step_reached == 'setup'
+        assert row.login_attempt_count == 0 and row.payment_attempt_count == 0
+        assert row.duration_seconds >= 0
+        sid2 = start(client, headers)
+        event(client, sid2, headers, 'progress', step='setup')
+        event(client, sid2, headers, 'login_success', step='login')
+        finish(client, sid2, headers, step='login')
+        assert len(db.scalars(select(BillScenarioSession)).all()) == 2
+
+
 def test_multiple_payments_deduplication_and_terminal_immutability():
     with test_context() as (client, db):
         headers = auth_headers(make_user(db, email='user@bill.test'))

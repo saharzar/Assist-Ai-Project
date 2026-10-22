@@ -2,11 +2,10 @@ import { CreditCard, Eye, EyeOff, ShieldCheck, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { ComputerVisionConsent } from "../../components/ComputerVisionConsent";
-import { saveComputerVisionConsent } from "../../lib/computerVisionConsent";
-import { computerVisionConsentTranslations } from "../../lib/computerVisionConsentTranslations";
 import { BillScenarioShell } from "../../components/bill/BillScenarioShell";
 import { BillVoiceAssistant } from "../../components/bill/BillVoiceAssistant";
+import { AdminFaceTrackingPreview } from "../../components/AdminFaceTrackingPreview";
+import { useScenarioBillAnalytics, useScenarioTracking } from "../../context/ScenarioTrackingContext";
 import { useTranslation } from "../../i18n";
 import {
   isValidBillAccountName,
@@ -20,13 +19,13 @@ import { billPaymentTranslations } from "../../lib/billPaymentTranslations";
 import { preloadAssistantMessage, unlockAssistantAudioPlayback } from "../../services/speechSynthesisService";
 
 export function BillPaymentSetupPage() {
+  const faceTracking = useScenarioTracking();
+  useScenarioBillAnalytics("setup");
   const navigate = useNavigate();
   const { language } = useTranslation();
   const text = billPaymentTranslations[language];
-  const computerVisionText = computerVisionConsentTranslations[language];
   const [details, setDetails] = useState<BillSetupDetails>({ firstName: "", lastName: "", username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [allowComputerVisionRecording, setAllowComputerVisionRecording] = useState<boolean | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [validationSpeechMessage, setValidationSpeechMessage] = useState("");
   const [assistantSpeechRequestId, setAssistantSpeechRequestId] = useState(0);
@@ -58,6 +57,7 @@ export function BillPaymentSetupPage() {
       title={text.setupTitle}
       subtitle={text.setupSubtitle}
       assistant={<BillVoiceAssistant message={validationSpeechMessage || text.setupAssistantMessage} speechRequestId={assistantSpeechRequestId} />}
+      trackingPreview={<AdminFaceTrackingPreview active scenario="online-bill-payment" getFrame={faceTracking.getPreviewFrame} />}
     >
       <div className="overflow-hidden rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/70 shadow-[0_24px_55px_-40px_rgba(48,41,146,0.7)]">
         <div className="relative overflow-hidden bg-gradient-to-r from-[#211c72] via-[#302992] to-[#087f8c] px-6 py-5 text-white sm:px-7">
@@ -70,14 +70,13 @@ export function BillPaymentSetupPage() {
       <form className="p-5 sm:p-7" autoComplete="off" onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);
-        if (!valid || allowComputerVisionRecording === null) {
-          setValidationSpeechMessage(!valid ? (hasEmptyFields ? text.setupError : validationErrors.join(" ")) : computerVisionText.validation);
+        if (!valid) {
+          setValidationSpeechMessage(hasEmptyFields ? text.setupError : validationErrors.join(" "));
           setAssistantSpeechRequestId((current) => current + 1);
           return;
         }
         void unlockAssistantAudioPlayback();
         sessionStorage.setItem(BILL_SETUP_STORAGE_KEY, JSON.stringify({ ...details, firstName: details.firstName.trim(), lastName: details.lastName.trim() }));
-        saveComputerVisionConsent("online-bill-payment", allowComputerVisionRecording === true);
         navigate("/scenario/online-bill-payment/run");
       }}>
         <div className="grid gap-5 rounded-2xl border border-indigo-100 bg-white/90 p-5 shadow-sm sm:grid-cols-2 sm:p-6">
@@ -93,7 +92,6 @@ export function BillPaymentSetupPage() {
             {submitted && details.password && fieldErrors.password && <span role="alert" className="mt-2 block text-sm font-semibold text-rose-700">{fieldErrors.password}</span>}
           </label>
         </div>
-        <div className="mt-5"><ComputerVisionConsent value={allowComputerVisionRecording} onChange={setAllowComputerVisionRecording} showError={submitted && allowComputerVisionRecording === null} /></div>
         {submitted && hasEmptyFields && <p role="alert" className="mt-5 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 font-semibold text-rose-800">{text.setupError}</p>}
         <button type="submit" className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-5 py-3 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55] focus:outline-none focus:ring-2 focus:ring-cyan-400"><ShieldCheck className="h-6 w-6" aria-hidden="true" />{text.continueLogin}</button>
       </form>
