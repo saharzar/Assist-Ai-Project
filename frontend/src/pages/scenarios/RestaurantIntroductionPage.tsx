@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, ClipboardCheck, CreditCard, Keyboard, MessageCircle, Mic } from "lucide-react";
 import { Link } from "react-router-dom";
 import restaurantCounter from "../../assets/restaurant-counter.png";
 import { RestaurantStaff } from "../../components/restaurant/RestaurantArt";
@@ -15,29 +15,59 @@ export function RestaurantIntroductionPage() {
   const { language } = useTranslation();
   const text = restaurantTranslations[language];
   const [speaking, setSpeaking] = useState(false);
-  return <section className="restaurant-intro-page" aria-labelledby="restaurant-intro-title">
-    <div className="restaurant-intro-layout">
-      <div className="restaurant-intro-card">
-        <div className="restaurant-intro-visual" aria-hidden="true">
-          <img src={restaurantCounter} alt="" className="restaurant-intro-background" />
-          <RestaurantStaff state={speaking ? "speaking" : "idle"} className="restaurant-intro-waiter" />
-          <img src={restaurantCounter} alt="" className="restaurant-intro-counter" />
+  const flow = [
+    { label: text.introFlow[0], detail: text.introFlowDetails[0], Icon: BookOpen },
+    { label: text.introFlow[1], detail: text.introFlowDetails[1], Icon: MessageCircle },
+    { label: text.introFlow[2], detail: text.introFlowDetails[2], Icon: ClipboardCheck },
+    { label: text.introFlow[3], detail: text.introFlowDetails[3], Icon: CreditCard },
+  ];
+  return <section className="catalogue-page restaurant-intro-page" aria-labelledby="restaurant-intro-title">
+    <div className="restaurant-intro-container">
+      <header className="restaurant-intro-header">
+        <span className="restaurant-intro-accent" aria-hidden="true"><i /><i /></span>
+        <p className="restaurant-intro-eyebrow">ASSIST-AI</p>
+        <h1 id="restaurant-intro-title" className="landing-title-accent font-display">{text.title}</h1>
+        <p>{text.intro}</p>
+      </header>
+
+      <div className="restaurant-intro-hero">
+        <div className="restaurant-intro-preview">
+          <div className="restaurant-intro-visual" aria-hidden="true">
+            <img src={restaurantCounter} alt="" className="restaurant-intro-background" />
+            <RestaurantStaff state={speaking ? "speaking" : "idle"} className="restaurant-intro-waiter" />
+            <img src={restaurantCounter} alt="" className="restaurant-intro-counter" />
+          </div>
+          <div className="restaurant-intro-preview-footer">
+            <ScenarioStartButton to="/scenario/restaurant-ordering/run" className="restaurant-intro-start">
+              {text.start}<ArrowRight className="h-6 w-6" aria-hidden="true" />
+            </ScenarioStartButton>
+          </div>
         </div>
-        <div className="restaurant-intro-content">
-          <p className="restaurant-intro-label">{text.introWelcome}</p>
-          <h1 id="restaurant-intro-title" className="font-display text-3xl font-extrabold leading-tight text-[#1d1a5e]">{text.title}</h1>
-          <div className="restaurant-intro-explanation">{text.intro.split("\n").map((line) => <p key={line}>{line}</p>)}</div>
-          <ol className="restaurant-intro-steps" aria-label={text.introSteps}>
-            {[text.steps.menu, text.introAlternative, text.introDrink, text.introPayment].map((step, index) => <li key={step}><span aria-hidden="true">{index + 1}</span>{step}</li>)}
-          </ol>
-          <p className="restaurant-intro-ready">{text.introReady}</p>
-          <ScenarioStartButton to="/scenario/restaurant-ordering/run" className="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-[#079c6b] px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-emerald-950/15 hover:bg-[#057a55] focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2">
-            {text.start}<ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
-          </ScenarioStartButton>
-          <Link to="/scenarios" className="restaurant-intro-back"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{text.back}</Link>
-        </div>
+        <div className="restaurant-intro-assistant"><AtmSetupVoiceAssistant scenario="restaurant" language={language} message={text.introSpoken} modeLabel={text.title} speechRequestId={0} onSpeakingChange={setSpeaking} /></div>
       </div>
-      <div className="restaurant-intro-assistant"><AtmSetupVoiceAssistant scenario="restaurant" language={language} message={text.introSpoken} modeLabel={text.title} speechRequestId={0} onSpeakingChange={setSpeaking} /></div>
+
+      <section className="restaurant-intro-section" aria-labelledby="restaurant-intro-steps-heading">
+        <h2 id="restaurant-intro-steps-heading" className="font-display">{text.introSteps}</h2>
+        <ol className="restaurant-intro-steps">
+          {flow.map(({ label, detail, Icon }, index) => <li key={label}>
+            <span className="restaurant-intro-step-icon" aria-hidden="true"><Icon size={25} strokeWidth={1.9} /></span>
+            <span className="restaurant-intro-step-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+            <strong>{label}</strong>
+            <span className="restaurant-intro-step-detail">{detail}</span>
+          </li>)}
+        </ol>
+        <p className="restaurant-intro-note"><CircleHelp size={20} aria-hidden="true" />{text.introNote}</p>
+      </section>
+
+      <section className="restaurant-intro-section restaurant-intro-response" aria-labelledby="restaurant-intro-response-heading">
+        <h2 id="restaurant-intro-response-heading" className="font-display">{text.introWaysToOrder}</h2>
+        <div className="restaurant-intro-response-options">
+          <div><span className="restaurant-intro-response-icon" aria-hidden="true"><Keyboard size={26} /></span><div><h3>{text.introTypeTitle}</h3><p>{text.introTypeBody}</p></div></div>
+          <div><span className="restaurant-intro-response-icon" aria-hidden="true"><Mic size={26} /></span><div><h3>{text.introVoiceTitle}</h3><p>{text.introVoiceBody}</p></div></div>
+        </div>
+      </section>
+
+      <div className="restaurant-intro-bottom"><Link to="/scenarios" className="restaurant-intro-back"><ArrowLeft size={20} aria-hidden="true" />{text.back}</Link></div>
     </div>
   </section>;
 }
