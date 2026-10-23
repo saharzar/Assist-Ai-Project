@@ -24,8 +24,15 @@ import { chatWithRestaurantWaiter, type RestaurantWaiterTurn, type RestaurantPen
 import { restaurantWaiterSnapshot, type RestaurantWaiterAction, type RestaurantWaiterSnapshot } from "../../services/restaurantWaiterChatService";
 import { previewRestaurantWaiterActions, sameRestaurantSnapshot } from "../../lib/restaurantWaiterActions";
 
-export function RestaurantShell({ message, children, orderTray, leaveAction, preview, confirmation = false, introHeader, menuBook = false, receipt = false, review = false, onWaiterMessageSettled, waiterContext, onApprovedActions }: {
-  message: string; children: ReactNode; orderTray?: ReactNode; leaveAction?: ReactNode; preview?: ReactNode; confirmation?: boolean; introHeader?: ReactNode; menuBook?: boolean; receipt?: boolean; review?: boolean;
+function isOrderAgainRequest(message: string) {
+  const words = message.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return /^(?:(?:i|we) (?:want|would like|d like|need) to |(?:can|could) (?:i|we) |please )?(?:order again|start (?:a |another |new )?order|place another order|make another order)(?: please)?$/.test(words);
+}
+
+export function RestaurantShell({ message, menuComment, children, orderTray, leaveAction, preview, confirmation = false, introHeader, menuBook = false, receipt = false, review = false, allowOrderAgain = false, onOrderAgain, onWaiterMessageSettled, waiterContext, onApprovedActions }: {
+  message: string; children: ReactNode; orderTray?: ReactNode; leaveAction?: ReactNode; preview?: ReactNode; confirmation?: boolean; introHeader?: ReactNode; menuBook?: boolean; receipt?: boolean; review?: boolean; allowOrderAgain?: boolean;
+  menuComment?: { text: string; id: number } | null;
+  onOrderAgain?: () => void;
   onWaiterMessageSettled?: (message: string, outcome: AssistantSpeechOutcome) => void;
   waiterContext?: RestaurantWaiterSnapshot;
   onApprovedActions?: (actions: RestaurantWaiterAction[], projected: RestaurantWaiterSnapshot, expected: RestaurantWaiterSnapshot) => boolean;
@@ -55,6 +62,10 @@ export function RestaurantShell({ message, children, orderTray, leaveAction, pre
   const sendChat = async (voiceMessage?: string) => {
     const messageToSend = (voiceMessage ?? chatDraft).trim();
     if (!messageToSend || chatBusy.current) return;
+    if (allowOrderAgain && onOrderAgain && isOrderAgainRequest(messageToSend)) {
+      onOrderAgain();
+      return;
+    }
     const request = new AbortController();
     const requestState = { ...contextRef.current, order: { ...contextRef.current.order } };
     chatRequest.current = request;
@@ -87,7 +98,8 @@ export function RestaurantShell({ message, children, orderTray, leaveAction, pre
     }
   };
   const activeChatReply = chatReply && sameRestaurantSnapshot(chatReply.state, contextRef.current) ? chatReply : null;
-  const spokenMessage = activeChatReply?.spoken ? activeChatReply.text : message;
+  const spokenMessage = activeChatReply?.spoken ? activeChatReply.text : activeChatReply ? message : menuComment?.text ?? message;
+  const displayedMessage = activeChatReply?.text ?? menuComment?.text ?? message;
   const waiterState = speaking ? "speaking" : confirmation ? "success" : listening ? "listening" : "idle";
   return <section className={`restaurant-page min-h-screen px-4 py-5 sm:px-6 ${introHeader ? "restaurant-introduction" : ""}`}>
     <div className="mx-auto max-w-[1500px]">
@@ -100,9 +112,9 @@ export function RestaurantShell({ message, children, orderTray, leaveAction, pre
             <div className="restaurant-dialogue restaurant-waiter-caption">
               <div className="restaurant-dialogue-heading">
                 <p className="text-xs font-bold text-[#526e6d]">{text.staff}</p>
-                <div className="restaurant-voice-controls"><AtmSetupVoiceAssistant compact scenario="restaurant" language={language} message={spokenMessage} modeLabel={text.title} speechRequestId={chatSpeechRequestId} speechDelayMs={!activeChatReply && message === orderText.welcomeCaption ? 650 : 0} onSpeakingChange={setSpeaking} onMessageSettled={onWaiterMessageSettled} /></div>
+                <div className="restaurant-voice-controls"><AtmSetupVoiceAssistant compact scenario="restaurant" streamAudio={Boolean(activeChatReply?.spoken)} language={language} message={spokenMessage} modeLabel={text.title} speechRequestId={chatSpeechRequestId + (menuComment?.id ?? 0)} speechDelayMs={!activeChatReply && message === orderText.welcomeCaption ? 650 : 0} onSpeakingChange={setSpeaking} onMessageSettled={onWaiterMessageSettled} /></div>
               </div>
-              <p className="restaurant-dialogue-message" aria-live="polite">{activeChatReply?.text ?? message}</p>
+              <p className="restaurant-dialogue-message" aria-live="polite">{displayedMessage}</p>
             </div>
             <div className="restaurant-social-actions"><WaiterConversationBar language={language} value={chatDraft} pending={chatPending} onChange={setChatDraft} onSend={() => sendChat()} onVoiceResult={setChatDraft} /></div>
           </div>
@@ -133,6 +145,10 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
   const [state, dispatch] = useReducer(restaurantReducer, initialRestaurantState);
   const [payment, dispatchPayment] = useReducer(restaurantPaymentReducer, initialRestaurantPayment);
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  const [menuComment, setMenuComment] = useState<{ text: string; id: number } | null>(null);
+  const menuSelectionCount = useRef(0);
+  const menuCommentCount = useRef(0);
+  const lastMenuCommentAt = useRef(0);
   const latest = useRef({ state, payment });
   latest.current = { state, payment };
   const paymentText = restaurantPaymentTranslations[language];
@@ -164,10 +180,22 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
     : orderText.welcomeCaption;
   const menuBook = state.step === "menuCover" || state.step === "menu" || state.step === "alternative" || state.step === "alternativeCover";
   const openBook = state.step === "menu" || state.step === "alternative";
+  useEffect(() => { if (!menuBook) setMenuComment(null); }, [menuBook]);
   const select = (category: MenuCategory, id: string) => {
     setFocusItemId(null);
     if (category === "mains") analytics.event(state.unavailable ? "alternative_selected" : "meal_selected", id as Meal);
     dispatch({ type: "selectItem", category, id });
+    // The first main dish is deliberately unavailable in this exercise.
+    // Let the existing explanation play before commenting on actual choices.
+    if (category === "mains" && state.unavailable === null) { setMenuComment(null); return; }
+    if (category !== "mains" && state.unavailable && !state.order.mains) return;
+    if (state.order[category] === id) return;
+    menuSelectionCount.current += 1;
+    const now = Date.now();
+    if (menuSelectionCount.current !== 1 && (menuSelectionCount.current % 2 !== 0 || now - lastMenuCommentAt.current < 6500)) return;
+    lastMenuCommentAt.current = now;
+    const commentNumber = menuCommentCount.current++;
+    setMenuComment({ text: orderText.menuChoiceComments[commentNumber % orderText.menuChoiceComments.length], id: commentNumber + 1 });
   };
   const onApprovedActions = (actions: RestaurantWaiterAction[], projected: RestaurantWaiterSnapshot, expected: RestaurantWaiterSnapshot) => {
     const current = latest.current;
@@ -179,7 +207,7 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
     setFocusItemId(preview.focusItemId);
     return true;
   };
-  return <RestaurantShell message={message} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={(category) => dispatch({ type: "removeItem", category })} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={state.step !== "success" ? <Link to="/scenarios" className="restaurant-leave-link inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link> : undefined} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
+  return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} onOrderAgain={onOrderAgain} allowOrderAgain={state.step === "success" && (payment.phase === "paid" || payment.phase === "receipt")} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={(category) => dispatch({ type: "removeItem", category })} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={state.step !== "success" ? <Link to="/scenarios" className="restaurant-leave-link inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link> : undefined} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
     {menuBook && <>
       <RestaurantMenu state={state} language={language} dispatch={dispatch} onSelect={select} headingRef={heading} focusItemId={focusItemId} onManualNavigate={() => setFocusItemId(null)} />
     </>}

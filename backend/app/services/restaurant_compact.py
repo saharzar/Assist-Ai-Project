@@ -26,7 +26,7 @@ class CompactAction(BaseModel):
 
 class PendingClarification(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["add_item", "remove_item", "replace_item"]
+    action: Literal["add_item", "remove_item", "replace_item", "describe_item"]
     item_query: str = Field(min_length=1, max_length=120)
     replacement_query: str | None = Field(default=None, max_length=120)
     matches: list[str] = Field(default_factory=list, max_length=5)
@@ -99,6 +99,24 @@ def fast_path(message: str) -> CompactAction | None:
     return None
 
 
+def obvious_payment_method_request(message: str) -> CompactAction | None:
+    """Accept short spoken answers to the payment-method question."""
+    normalized = _simple(message)
+    methods = {
+        "card": r"card|credit card|debit card|tarjeta|karte|carte|cartao|kart",
+        "cash": r"cash|efectivo|bargeld|especes|dinheiro|nakit",
+    }
+    for method, words in methods.items():
+        if re.fullmatch(
+            rf"(?:(?:i(?: want| would like| d like)? to |i ll |i will |we ll |we will )?"
+            rf"(?:pay |pay with |pay by |use |choose )?|(?:by |with |in ))"
+            rf"(?:my |a |the )?(?:{words})(?: please)?",
+            normalized,
+        ):
+            return CompactAction(action="choose_payment", payment_method=method)
+    return None
+
+
 def obvious_confirmation_request(message: str) -> bool:
     """Recognize an explicit decision to confirm the current order."""
     normalized = _simple(message)
@@ -149,6 +167,8 @@ def obvious_food_request(message: str) -> tuple[str, str | None] | None:
     )
     if add:
         query = re.sub(r"(?: to (?:(?:my|the) )?order| for me| please| as well| too)+$", "", add.group(1))
+        if re.match(r"(?:to )?(?:remove|delete|change|edit|replace|switch|swap|modify|update|take off|take out)\b", query):
+            return None
         if query in {"to order", "my order", "the order"} or query.startswith(
             ("to review", "to check", "to see", "to pay", "to place")
         ):
@@ -169,21 +189,32 @@ def obvious_food_request(message: str) -> tuple[str, str | None] | None:
     return None
 
 
-def obvious_order_change(message: str) -> CompactAction | None:
+def obvious_order_change(message: str, *, review: bool = False) -> CompactAction | None:
     """Route explicit remove and replace requests through the validated order engine."""
     normalized = _simple(message)
-    prefix = r"(?:(?:please|can you|can u|could you|could u|would you|can you please|could you please) )?"
-    replace = re.fullmatch(prefix + r"(?:replace|change|switch) (.+?) (?:with|for|to) (.+)", normalized)
+    prefix = (r"(?:(?:please|can you|can u|could you|could u|would you|can you please|could you please|"
+              r"i want to|i would like to|i d like to|i need to|let me) )?")
+    if review and re.fullmatch(prefix + r"(?:change|edit|modify|update|adjust)(?: (?:my|the|our))?"
+                               r"(?: order| something| an? item| an? dish)?(?: please)?", normalized):
+        return CompactAction(action="back_to_menu")
+    replace = re.fullmatch(prefix + r"(?:replace|change|switch|swap|edit) (.+?) (?:with|for|to|into) (.+)", normalized)
     if replace:
-        old = re.sub(r"^the ", "", replace.group(1))
+        old = re.sub(r"^(?:the|my|our) ", "", replace.group(1))
         new = re.sub(r"(?: in (?:my|the) order| please| instead)+$", "", replace.group(2))
         if old and new and len(old) <= 120 and len(new) <= 120 and not re.search(r"\b(and|or|plus)\b", old + " " + new):
             return CompactAction(action="replace_item", item_query=old, replacement_query=new)
-    remove = re.fullmatch(prefix + r"(?:remove|delete|take off) (.+)", normalized)
+    remove = re.fullmatch(prefix + r"(?:remove|delete|take off|take out|drop) (.+)", normalized)
     if remove:
         query = re.sub(r"(?: from (?:my|the) order| please| for me)+$", "", remove.group(1))
         if query and len(query) <= 120 and not re.search(r"\b(and|or|plus)\b", query):
-            return CompactAction(action="remove_item", item_query=query)
+            return CompactAction(action="remove_item", item_query=None if query in {
+                "it", "that", "something", "an item", "a dish", "one item", "anything"} else query)
+    if review and re.fullmatch(prefix + r"(?:remove|delete|take off|take out)(?: something| an? item)?(?: please)?", normalized):
+        return CompactAction(action="remove_item")
+    if review:
+        change = re.fullmatch(prefix + r"(?:replace|change|switch|swap|edit) (.+)", normalized)
+        if change and not re.search(r"\b(and|or|plus)\b", change.group(1)):
+            return CompactAction(action="replace_item", item_query=change.group(1))
     return None
 
 

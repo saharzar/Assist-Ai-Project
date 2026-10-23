@@ -10,6 +10,7 @@ type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 type SpeechRecognitionCallbacks = {
   onReady?: () => void;
   onPartialResult?: SpeechRecognitionResultCallback;
+  onFallback?: () => void;
   onResult: SpeechRecognitionResultCallback;
   onError: (message: string) => void;
   onEnd: () => void;
@@ -503,7 +504,15 @@ class BackendSpeechRecognizer {
         this.callbacks.onError(this.errorMessages.problem);
       }
     } catch (error) {
-      if (error instanceof ApiError && error.message === BROWSER_FALLBACK_CODE) {
+      const browserFallbackAvailable = this.mode === "restaurant" &&
+        Boolean(window.SpeechRecognition || window.webkitSpeechRecognition) &&
+        Boolean(this.callbacks.onFallback);
+      const providerFailed = (error instanceof ApiError && (
+        error.message === BROWSER_FALLBACK_CODE || [502, 503, 504].includes(error.status)
+      )) || error instanceof TypeError;
+      if (browserFallbackAvailable && providerFailed) {
+        this.callbacks.onFallback?.();
+      } else if (error instanceof ApiError && error.message === BROWSER_FALLBACK_CODE) {
         this.callbacks.onError(this.errorMessages.browserFallback);
       } else if (error instanceof ApiError && error.status === 422) {
         this.callbacks.onError(this.errorMessages.noSpeech);
@@ -658,14 +667,21 @@ class ManagedSpeechRecognizer {
   }
 
   private async selectAndStart() {
-    // The restaurant input needs interim words while the guest speaks. The batch
-    // Soniox endpoint only returns a transcript after recording stops.
-    if (this.mode === "restaurant" && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+    if (this.mode === "restaurant") {
       if (this.stopRequested) { this.endOnce(); return; }
-      notifySpeechProviderUsed("stt", "browser");
-      this.delegate = new BrowserSpeechRecognizer({
+      if (!navigator.mediaDevices?.getUserMedia || !(window.AudioContext || window.webkitAudioContext)) {
+        this.startBrowserFallback();
+        return;
+      }
+      let fallbackRequested = false;
+      notifySpeechProviderUsed("stt", "soniox");
+      this.delegate = new BackendSpeechRecognizer({
         ...this.callbacks,
-        onEnd: () => this.endOnce(),
+        onFallback: () => { fallbackRequested = true; this.callbacks.onFallback?.(); },
+        onEnd: () => {
+          if (fallbackRequested) this.startBrowserFallback();
+          else this.endOnce();
+        },
       }, this.mode, this.language, this.errorMessages);
       this.delegate.start();
       return;
@@ -708,6 +724,20 @@ class ManagedSpeechRecognizer {
       );
       this.delegate.start();
     }
+  }
+
+  private startBrowserFallback() {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      this.callbacks.onError(this.errorMessages.providerUnavailable);
+      this.endOnce();
+      return;
+    }
+    notifySpeechProviderUsed("stt", "browser");
+    this.delegate = new BrowserSpeechRecognizer({
+      ...this.callbacks,
+      onEnd: () => this.endOnce(),
+    }, this.mode, this.language, this.errorMessages);
+    this.delegate.start();
   }
 
   private endOnce() {

@@ -197,6 +197,45 @@ def synthesize_soniox_tts(text: str, language: str, request_id: str, *, voice: s
         raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is unavailable.") from exc
 
 
+def open_soniox_tts_stream(text: str, language: str, request_id: str, *, voice: str | None = None) -> tuple[httpx.Client, httpx.Response]:
+    """Open the MP3 response without buffering its audio body."""
+    settings = get_settings()
+    if not settings.soniox_api_key:
+        raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is not configured.")
+    client = httpx.Client(timeout=settings.soniox_api_timeout_seconds)
+    try:
+        request = client.build_request(
+            "POST",
+            SONIOX_TTS_URL,
+            headers={
+                "Authorization": f"Bearer {settings.soniox_api_key}",
+                "X-Request-Id": request_id,
+            },
+            json={
+                "model": settings.soniox_tts_model,
+                "language": language,
+                "voice": voice or settings.soniox_tts_voice,
+                "audio_format": "mp3",
+                "text": text,
+                "client_reference_id": request_id,
+            },
+        )
+        response = client.send(request, stream=True)
+        if not response.is_success:
+            try:
+                response.read()
+                _raise_for_soniox(response)
+            finally:
+                response.close()
+        return client, response
+    except httpx.HTTPError as exc:
+        client.close()
+        raise SonioxProviderError(status.HTTP_503_SERVICE_UNAVAILABLE, "Soniox TTS is unavailable.") from exc
+    except Exception:
+        client.close()
+        raise
+
+
 def get_soniox_tts_cache_voice(voice: str | None = None) -> str:
     settings = get_settings()
     # Bump the cache namespace when the playback pipeline changes so older

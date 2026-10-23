@@ -87,7 +87,7 @@ async def create_stt_transcript(
         )
 
     request_id = str(speech_request_id or uuid4())
-    if isinstance(current_user, GuestSession):
+    if isinstance(current_user, GuestSession) and mode != "restaurant":
         return Response(
             status_code=204,
             headers={"X-Speech-Provider": "browser", "X-Speech-Status": "normal"},
@@ -110,6 +110,8 @@ async def create_stt_transcript(
         )
 
     decisions = get_provider_chain(db, "stt", browser_supported=browser_speech_supported)
+    if mode == "restaurant":
+        decisions.sort(key=lambda decision: decision.provider != "soniox")
     db.commit()
     audio = await request.body()
     last_error: HTTPException | None = None

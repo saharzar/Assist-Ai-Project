@@ -41,7 +41,9 @@ export const restaurantFrames: Record<RestaurantFrameKey, string> = {
 /** Preloaded, consistently aligned portrait frames. Speech blinks briefly use the slight-open mouth frame. */
 export function RestaurantStaff({ state = "idle", className = "" }: { state?: WaiterState; className?: string }) {
   const audioMouth = useSyncExternalStore(subscribeRestaurantMouth, getRestaurantMouth, getClosedMouth);
-  const mouth: MouthState = state === "speaking" ? audioMouth : "closed";
+  // The audio signal is authoritative even if the speaking callback reaches
+  // React a frame later (notably for short cached payment confirmations).
+  const mouth: MouthState = audioMouth;
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function RestaurantStaff({ state = "idle", className = "" }: { state?: Wa
     };
   }, [state]);
 
-  const displayedMouth: MouthState = blink && state === "speaking" ? "slight" : mouth;
+  const displayedMouth: MouthState = blink && state === "speaking" && mouth !== "closed" ? "slight" : mouth;
   const frameKey = getRestaurantFrameKey(displayedMouth, blink);
 
   return <span aria-hidden="true" data-waiter-state={state} data-mouth-state={displayedMouth} data-eyes-state={blink ? "closed" : "open"} className={`restaurant-waiter ${className}`}>

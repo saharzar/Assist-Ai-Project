@@ -15,7 +15,7 @@ from app.core.config import Settings
 from app.services.restaurant_compact import (CompactAction, PendingClarification, compact_candidates,
                                              fast_path, mentioned_category, obvious_food_request,
                                              obvious_confirmation_request, obvious_menu_request, obvious_order_change,
-                                             obvious_progress_request,
+                                             obvious_payment_method_request, obvious_progress_request,
                                              resolve_action_item)
 from app.services.restaurant_tools import (
     CATALOG, TOOL_SCHEMAS, ApprovedAction, RestaurantSnapshot, RestaurantToolEngine,
@@ -36,6 +36,8 @@ WAITER_SYSTEM_PROMPT = (
     "You are a calm, warm, professional restaurant waiter helping an autistic adult practice ordering. "
     "Reply in the requested language with one to three short sentences and one question at a time. "
     "Use restaurant_action for menu facts or changes. Pass the user's food words in item_query, never an ID. "
+    "On the review page, use back_to_menu for a general edit request, remove_item for a named removal, "
+    "and replace_item for a named replacement. Never treat edit or remove words as food names. "
     "Application state and validated actions are authoritative. Never invent menu items, prices, availability, "
     "ingredients, allergens, order or payment results. Never claim a change succeeded before validation. "
     "Praise such as 'pizza looks good' is not permission to add it; ask for confirmation. "
@@ -248,18 +250,44 @@ class RestaurantLLMService:
                                          {"role": "user", "content": message}], self._model)
         if UNVERIFIED_ORDER_CHANGE.search(reply):
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
-        return RestaurantChatOutcome(reply[:MAX_WAITER_REPLY_LENGTH], [], state)
+        return RestaurantChatOutcome(reply[:MAX_WAITER_REPLY_LENGTH], [], state,
+                                     _offer_pending(reply, message, language, state, history))
 
     def chat_with_tools(self, message: str, language: str, history: list[dict[str, str]],
                         state: RestaurantSnapshot,
                         pending: PendingClarification | None = None) -> RestaurantChatOutcome:
         if SENSITIVE_PAYMENT.search(message):
             return RestaurantChatOutcome(say(language, "privacy"), [], state)
+        if pending is None and _is_affirmative(_fold(message).strip(" .!?؟")) and history:
+            last = history[-1]
+            if last["role"] == "assistant":
+                previous_user = next((turn["content"] for turn in reversed(history[:-1])
+                                      if turn["role"] == "user"), "")
+                pending = _offer_pending(last["content"], previous_user, language, state, history[:-1])
         if pending:
             folded = _fold(message).strip(" .!?؟")
-            if folded in ("no", "no gracias", "nein", "non", "nao", "hayir"):
+            affirmative = _is_affirmative(folded)
+            if folded in ("no", "no thanks", "no thank you", "no gracias", "nein", "non", "nao", "hayir"):
                 return RestaurantChatOutcome(say(language, "cancelled"), [], state)
-            if pending.matches:
+            if pending.action == "describe_item":
+                if pending.matches and len(pending.matches) > 1 and affirmative:
+                    return self._clarify(language, state, pending)
+                ordinal = {"first": 0, "the first one": 0, "second": 1, "the second one": 1,
+                           "third": 2, "the third one": 2}.get(folded)
+                selected = ({"status": "found", "item_id": pending.matches[ordinal]}
+                            if ordinal is not None and ordinal < len(pending.matches) else
+                            resolve_action_item(pending.item_query if affirmative else message, language))
+                offered = resolve_action_item(pending.item_query, language)
+                if selected["status"] == "found" and (affirmative or selected["item_id"] in pending.matches
+                                                       or (offered["status"] == "found" and
+                                                           selected["item_id"] == offered["item_id"])):
+                    item_id = selected["item_id"]
+                    return RestaurantChatOutcome(
+                        f"{name(item_id, language)}: {CATALOG[item_id]['descriptions'][language]}.", [], state)
+                if affirmative:
+                    return RestaurantChatOutcome(say(language, "unclear"), [], state)
+                pending = None
+            if pending and pending.matches:
                 ordinal = {
                     "first": 0, "the first one": 0, "1": 0, "number one": 0,
                     "second": 1, "the second one": 1, "2": 1, "number two": 1,
@@ -282,9 +310,19 @@ class RestaurantLLMService:
                                            replacement_query=selected_query if pending.clarify_field == "replacement"
                                            else pending.replacement_query)
                     return self._execute(action, message, language, state, trusted=True)
-                if folded in ("yes", "si", "oui", "ja", "sim", "evet"):
+                if affirmative and len(pending.matches) == 1:
+                    return self._execute(CompactAction(action=pending.action,
+                                                       item_query=name(pending.matches[0], language)),
+                                         message, language, state, trusted=True)
+                if affirmative:
                     return self._clarify(language, state, pending)
-            elif folded in ("yes", "si", "oui", "ja", "sim", "evet"):
+            elif pending and pending.clarify_field == "replacement":
+                choice = resolve_action_item(message, language)
+                if choice["status"] == "found":
+                    return self._execute(CompactAction(action="replace_item", item_query=pending.item_query,
+                                                       replacement_query=name(choice["item_id"], language)),
+                                         message, language, state, trusted=True)
+            elif pending and affirmative:
                 return self._execute(CompactAction(action=pending.action, item_query=pending.item_query,
                                                    replacement_query=pending.replacement_query),
                                      message, language, state, trusted=True)
@@ -292,6 +330,10 @@ class RestaurantLLMService:
             return RestaurantChatOutcome(say(language, "diet"), [], state)
         if _is_menu_question(message):
             return self._menu_answer(message, language, history, state)
+        payment_method = obvious_payment_method_request(message)
+        if payment_method and state.step == "success" and state.payment_phase == "method":
+            logger.info("restaurant_llm.fast_path=true action=choose_payment")
+            return self._execute(payment_method, message, language, state, trusted=True)
         if obvious_confirmation_request(message):
             logger.info("restaurant_llm.fast_path=true action=start_payment")
             if state.step == "success":
@@ -309,7 +351,7 @@ class RestaurantLLMService:
         if direct:
             logger.info("restaurant_llm.fast_path=true action=%s", direct.action)
             return self._execute(direct, message, language, state, trusted=True)
-        change = obvious_order_change(message)
+        change = obvious_order_change(message, review=state.step == "review")
         if change:
             logger.info("restaurant_llm.fast_path=true action=%s", change.action)
             return self._execute(change, message, language, state, trusted=True)
@@ -374,7 +416,8 @@ class RestaurantLLMService:
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
             if model.content and UNVERIFIED_ORDER_CHANGE.search(model.content):
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
-            return RestaurantChatOutcome(model.content or say(language, "unclear"), [], state)
+            reply = model.content or say(language, "unclear")
+            return RestaurantChatOutcome(reply, [], state, _offer_pending(reply, message, language, state, history))
         call = model.tool_calls[0]
         if call.name != "restaurant_action":
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
@@ -403,7 +446,8 @@ class RestaurantLLMService:
             if model.content and not UNVERIFIED_ORDER_CHANGE.search(model.content) and not re.search(
                 r"\b(paid|processed)\b", _fold(model.content)
             ):
-                return RestaurantChatOutcome(model.content, [], state)
+                return RestaurantChatOutcome(model.content, [], state,
+                                             _offer_pending(model.content, message, language, state, history))
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
         return self._execute(action, message, language, state)
 
@@ -436,9 +480,21 @@ class RestaurantLLMService:
             args = {"method": action.payment_method}
         elif tool in ("show_menu_item", "add_order_item", "remove_order_item", "replace_order_item"):
             if not action.item_query:
+                if tool == "remove_order_item":
+                    selected_ids = [item_id for category in ("mains", "salads", "soups", "desserts", "drinks")
+                                    if (item_id := getattr(state.order, category))]
+                    if selected_ids:
+                        return self._clarify(language, state, PendingClarification(
+                            action="remove_item", item_query="item", matches=selected_ids))
+                    return RestaurantChatOutcome(say(language, "empty"), [], state)
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
             selected = state.order if tool in ("remove_order_item", "replace_order_item") else None
             found = resolve_action_item(action.item_query, language, order=selected)
+            if selected is not None and found["status"] == "not_found":
+                category = mentioned_category(action.item_query)
+                selected_id = getattr(selected, category) if category else None
+                if selected_id:
+                    found = {"status": "found", "item_id": selected_id}
             if selected is not None and found["status"] == "not_found":
                 found = resolve_action_item(action.item_query, language)
             if found["status"] == "ambiguous":
@@ -451,7 +507,10 @@ class RestaurantLLMService:
             args = {"item_id": found["item_id"]}
             if tool == "replace_order_item":
                 if not action.replacement_query:
-                    return RestaurantChatOutcome(say(language, "unclear"), [], state)
+                    return RestaurantChatOutcome(say(language, "ask_replacement"), [], state,
+                                                 PendingClarification(action="replace_item",
+                                                                      item_query=name(found["item_id"], language),
+                                                                      replacement_query="item", clarify_field="replacement"))
                 replacement = resolve_action_item(action.replacement_query, language)
                 if replacement["status"] == "ambiguous":
                     return self._clarify(language, state, PendingClarification(
@@ -485,8 +544,9 @@ class RestaurantLLMService:
                     reply = result_reply(language, tool, args, result, engine.snapshot, "recommend " + message)
             else:
                 reply = result_reply(language, tool, args, result, engine.snapshot, "recommend " + message)
-            pending = (PendingClarification(action="add_item", item_query=name(matches[0], language), matches=matches)
-                       if matches and engine.snapshot.step != "success" else None)
+            pending = (_offer_pending(reply, message, language, engine.snapshot)
+                       or (PendingClarification(action="add_item", item_query=name(matches[0], language), matches=matches)
+                           if matches and engine.snapshot.step != "success" else None))
             return RestaurantChatOutcome(reply[:MAX_WAITER_REPLY_LENGTH], engine.actions, engine.snapshot, pending)
         return RestaurantChatOutcome(reply[:MAX_WAITER_REPLY_LENGTH], engine.actions, engine.snapshot)
 
@@ -496,8 +556,57 @@ def _fold(value: str) -> str:
                    if not unicodedata.combining(character))
 
 
+def _is_affirmative(value: str) -> bool:
+    return value in {"yes", "yes please", "yeah", "yep", "sure", "sure please", "okay", "ok",
+                     "please do", "do it", "add it", "add that", "si", "si por favor", "oui",
+                     "oui s il vous plait", "ja", "ja bitte", "sim", "sim por favor", "evet", "evet lutfen"}
+
+
+def _mentioned_catalog_items(value: str, language: str) -> list[str]:
+    found = [item_id for item_id in CATALOG if _item_mentioned(value, language, item_id)]
+    # "Vegetable soup" should refer to that dish, not also the generic "Soup".
+    return [item_id for item_id in found if not any(
+        item_id != other and _fold(name(item_id, language)) in _fold(name(other, language))
+        and _item_mentioned(value, language, other) for other in found)]
+
+
+def _offer_pending(reply: str, user_message: str, language: str,
+                   state: RestaurantSnapshot,
+                   history: list[dict[str, str]] | None = None) -> PendingClarification | None:
+    """Remember an LLM follow-up only when it points to verified menu items."""
+    if "?" not in reply:
+        return None
+    question = _fold(reply[:reply.rfind("?")].rsplit(".", 1)[-1])
+    add_offer = bool(re.search(r"\b(add|include|put|anadir|agregar|ajouter|hinzufugen|adicionar|ekle)\b", question))
+    info_offer = bool(re.search(r"\b(tell you (?:more|about)|know more|more (?:about|details)|describe|explain|"
+                                r"contar(?:te)? mas|saber mas|en dire plus|plus de details|mehr erfahren|"
+                                r"mehr erzahlen|mais detalhes|mais sobre|daha fazla|anlat)\b", question))
+    if not add_offer and not info_offer:
+        return None
+    if add_offer and state.step == "success":
+        return None
+    user_items = [item_id for item_id in _mentioned_catalog_items(user_message, language)
+                  if item_id != state.unavailable]
+    reply_items = [item_id for item_id in _mentioned_catalog_items(reply, language)
+                   if item_id != state.unavailable]
+    items = (reply_items if len(reply_items) == 1 else
+             user_items if len(user_items) == 1 else reply_items)
+    if not items and history:
+        for turn in reversed(history[-2:]):
+            previous = [item_id for item_id in _mentioned_catalog_items(turn["content"], language)
+                        if item_id != state.unavailable]
+            if len(previous) == 1:
+                items = previous
+                break
+    if not items:
+        return None
+    action = "add_item" if add_offer else "describe_item"
+    return PendingClarification(action=action, item_query=name(items[0], language),
+                                matches=items if len(items) > 1 else [])
+
+
 ACTION_WORDS = re.compile(
-    r"\b(add|take|want|give|have|remove|change|replace|switch|pay|review|done|confirm|"
+    r"\b(add|take|want|give|have|remove|delete|change|edit|modify|update|replace|switch|pay|card|cash|review|done|confirm|"
     r"anadir|agregar|quiero|quitar|cambiar|pagar|revisar|"
     r"ajouter|prendre|retirer|enlever|changer|payer|verifier|"
     r"hinzufugen|nehmen|entfernen|ersetzen|zahlen|prufen|"
@@ -507,7 +616,7 @@ ACTION_WORDS = re.compile(
 
 
 def _is_order_change_request(message: str) -> bool:
-    return bool(re.search(r"\b(add|remove|delete|replace|switch|change|take off|pay|review|"
+    return bool(re.search(r"\b(add|remove|delete|replace|switch|change|edit|modify|update|take off|pay|review|"
                           r"anadir|agregar|quitar|cambiar|pagar|ajouter|retirer|enlever|"
                           r"hinzufugen|entfernen|ersetzen|zahlen|adicionar|retirar|"
                           r"ekle|cikar|degistir|ode)\b", _fold(message)))

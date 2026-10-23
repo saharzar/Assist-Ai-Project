@@ -32,6 +32,17 @@ CLARIFICATION_TEXT = {
 for _language, _messages in CLARIFICATION_TEXT.items():
     TEXT[_language].update(_messages)
 
+REPLACEMENT_QUESTION = {
+    "en": "What would you like instead?",
+    "es": "¿Qué te gustaría elegir en su lugar?",
+    "de": "Was möchtest du stattdessen?",
+    "fr": "Que souhaitez-vous à la place ?",
+    "pt": "O que gostarias de escolher em vez disso?",
+    "tr": "Onun yerine ne istersin?",
+}
+for _language, _question in REPLACEMENT_QUESTION.items():
+    TEXT[_language]["ask_replacement"] = _question
+
 HELP_TEXT = {
     "en": "I can recommend a dish, add or remove an item, show your order, or tell you the total. What would you like to try?",
     "es": "Puedo recomendar un plato, añadir o quitar un artículo, mostrar tu pedido o decirte el total. ¿Qué te gustaría hacer?",

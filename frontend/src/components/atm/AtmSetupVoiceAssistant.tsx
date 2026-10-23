@@ -24,6 +24,7 @@ export function AtmSetupVoiceAssistant({
   onSpeakingChange,
   onMessageSettled,
   scenario,
+  streamAudio = false,
   compact = false,
   speechDelayMs = 0,
 }: {
@@ -35,6 +36,7 @@ export function AtmSetupVoiceAssistant({
   onSpeakingChange?: (speaking: boolean) => void;
   onMessageSettled?: (message: string, outcome: AssistantSpeechOutcome) => void;
   scenario?: "restaurant";
+  streamAudio?: boolean;
   compact?: boolean;
   speechDelayMs?: number;
 }) {
@@ -75,6 +77,7 @@ export function AtmSetupVoiceAssistant({
       if (speechRequestRef.current !== requestId) return;
       speakAssistantMessage(message, {
         scenario,
+        streamAudio,
         allowBrowserFallback: true,
         onStart: () => { if (speechRequestRef.current !== requestId) return; setIsSpeaking(true); onSpeakingChange?.(true); },
         onEnd: () => { if (speechRequestRef.current !== requestId) return; setIsSpeaking(false); onSpeakingChange?.(false); settleSpeech(message, "ended"); },
@@ -87,7 +90,7 @@ export function AtmSetupVoiceAssistant({
         },
       }, language);
     });
-  }, [language, message, onSpeakingChange, scenario, settleSpeech, soundEnabled, text.assistantVoiceProblem]);
+  }, [language, message, onSpeakingChange, scenario, settleSpeech, soundEnabled, streamAudio, text.assistantVoiceProblem]);
 
   useEffect(() => {
     const speechKey = `${language}:${speechRequestId}:${message}`;

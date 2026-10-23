@@ -11,6 +11,7 @@ class TtsRequest(BaseModel):
     text: str = Field(min_length=1)
     language: TtsLanguage = "en"
     scenario: Literal["restaurant"] | None = None
+    stream_audio: bool = False
 
 
 class TtsUsageResponse(BaseModel):

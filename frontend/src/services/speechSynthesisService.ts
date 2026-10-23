@@ -3,10 +3,11 @@ import type { LanguageCode } from "../i18n";
 import { API_BASE_URL, ApiError, getSessionHeaders } from "./api";
 import { notifyTtsUsageUpdated, type TtsUsage } from "./ttsUsageService";
 import { notifySpeechProviderUsed, type GlobalSpeechProvider } from "./speechProviderService";
-import { prepareRestaurantAudio, resumeRestaurantAudio, restaurantAudioSuspended, startRestaurantAudioAnalysis, startRestaurantBrowserSpeechAnimation, stopRestaurantAudioAnalysis } from "./restaurantSpeechAudio";
+import { prepareRestaurantAudio, pulseRestaurantBrowserSpeechWord, resumeRestaurantAudio, restaurantAudioSuspended, startRestaurantAudioAnalysis, startRestaurantBrowserSpeechAnimation, stopRestaurantAudioAnalysis } from "./restaurantSpeechAudio";
 
 type SpeechCallbacks = {
   scenario?: "restaurant";
+  streamAudio?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (message: string) => void;
@@ -17,6 +18,7 @@ type SpeechCallbacks = {
 
 type PreparedSpeech = {
   audioBlob: Blob | null;
+  audioStream?: ReadableStream<Uint8Array>;
   provider: string | null;
   remaining: number | null;
   usage: TtsUsage | null;
@@ -83,6 +85,9 @@ export function stopAssistantSpeech() {
 
   if (reusableSonioxAudio) {
     reusableSonioxAudio.onplay = null;
+    reusableSonioxAudio.onplaying = null;
+    reusableSonioxAudio.onwaiting = null;
+    reusableSonioxAudio.onstalled = null;
     reusableSonioxAudio.onended = null;
     reusableSonioxAudio.onerror = null;
     reusableSonioxAudio.onpause = null;
@@ -136,11 +141,11 @@ async function playBackendTts(
   language: LanguageCode,
 ) {
   try {
-    const prepared = await getPreparedSpeech(message, language, abortController.signal, callbacks.scenario);
+    const prepared = await getPreparedSpeech(message, language, abortController.signal, callbacks.scenario, callbacks.streamAudio);
     if (abortController.signal.aborted || activeSpeechId !== speechId) {
       return;
     }
-    if (prepared.provider === "browser" && !prepared.audioBlob) {
+    if (prepared.provider === "browser" && !prepared.audioBlob && !prepared.audioStream) {
       if (callbacks.allowBrowserFallback === false) {
         callbacks.onError?.("Soniox voice is currently unavailable.");
         callbacks.onEnd?.();
@@ -161,6 +166,15 @@ async function playBackendTts(
       callbacks.onUsageUpdate?.(prepared.usage);
     }
 
+    if (prepared.audioStream) {
+      const completedAudio = await playSonioxStream(prepared.audioStream, callbacks, speechId, abortController.signal);
+      if (completedAudio && activeSpeechId === speechId) {
+        rememberPreparedSpeech(`${callbacks.scenario ?? "default"}:${getSpeechCacheKey(message, language)}`, {
+          ...prepared, audioBlob: completedAudio, audioStream: undefined,
+        });
+      }
+      return;
+    }
     const audioBlob = prepared.audioBlob;
     if (!audioBlob) {
       throw new Error("Assistant voice returned no audio.");
@@ -214,22 +228,46 @@ async function playSonioxHtmlAudio(
   prepareRestaurantAudio(audio, callbacks.scenario === "restaurant");
   if (activeSpeechId !== speechId) return;
   const audioUrl = URL.createObjectURL(audioBlob);
+  await playSonioxUrl(audioUrl, callbacks, speechId);
+}
+
+async function playSonioxUrl(audioUrl: string, callbacks: SpeechCallbacks, speechId: number) {
+  const audio = getReusableSonioxAudio();
+  prepareRestaurantAudio(audio, callbacks.scenario === "restaurant");
+  if (activeSpeechId !== speechId) { URL.revokeObjectURL(audioUrl); return; }
   currentSonioxAudioUrl = audioUrl;
-  audio.src = audioUrl;
-  audio.currentTime = 0;
+  if (audio.src !== audioUrl) {
+    audio.src = audioUrl;
+    audio.currentTime = 0;
+  }
   audio.volume = 1;
+  let playbackStarted = false;
+  const markPlaybackStarted = () => {
+    if (activeSpeechId !== speechId || playbackStarted) return;
+    playbackStarted = true;
+    callbacks.onStart?.();
+  };
+  // Cached audio can begin before its first "playing" event. Keep the waiter
+  // in the speaking state from the media element's actual playback start.
+  audio.onplay = markPlaybackStarted;
   audio.onpause = () => {
     if (activeSpeechId === speechId) stopRestaurantAudioAnalysis();
   };
-  audio.onplay = () => {
+  audio.onwaiting = audio.onstalled = () => {
+    if (activeSpeechId === speechId) stopRestaurantAudioAnalysis();
+  };
+  audio.onplaying = () => {
     if (activeSpeechId === speechId) {
       if (callbacks.scenario === "restaurant") startRestaurantAudioAnalysis(audio);
-      callbacks.onStart?.();
+      markPlaybackStarted();
     }
   };
   audio.onended = () => {
     stopRestaurantAudioAnalysis();
     audio.onplay = null;
+    audio.onplaying = null;
+    audio.onwaiting = null;
+    audio.onstalled = null;
     audio.onended = null;
     audio.onerror = null;
     if (currentSonioxAudioUrl === audioUrl) {
@@ -259,6 +297,88 @@ async function playSonioxHtmlAudio(
     // its existing audio on user input instead of treating this as a provider failure.
     await waitForSonioxPlayback(audio, speechId);
   }
+}
+
+async function playSonioxStream(
+  stream: ReadableStream<Uint8Array>, callbacks: SpeechCallbacks, speechId: number, signal: AbortSignal,
+): Promise<Blob | null> {
+  if (typeof MediaSource === "undefined" || !MediaSource.isTypeSupported("audio/mpeg")) {
+    const audioBlob = await new Response(stream).blob();
+    await playSonioxHtmlAudio(audioBlob, callbacks, speechId);
+    return audioBlob;
+  }
+  const mediaSource = new MediaSource();
+  const audioUrl = URL.createObjectURL(mediaSource);
+  const audio = getReusableSonioxAudio();
+  prepareRestaurantAudio(audio, callbacks.scenario === "restaurant");
+  currentSonioxAudioUrl = audioUrl;
+  audio.src = audioUrl;
+  const reader = stream.getReader();
+  const audioParts: ArrayBuffer[] = [];
+  let started = false;
+  let completed = false;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const onOpen = () => { signal.removeEventListener("abort", onAbort); resolve(); };
+      const onAbort = () => { mediaSource.removeEventListener("sourceopen", onOpen); reject(new DOMException("Speech cancelled.", "AbortError")); };
+      mediaSource.addEventListener("sourceopen", onOpen, { once: true });
+      signal.addEventListener("abort", onAbort, { once: true });
+      if (signal.aborted) onAbort();
+    });
+    const buffer = mediaSource.addSourceBuffer("audio/mpeg");
+    while (activeSpeechId === speechId && !signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) { completed = true; break; }
+      if (!value?.byteLength) continue;
+      const audioChunk = new Uint8Array(value);
+      audioParts.push(audioChunk.buffer);
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          buffer.removeEventListener("updateend", onEnd);
+          buffer.removeEventListener("error", onError);
+          signal.removeEventListener("abort", onAbort);
+        };
+        const onEnd = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error("Assistant audio could not play.")); };
+        const onAbort = () => { cleanup(); reject(new DOMException("Speech cancelled.", "AbortError")); };
+        buffer.addEventListener("updateend", onEnd, { once: true });
+        buffer.addEventListener("error", onError, { once: true });
+        signal.addEventListener("abort", onAbort, { once: true });
+        try {
+          buffer.appendBuffer(audioChunk);
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      });
+      if (!started) {
+        started = true;
+        void playSonioxUrl(audioUrl, callbacks, speechId).catch((error: unknown) => {
+          if (activeSpeechId === speechId && !signal.aborted) {
+            callbacks.onError?.(error instanceof Error ? error.message : "Assistant audio could not play.");
+            callbacks.onEnd?.();
+          }
+        });
+      }
+    }
+    if (mediaSource.readyState === "open" && !buffer.updating) mediaSource.endOfStream();
+    if (!started && !signal.aborted) throw new Error("Assistant voice returned no audio.");
+  } catch (error) {
+    if (!started) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      if (currentSonioxAudioUrl === audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        currentSonioxAudioUrl = null;
+      }
+      throw error;
+    }
+    if (activeSpeechId === speechId && !signal.aborted && mediaSource.readyState === "open") mediaSource.endOfStream("network");
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  return completed && started ? new Blob(audioParts, { type: "audio/mpeg" }) : null;
 }
 
 function waitForSonioxPlayback(audio: HTMLAudioElement, speechId: number): Promise<void> {
@@ -332,6 +452,11 @@ function playBrowserTts(
       callbacks.onStart?.();
     }
   };
+  utterance.onboundary = (event) => {
+    if (activeSpeechId === speechId && callbacks.scenario === "restaurant" && (!event.name || event.name === "word")) {
+      pulseRestaurantBrowserSpeechWord(event.charLength || 4);
+    }
+  };
   utterance.onend = () => {
     if (activeSpeechId !== speechId) return;
     if (callbacks.scenario === "restaurant") stopRestaurantAudioAnalysis();
@@ -352,11 +477,22 @@ function getSpeechCacheKey(message: string, language: LanguageCode) {
   return `${language}:${message.trim()}`;
 }
 
+function rememberPreparedSpeech(cacheKey: string, prepared: PreparedSpeech) {
+  if (!prepared.audioBlob || prepared.provider === "browser") return;
+  preparedSpeechCache.delete(cacheKey);
+  preparedSpeechCache.set(cacheKey, prepared);
+  while (preparedSpeechCache.size > MAX_PREPARED_SPEECH_ITEMS) {
+    const oldestKey = preparedSpeechCache.keys().next().value;
+    if (oldestKey) preparedSpeechCache.delete(oldestKey);
+  }
+}
+
 async function getPreparedSpeech(
   message: string,
   language: LanguageCode,
   signal?: AbortSignal,
   scenario?: "restaurant",
+  streamAudio = false,
 ): Promise<PreparedSpeech> {
   const isGuest = !localStorage.getItem("assist_ai_token") && Boolean(localStorage.getItem("assist_ai_guest_session"));
   if (isGuest) {
@@ -369,6 +505,11 @@ async function getPreparedSpeech(
     preparedSpeechCache.delete(cacheKey);
     preparedSpeechCache.set(cacheKey, cached);
     return cached;
+  }
+  if (scenario === "restaurant" && streamAudio) {
+    const prepared = await fetchPreparedSpeech(message, language, signal, scenario, true);
+    rememberPreparedSpeech(cacheKey, prepared);
+    return prepared;
   }
 
   const pending = pendingSpeechRequests.get(cacheKey);
@@ -390,13 +531,7 @@ async function getPreparedSpeech(
       // Cache generated provider audio, but never remember a browser fallback.
       // Otherwise one temporary Soniox failure makes this message use the
       // browser voice for the rest of the session even after Soniox recovers.
-      if (prepared.audioBlob && prepared.provider !== "browser") {
-        preparedSpeechCache.set(cacheKey, prepared);
-        while (preparedSpeechCache.size > MAX_PREPARED_SPEECH_ITEMS) {
-          const oldestKey = preparedSpeechCache.keys().next().value;
-          if (oldestKey) preparedSpeechCache.delete(oldestKey);
-        }
-      }
+      rememberPreparedSpeech(cacheKey, prepared);
       return prepared;
     })
     .finally(() => pendingSpeechRequests.delete(cacheKey));
@@ -410,6 +545,7 @@ async function fetchPreparedSpeech(
   language: LanguageCode,
   signal?: AbortSignal,
   scenario?: "restaurant",
+  streamAudio = false,
 ): Promise<PreparedSpeech> {
   const response = await fetch(`${API_BASE_URL}/api/tts`, {
     method: "POST",
@@ -419,7 +555,7 @@ async function fetchPreparedSpeech(
       "X-Speech-Request-ID": crypto.randomUUID(),
       "X-Browser-Speech-Supported": String("speechSynthesis" in window),
     },
-    body: JSON.stringify({ text: message, language, ...(scenario ? { scenario } : {}) }),
+    body: JSON.stringify({ text: message, language, ...(scenario ? { scenario } : {}), ...(streamAudio ? { stream_audio: true } : {}) }),
     signal,
   });
 
@@ -449,7 +585,8 @@ async function fetchPreparedSpeech(
   if (usage) notifyTtsUsageUpdated(usage);
 
   return {
-    audioBlob: await response.blob(),
+    audioBlob: streamAudio && response.body && response.headers.get("X-TTS-Cache") !== "HIT" ? null : await response.blob(),
+    audioStream: streamAudio && response.headers.get("X-TTS-Cache") !== "HIT" ? response.body ?? undefined : undefined,
     provider,
     remaining,
     usage,

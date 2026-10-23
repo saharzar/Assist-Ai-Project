@@ -28,6 +28,7 @@ export function WaiterConversationBar({ language, value, pending, onChange, onSe
     const instance = createSpeechRecognizer({
       onReady: () => setListening(true),
       onPartialResult: (transcript) => onChange(transcript.slice(0, 1200)),
+      onFallback: () => setVoiceStatus(text.conversationBrowserFallback),
       onResult: (transcript) => { setVoiceStatus(text.conversationReviewSpeech); onVoiceResult?.(transcript.slice(0, 1200)); },
       onError: () => setVoiceStatus(text.conversationVoiceError),
       onEnd: () => { recognizer.current = null; setListening(false); },

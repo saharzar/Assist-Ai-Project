@@ -147,7 +147,7 @@ def resolve_menu_item(query: str, language: str, category: str | None = None,
     if not isinstance(query, str) or not query.strip() or len(query) > 120:
         return {"status": "not_found"}
     needle = _normalize_name(query)
-    articles = {"the", "a", "an", "el", "la", "los", "las", "le", "les", "un", "une", "der", "die", "das", "o", "os", "as", "bir"}
+    articles = {"the", "a", "an", "my", "our", "el", "la", "los", "las", "le", "les", "un", "une", "der", "die", "das", "o", "os", "as", "bir"}
     words = needle.split()
     stripped = " ".join(words[1:]) if words and words[0] in articles else needle
     aliases = {"hamburger": "burger", "hamburgers": "burger", "hamburguesa": "burger",

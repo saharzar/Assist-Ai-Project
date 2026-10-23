@@ -1,11 +1,13 @@
+import logging
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import get_current_user, get_speech_actor
-from app.database import get_db
+from app.database import SessionLocal, get_db
 from app.models.user import User
 from app.models.guest_session import GuestSession
 from app.schemas.tts import TtsRequest, TtsUsageResponse
@@ -14,8 +16,12 @@ from app.services.tts_service import (
     get_or_create_tts_usage,
     synthesize_tts_with_cache,
     reserve_tts_characters,
+    refund_tts_characters,
+    get_tts_usage_snapshot,
+    TtsReservation,
+    save_tts_audio_cache,
 )
-from app.services.soniox_service import get_soniox_tts_cache_voice
+from app.services.soniox_service import get_soniox_tts_cache_voice, open_soniox_tts_stream
 from app.services.speech_provider_manager import (
     get_provider_chain,
     mark_provider_failure,
@@ -25,6 +31,7 @@ from app.services.speech_provider_manager import (
 )
 
 router = APIRouter(prefix="/api/tts", tags=["tts"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/usage", response_model=TtsUsageResponse)
@@ -79,6 +86,7 @@ def create_tts_audio(
         else None
     )
     decisions = get_provider_chain(db, "tts", browser_supported=browser_speech_supported)
+    stream_audio = payload.scenario == "restaurant" and payload.stream_audio
     db.commit()
     last_error: HTTPException | None = None
     for index, decision in enumerate(decisions):
@@ -101,15 +109,58 @@ def create_tts_audio(
                 "X-TTS-Reset-Date": usage.tts_reset_date.isoformat() if usage and usage.tts_reset_date else "", "X-TTS-Language": payload.language, "X-TTS-Cache": "HIT",
             })
         try:
-            tts_result = synthesize_tts_with_cache(
-                db,
-                user_id,
-                text,
-                payload.language,
-                request_id=request_id,
-                cache_voice=voice,
-                **({"voice_override": voice_override} if voice_override else {}),
-            )
+            if stream_audio:
+                reservation = reserve_tts_characters(db, user_id, character_count) if user_id is not None else TtsReservation(character_count, 0, 0)
+                try:
+                    client, upstream = open_soniox_tts_stream(
+                        text, payload.language, request_id, voice=voice_override,
+                    )
+                except Exception:
+                    if user_id is not None:
+                        refund_tts_characters(db, user_id, reservation.characters_used)
+                    raise
+                usage = get_tts_usage_snapshot(db, user_id) if user_id is not None else None
+                record_request_result(db, request_id, "tts", decision.provider, "success", characters_used=reservation.characters_used)
+
+                def audio_chunks():
+                    chunks: list[bytes] = []
+                    completed = False
+                    try:
+                        for chunk in upstream.iter_bytes(chunk_size=8192):
+                            chunks.append(chunk)
+                            yield chunk
+                        completed = True
+                    finally:
+                        upstream.close()
+                        client.close()
+                        if completed and chunks:
+                            try:
+                                with SessionLocal() as cache_db:
+                                    save_tts_audio_cache(cache_db, text, payload.language, voice, b"".join(chunks))
+                            except Exception:
+                                logger.exception("Could not cache streamed restaurant speech.")
+
+                return StreamingResponse(audio_chunks(), media_type="audio/mpeg", headers={
+                    "X-Speech-Provider": decision.provider,
+                    "X-TTS-Remaining-Characters": str(usage.remaining_characters) if usage else "0",
+                    "X-TTS-Used-Characters": str(reservation.characters_used),
+                    "X-TTS-Limit-Characters": str(usage.limit_characters) if usage else "0",
+                    "X-TTS-Reset-Date": usage.reset_date.isoformat() if usage else "",
+                    "X-TTS-Language": payload.language,
+                    "X-TTS-Cache": "MISS",
+                    "X-Accel-Buffering": "no",
+                    "Cache-Control": "no-store",
+                })
+            else:
+                tts_result = synthesize_tts_with_cache(
+                    db,
+                    user_id,
+                    text,
+                    payload.language,
+                    request_id=request_id,
+                    cache_voice=voice,
+                    **({"voice_override": voice_override} if voice_override else {}),
+                )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN and browser_speech_supported:
                 browser_decision = next(

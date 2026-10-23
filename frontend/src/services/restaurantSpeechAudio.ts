@@ -1,10 +1,10 @@
 /** Normalized PCM RMS (0..1), expressed in dBFS so thresholds are interpretable. */
 export const MOUTH_CONFIG = {
-  closeDb: -47, slightDb: -43, leaveSlightDb: -47,
-  openDb: -35, leaveOpenDb: -39, wideDb: -20, leaveWideDb: -24,
-  extraDb: -9, leaveExtraDb: -13,
-  silenceDb: -48, silenceMs: 80, holdMs: 90, attackMs: 35, releaseMs: 55,
-  intervalMs: 33, roundedInitialDelayMs: 600, roundedHoldMs: 120, roundedCooldownMs: 2400,
+  closeDb: -44, slightDb: -41, leaveSlightDb: -44,
+  openDb: -31, leaveOpenDb: -38, wideDb: -18, leaveWideDb: -22,
+  extraDb: -7, leaveExtraDb: -11,
+  silenceDb: -43, silenceMs: 60, holdMs: 170, attackMs: 25, releaseMs: 90,
+  intervalMs: 33, roundedInitialDelayMs: 800, roundedHoldMs: 100, roundedCooldownMs: 2800,
 };
 export type MouthState = "closed" | "slight" | "open" | "wide" | "extra" | "rounded";
 type AudioMouthState = Exclude<MouthState, "rounded">;
@@ -33,20 +33,13 @@ export class MouthEnvelope {
     let next = this.audioState;
     if (this.silentSince !== null && now - this.silentSince >= MOUTH_CONFIG.silenceMs) {
       this.level = 0;
-      next = "closed"; // Real pauses override the hold time.
-    } else if (now - this.changed >= MOUTH_CONFIG.holdMs) {
-      if (this.audioState === "closed" && db >= MOUTH_CONFIG.slightDb) next = "slight";
-      else if (this.audioState === "slight") {
-        if (db < MOUTH_CONFIG.leaveSlightDb) next = "closed";
-        else if (db >= MOUTH_CONFIG.openDb) next = "open";
-      } else if (this.audioState === "open") {
-        if (db < MOUTH_CONFIG.leaveOpenDb) next = "slight";
-        else if (db >= MOUTH_CONFIG.wideDb) next = "wide";
-      } else if (this.audioState === "wide") {
-        if (db < MOUTH_CONFIG.leaveWideDb) next = "open";
-        else if (db >= MOUTH_CONFIG.extraDb) next = "extra";
-      } else if (this.audioState === "extra" && db < MOUTH_CONFIG.leaveExtraDb) next = "wide";
-      if (this.audioState !== "closed" && db < MOUTH_CONFIG.closeDb) next = "closed";
+      next = "closed"; // Short gaps between words close the mouth promptly.
+    } else if (hasSpeechEnergy && (this.audioState === "closed" || now - this.changed >= MOUTH_CONFIG.holdMs)) {
+      if (db >= MOUTH_CONFIG.extraDb) next = "extra";
+      else if (db >= MOUTH_CONFIG.wideDb || (this.audioState === "wide" && db >= MOUTH_CONFIG.leaveWideDb)) next = "wide";
+      else if (db >= MOUTH_CONFIG.openDb || (this.audioState === "open" && db >= MOUTH_CONFIG.leaveOpenDb)) next = "open";
+      else if (db >= MOUTH_CONFIG.slightDb || (this.audioState === "slight" && db >= MOUTH_CONFIG.leaveSlightDb)) next = "slight";
+      else next = "closed";
     }
     if (next !== this.audioState) { this.audioState = next; this.changed = now; }
     if (!hasSpeechEnergy || this.audioState === "closed" || this.audioState === "slight") this.state = this.audioState;
@@ -83,7 +76,7 @@ export function subscribeRestaurantMouth(listener: () => void) {
 }
 let graph: { context: AudioContext; source: MediaElementAudioSourceNode; analyser: AnalyserNode; audio: HTMLAudioElement } | null = null;
 let frame: number | null = null;
-const fallbackMouth: MouthState[] = ["slight", "open", "wide", "open", "rounded", "slight", "closed", "open"];
+let browserWordTimer: number | null = null;
 /** One graph for the existing reusable player. Never make a second audible source.
  * Source -> destination is the only audible path; analyser is a silent side branch.
  * Keep the graph for the player's lifetime: a media element can be bound only once.
@@ -114,28 +107,26 @@ export const resumeRestaurantAudio = () => graph?.context.resume() ?? Promise.re
 export function stopRestaurantAudioAnalysis() {
   if (frame !== null) cancelAnimationFrame(frame);
   frame = null;
+  if (browserWordTimer !== null) window.clearTimeout(browserWordTimer);
+  browserWordTimer = null;
   publish("closed");
 }
-/** Browser speech does not expose PCM. Animate only while its utterance is active. */
+/** Browser speech exposes word boundaries even though it does not expose PCM. */
 export function startRestaurantBrowserSpeechAnimation() {
   stopRestaurantAudioAnalysis();
-  let startedAt: number | null = null;
-  let lastStep = -1;
-  const tick = (now: number) => {
-    if (startedAt === null) startedAt = now;
-    const step = Math.floor((now - startedAt) / 105);
-    if (step !== lastStep) {
-      lastStep = step;
-      publish(fallbackMouth[step % fallbackMouth.length] ?? "closed");
-    }
-    frame = requestAnimationFrame(tick);
-  };
-  frame = requestAnimationFrame(tick);
+}
+export function pulseRestaurantBrowserSpeechWord(charLength: number) {
+  if (browserWordTimer !== null) window.clearTimeout(browserWordTimer);
+  publish("open");
+  browserWordTimer = window.setTimeout(() => {
+    browserWordTimer = null;
+    publish("closed");
+  }, Math.min(260, Math.max(130, charLength * 32)));
 }
 export function startRestaurantAudioAnalysis(audio: HTMLAudioElement) {
   stopRestaurantAudioAnalysis();
   if (!graph || graph.audio !== audio) {
-    startRestaurantBrowserSpeechAnimation();
+    // Never run an un-timed mouth loop when audio analysis is unavailable.
     return;
   }
   const analyser = graph.analyser;
@@ -145,7 +136,8 @@ export function startRestaurantAudioAnalysis(audio: HTMLAudioElement) {
   const tick = (now: number) => {
     if (now - last >= MOUTH_CONFIG.intervalMs) {
       last = now;
-      if (audio.paused || audio.ended || restaurantAudioSuspended()) publish("closed");
+      if (audio.paused || audio.ended || audio.seeking || audio.muted || audio.volume === 0 ||
+          (typeof audio.readyState === "number" && audio.readyState < 2) || restaurantAudioSuspended()) publish("closed");
       else {
         analyser.getFloatTimeDomainData(samples);
         publish(envelope.update(pcmRms(samples), now));
