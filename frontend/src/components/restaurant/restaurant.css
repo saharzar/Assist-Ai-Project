@@ -587,19 +587,21 @@
 .restaurant-scenario-header .restaurant-leave-link:hover { background: #f0e3cf; }
 .restaurant-scenario-header .restaurant-leave-link:focus-visible { outline: 3px solid #0aa6b1; outline-offset: 3px; }
 
-/* A connected secondary control keeps the row stable for one and two digit counts. */
-.restaurant-order-selected-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) 34px; grid-template-areas: "image copy remove" "image quantity quantity"; min-height: 64px; align-items: center; gap: 3px 7px; }
-.restaurant-order-thumbnail { grid-area: image; width: 44px; height: 44px; }
+/* Keep every order line independent so a long, scrolling cart cannot compress its controls. */
+.restaurant-order-selected-items { align-content: start; grid-auto-rows: max-content; }
+.restaurant-order-selected-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) 70px 26px; grid-template-areas: "image copy quantity remove"; min-height: 60px; align-items: center; gap: 4px; padding: 6px 0; }
+.restaurant-order-thumbnail { grid-area: image; width: 36px; height: 36px; }
 .restaurant-order-item-copy { grid-area: copy; min-width: 0; }
-.restaurant-order-quantity-controls { grid-area: quantity; display: inline-grid; grid-template-columns: 34px 30px 34px; width: max-content; gap: 0; margin-left: auto; overflow: hidden; border: 1px solid #c6ad88; border-radius: 7px; background: #fffaf0; }
-.restaurant-order-quantity-controls button { width: 34px; height: 34px; border: 0; border-radius: 0; background: transparent; font-size: 19px; line-height: 1; }
+.restaurant-order-item-copy strong { overflow-wrap: normal; word-break: normal; }
+.restaurant-order-quantity-controls { grid-area: quantity; display: inline-grid; grid-template-columns: 24px 20px 24px; width: 70px; gap: 0; margin: 0; overflow: hidden; border: 1px solid #c6ad88; border-radius: 6px; background: #fffaf0; }
+.restaurant-order-quantity-controls button { width: 24px; height: 27px; border: 0; border-radius: 0; background: transparent; font-size: 15px; line-height: 1; }
 .restaurant-order-quantity-controls button:hover:not(:disabled) { background: #efdfc6; }
 .restaurant-order-quantity-controls button:first-child { border-right: 1px solid #ddccb2; }
 .restaurant-order-quantity-controls button:last-child { border-left: 1px solid #ddccb2; }
-.restaurant-order-quantity-controls > span { display: grid; min-width: 30px; place-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
-.restaurant-order-remove { grid-area: remove; width: 34px; height: 34px; margin: 0; border-radius: 7px; font-size: 18px; }
+.restaurant-order-quantity-controls > span { display: grid; min-width: 20px; place-items: center; font-size: 11px; font-variant-numeric: tabular-nums; }
+.restaurant-order-remove { grid-area: remove; width: 26px; height: 29px; margin: 0; border-radius: 6px; font-size: 15px; }
 .restaurant-order-area .restaurant-order-ticket { display: flex; height: 100%; max-height: 100%; min-height: 0; flex-direction: column; overflow: hidden; }
-.restaurant-order-area .restaurant-order-selected-items { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.restaurant-order-area .restaurant-order-selected-items { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; }
 .restaurant-order-area .restaurant-order-ticket-footer { flex: none; background: #fff8ea; }
 
 /* Review lines use a full row, with total and actions kept below the scrolling list. */
@@ -619,6 +621,6 @@
 @media (max-width: 560px) {
   .restaurant-scenario-header h1 { font-size: 20px; }
   .restaurant-scenario-header .restaurant-leave-link { padding: 7px 9px; font-size: 12px; }
-  .restaurant-review-stage .restaurant-order-selected-item { grid-template-columns: 54px minmax(0, 1fr) 34px; grid-template-areas: "image copy remove" "image quantity quantity"; min-height: 82px; gap: 3px 7px; }
+  .restaurant-review-stage .restaurant-order-selected-item { grid-template-columns: 54px minmax(0, 1fr) 70px 26px; grid-template-areas: "image copy quantity remove"; min-height: 76px; gap: 6px; }
   .restaurant-review-stage .restaurant-order-review .restaurant-order-thumbnail { width: 54px; height: 54px; }
 }

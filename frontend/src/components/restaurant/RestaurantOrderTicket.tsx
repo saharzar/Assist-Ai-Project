@@ -38,7 +38,7 @@ export function RestaurantOrderTicket({ order, language, onRemove, onQuantityCha
         const lineTotal = formatRestaurantPrice(getRestaurantMenuItemPrice(item, language) * quantity, language);
         return <li key={item.id} className="restaurant-order-selected-item">
           <img src={getRestaurantMenuImage(item.id)} alt="" className="restaurant-order-thumbnail" loading="lazy" decoding="async" />
-          <span className="restaurant-order-item-copy"><strong>{name} ×{quantity}</strong>
+          <span className="restaurant-order-item-copy"><strong>{name}{!onQuantityChange && ` ×${quantity}`}</strong>
             <span>{quantity > 1 ? `${unitPrice} × ${quantity} = ${lineTotal}` : unitPrice}</span></span>
           {onQuantityChange && <RestaurantQuantityControl name={name} quantity={quantity} decrease={text.decrease} increase={text.increase} onChange={(next) => onQuantityChange(category, item.id, next)} />}
           {onRemove && <button type="button" className="restaurant-order-remove" aria-label={text.remove.replace("{item}", name)} onClick={() => onRemove(category, item.id)}>×</button>}
