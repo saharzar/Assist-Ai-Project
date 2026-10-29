@@ -102,7 +102,7 @@ describe("restaurant book and order", () => {
   });
   it("starts with the cover, waiter guidance, disabled conversation controls, and leave action", () => {
     const markup = html();
-    expect(restaurantOrderTranslations.en.welcomeCaption).toBe("Hello, welcome to our restaurant. Take a look at our menu, and whenever you're ready, choose what you would like.");
+    expect(restaurantOrderTranslations.en.welcomeCaption).toBe("Hello, welcome! Would you like to see our menu?");
     expect(markup).toContain('aria-label="Open menu"');
     expect(markup).toContain('class="restaurant-dialogue restaurant-waiter-caption"');
     expect(markup).toContain('class="restaurant-conversation-bar"');
@@ -120,7 +120,7 @@ describe("restaurant book and order", () => {
     expect((markup.match(/class="restaurant-background"/g) ?? []).length).toBe(1);
     expect((markup.match(/class="restaurant-counter-front"/g) ?? []).length).toBe(1);
     expect((markup.match(/restaurant-scene-waiter/g) ?? []).length).toBe(1);
-    expect(state.current?.order).toEqual({ mains: null, salads: null, soups: null, desserts: null, drinks: null });
+    expect(state.current?.order).toEqual({ mains: null, salads: null, soups: null, desserts: null, drinks: null, lines: [] });
   });
   it("opens and closes a two-page book with all five categories", () => {
     click("Open menu");
@@ -173,16 +173,16 @@ describe("restaurant book and order", () => {
     expect(html()).toContain('aria-pressed="true"');
     expect(html()).toContain('class="restaurant-order-thumbnail"');
   });
-  it("replaces within a category, removes selections, and updates the total", () => {
+  it("keeps multiple items within a category, removes selections, and updates the total", () => {
     makeComplete();
     select("salads", "salad");
     select("salads", "caesar");
     expect(state.current?.order.salads).toBe("caesar");
-    expect(getOrderTotalCents(state.current!.order, "en")).toBe(1200 + 200 + 950);
-    expect(html()).toContain("€23.50");
+    expect(getOrderTotalCents(state.current!.order, "en")).toBe(1200 + 200 + 800 + 950);
+    expect(html()).toContain("€31.50");
     click(restaurantOrderTranslations.en.remove.replace("{item}", "Caesar salad"));
-    expect(state.current?.order.salads).toBeNull();
-    expect(getOrderTotalCents(state.current!.order, "en")).toBe(1400);
+    expect(state.current?.order.salads).toBe("salad");
+    expect(getOrderTotalCents(state.current!.order, "en")).toBe(2200);
     click(restaurantOrderTranslations.en.remove.replace("{item}", "Pizza"));
     expect(state.current?.order.mains).toBeNull();
     const review = elements(page()).find((node) => node.type === "button" && renderToStaticMarkup(node).includes("Review order"));
@@ -260,9 +260,9 @@ describe("restaurant book and order", () => {
     (bar().props.onChange as (value: string) => void)("Hello");
     await (bar().props.onSend as () => Promise<void>)();
     const markup = renderToStaticMarkup(shell());
-    expect(markup).toContain('class="restaurant-llm-reply"');
+    expect(markup).toContain('class="restaurant-dialogue-message"');
     expect(markup).toContain("Happy to help.");
-    expect(markup).toContain('data-spoken-message="Welcome"');
+    expect(markup).toContain('data-spoken-message="Happy to help."');
     expect(markup).toContain("Menu");
     expect(chatWithRestaurantWaiter).toHaveBeenCalledWith({ message: "Hello", language: "en", history: [], state: restaurantWaiterSnapshot(initialRestaurantState, initialRestaurantPayment), pending: null }, expect.any(AbortSignal));
   });
@@ -303,8 +303,7 @@ describe("restaurant book and order", () => {
     expect(review?.props.disabled).toBe(false);
     click("Review order");
     expect((html().match(/class="restaurant-order-thumbnail"/g) ?? []).length).toBe(1);
-    expect(html()).toContain(restaurantOrderTranslations.en.reviewCaption.replace(/'/g, "&#x27;"));
-    expect(restaurantOrderTranslations.en.reviewCaption).toContain("add, remove, or change anything");
+    expect(html()).toContain("Your order: one Pizza. Total: €12.00. Please check it.");
     expect(html()).toContain('class="restaurant-menu restaurant-content-surface restaurant-review-stage"');
     expect(html()).toContain('class="restaurant-action-secondary"');
     expect(html()).toContain('class="restaurant-action-primary"');
@@ -319,7 +318,7 @@ describe("restaurant book and order", () => {
     expect(html()).toContain(restaurantPaymentTranslations.en.cashLabel);
     expect(html()).not.toContain(restaurantOrderTranslations.en.empty);
   });
-  it("requires only a main, then reviews selected images before payment", () => {
+  it("reviews selected images before payment", () => {
     select("drinks", "water");
     expect(elements(page()).find((node) => node.type === "button" && renderToStaticMarkup(node).includes("Review order"))?.props.disabled).toBe(true);
     select("mains", "pasta"); select("mains", "pizza");

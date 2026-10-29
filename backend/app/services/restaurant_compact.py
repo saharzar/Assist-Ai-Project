@@ -5,12 +5,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.services.restaurant_tools import CATALOG, CATEGORIES, OrderSnapshot, resolve_menu_item
+from app.services.restaurant_tools import CATALOG, CATEGORIES, MENU_ATTRIBUTES, OrderSnapshot, resolve_menu_item
 
 
 CompactActionName = Literal[
-    "open_menu", "show_category", "show_item", "search_menu", "recommend",
-    "add_item", "remove_item", "replace_item", "get_order", "get_total",
+    "open_menu", "show_category", "show_item", "search_menu", "query_menu", "recommend",
+    "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item", "get_order", "get_total",
     "review_order", "back_to_menu", "start_payment", "choose_payment", "answer_only",
 ]
 
@@ -22,6 +22,9 @@ class CompactAction(BaseModel):
     replacement_query: str | None = Field(default=None, max_length=120)
     category: Literal["mains", "salads", "soups", "desserts", "drinks"] | None = None
     payment_method: Literal["card", "cash"] | None = None
+    attribute: Literal["hot", "cold", "chicken", "beef", "fish", "meat", "vegetarian",
+                       "sweet", "light", "vegetable", "mushroom", "caffeinated"] | None = None
+    quantity: int | None = Field(default=None, ge=1, le=99)
 
 
 class PendingClarification(BaseModel):
@@ -177,7 +180,7 @@ def obvious_food_request(message: str) -> tuple[str, str | None] | None:
             return ("ask_item", None)
         if len(query) <= 120 and len(query.split()) <= 5 and not re.search(r"\b(and|or|plus|with|instead|about|know)\b", query):
             return ("add_item", query)
-    simple_recommendation = (len(normalized.split()) <= 18 and bool(re.search(
+    simple_recommendation = ("compare" not in normalized and len(normalized.split()) <= 18 and bool(re.search(
         r"\b(recommend\w*|suggest\w*|recommendation|suggestion)\b|"
         r"\bwhat (?:should|could) i (?:eat|order|choose|get)\b", normalized)))
     if simple_recommendation and not re.search(r"\b(add|remove|replace|change|don t|do not)\b", normalized):
@@ -249,7 +252,181 @@ def compact_candidates(category: str, language: str, unavailable: str | None, li
 
 def mentioned_category(message: str) -> str | None:
     normalized = _simple(message)
+    turkish = {"mains": r"\bana yemek\w*", "salads": r"\bsalata\w*", "soups": r"\bcorba\w*",
+               "desserts": r"\btatl[ıi]\w*", "drinks": r"\bicece[kg]\w*"}
+    for category, pattern in turkish.items():
+        if re.search(pattern, normalized):
+            return category
     for category, words in _CATEGORY_WORDS.items():
         if any(re.search(rf"\b{re.escape(_simple(word))}\b", normalized) for word in words):
             return category
     return None
+
+
+def semantic_review_request(message: str) -> bool:
+    normalized = _simple(message)
+    if normalized in {"ich bin fertig", "ich habe fertig", "je veux voir ma commande",
+                      "je voudrais voir ma commande", "siparisimi kontrol etmek istiyorum",
+                      "siparisimi kontrol et", "quero rever o meu pedido"}:
+        return True
+    if re.fullmatch(r"(?:i think )?(?:i am|i m|im|we are|we re) ready|(?:i think )?(?:i am|i m|im|we are|we re) done|"
+                    r"(?:i want|i d like|i would like) to continue", normalized):
+        return True
+    return bool(re.search(r"\b(review|revoir|rever|revisar|verifier|prufen|incele|gözden|gozden)\w*\b",
+                          normalized) and re.search(r"\b(order|commande|pedido|bestellung|siparis\w*)\b", normalized))
+
+
+NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
+    "ein": 1, "eine": 1, "zwei": 2, "drei": 3, "vier": 4, "funf": 5,
+    "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
+    "um": 1, "uma": 1, "dois": 2, "duas": 2, "quatro": 4,
+    "bir": 1, "iki": 2, "uc": 3, "dort": 4, "bes": 5,
+}
+
+
+def requested_quantity(message: str, *, last: bool = False) -> int | None:
+    words = _simple(message).split()
+    found = []
+    for word in words:
+        if word.isdecimal() and 1 <= int(word) <= 99:
+            found.append(int(word))
+        if word in NUMBER_WORDS:
+            found.append(NUMBER_WORDS[word])
+    return (found[-1] if last else found[0]) if found else None
+
+
+def semantic_menu_request(message: str, language: str) -> CompactAction | None:
+    normalized = _simple(message)
+    if re.search(r"\b(recommend|suggest|compare|empfehl|conseill|suger|oner)\w*\b", normalized):
+        return None
+    category = mentioned_category(message)
+    item = resolve_menu_item(message, language)
+    if item["status"] == "found" and re.search(r"\b(show|see|open|montre|zeig|mostrar|goster)\w*\b", normalized):
+        return CompactAction(action="show_item", item_query=CATALOG[item["item_id"]]["names"][language])
+    if category and not re.search(r"\b(add|order|take|want|like|remove|change|replace|ajout|command|prendr|veux|voudrais|"
+                                  r"bestell|mocht|quier|pedir|adicion|quero|siparis|istiyorum)\b", normalized):
+        return CompactAction(action="show_category", category=category)
+    if item["status"] == "found" and re.search(
+        r"\b(do you have|have you got|is there|avez vous|vous avez|haben sie|hay|tienen|tem|var mi)\b",
+        normalized,
+    ):
+        return CompactAction(action="show_item", item_query=CATALOG[item["item_id"]]["names"][language])
+    menu_words = ("menu", "speisekarte", "ementa", "menyu")
+    if any(word in normalized for word in menu_words) and not re.search(r"\b(add|remove|change|pay|price|cost)\b", normalized):
+        return CompactAction(action="open_menu")
+    if normalized in {"yes", "yes please", "oui", "oui s il vous plait", "ja", "ja bitte", "si", "sim", "evet", "evet lutfen"}:
+        return CompactAction(action="open_menu")
+    if normalized in {"what do you have", "what food do you have", "qu est ce que vous avez", "was haben sie",
+                      "que tienen", "o que voces tem", "neler var"}:
+        return CompactAction(action="open_menu")
+    return None
+
+
+def semantic_order_request(message: str, language: str, selected: OrderSnapshot) -> CompactAction | None:
+    normalized = _simple(message)
+    if re.search(r"\b(?:i think you should|you should|perhaps you could|maybe you could)\b", normalized):
+        return None
+    if re.search(r"\b(do you have|what .* do you have|is there|are there|vous avez|avez vous|haben sie|"
+                 r"tienen|voces tem|var mi|neler var)\b", normalized):
+        return None
+    selected_match = resolve_menu_item(message, language, selected=selected)
+    any_match = resolve_menu_item(message, language)
+    if any_match["status"] != "found":
+        return None
+    item_id = any_match["item_id"]
+    item_query = CATALOG[item_id]["names"][language]
+    # Only explicit ordering or quantity language is permitted to mutate the cart.
+    if selected_match["status"] == "found" and re.search(
+        r"\b(remove|delete|retir|enlev|supprim|quitar|eliminar|entfern|weg|remover|tirar|cikar|sil)\w*\b", normalized
+    ):
+        quantity = requested_quantity(message)
+        return CompactAction(action="decrease_quantity" if quantity or " one " in f" {normalized} " else "remove_item",
+                             item_query=item_query, quantity=quantity or 1)
+    if selected_match["status"] == "found" and re.search(
+        r"\b(make|set|change|only|just|passe|mettre|seulement|nur|mach|cambia|deja|apenas|so|yap|olsun)\w*\b", normalized
+    ) and requested_quantity(message):
+        return CompactAction(action="set_quantity", item_query=item_query, quantity=requested_quantity(message, last=True))
+    if re.search(r"\b(another|one more|more|encore|weiter|otro|otra|mais|daha)\b", normalized) and selected.quantity(item_id):
+        return CompactAction(action="add_item", item_query=item_query, quantity=requested_quantity(message) or 1)
+    if re.search(
+        r"\b(want|like|take|have|get|give|add|order|need|please|veux|voudrais|commander|prends|ajout|"
+        r"mochte|moechte|bestellen|nehme|bitte|fuge|anade|quiero|quisiera|dame|pedir|agrega|quero|gostaria|"
+        r"pedido|adicion|istiyorum|alabilir|ekle|siparis)\w*\b", normalized
+    ):
+        return CompactAction(action="add_item", item_query=item_query, quantity=requested_quantity(message) or 1)
+    return None
+
+
+# The catalog tags and these normalized food terms share one canonical filter set.
+# The model can also select the same filters through the compact tool schema.
+ATTRIBUTE_TERMS = {
+    "hot": ("hot", "warm", "chaud", "caliente", "quente", "sicak", "heiss", "heiss", "heis"),
+    "cold": ("cold", "chilled", "iced", "froid", "frais", "frio", "fria", "gelado", "gelada", "soguk", "kalt"),
+    "chicken": ("chicken", "poulet", "hahnchen", "hahn", "pollo", "frango", "tavuk"),
+    "beef": ("beef", "boeuf", "rind", "res", "ternera", "vaca", "sığır", "sigir", "dana"),
+    "fish": ("fish", "poisson", "fisch", "pescado", "peixe", "balik", "tuna", "thon", "tonno", "atum"),
+    "meat": ("meat", "viande", "fleisch", "carne", "etli", "et"),
+    "vegetarian": ("vegetarian", "vegetarien", "vegetarisch", "vegetariano", "vegetariana", "vejetaryen", "etsiz"),
+    "sweet": ("sweet", "sucre", "doux", "dulce", "doce", "tatli", "suss"),
+    "light": ("light", "lighter", "leger", "leicht", "ligero", "leve", "hafif", "healthy", "saudavel", "simple"),
+    "vegetable": ("vegetable", "vegetables", "legume", "gemuse", "verdura", "vegetal", "sebze"),
+    "mushroom": ("mushroom", "champignon", "pilz", "seta", "cogumelo", "mantar"),
+    "caffeinated": ("caffeine", "cafeine", "koffein", "cafeina", "kafein"),
+}
+assert set(ATTRIBUTE_TERMS) == set(MENU_ATTRIBUTES)
+
+RECOMMEND_TERMS = ("recommend", "suggest", "good", "choose", "popular", "empfehl", "gut", "wahl",
+                   "conseill", "recommand", "bon", "choisir", "recomiend", "suger", "bueno", "elegir",
+                   "recomend", "sugir", "bom", "escolh", "oner", "tavsiye", "iyi", "sec")
+
+
+def semantic_food_query(message: str, current_category: str) -> CompactAction | None:
+    normalized = _simple(message)
+    words = normalized.split()
+    if re.search(r"\b(add|remove|delete|replace|change|ajout|retir|enlev|entfern|anad|agreg|quitar|"
+                 r"adicion|remov|ekle|cikar)\w*\b", normalized) and not any(
+                     word in words for word in ("something", "anything", "quelque", "etwas", "algo", "alguma", "bir")):
+        return None
+    if re.search(r"\b(looks good|sounds good|looks tasty|seems good)\b", normalized):
+        return None
+    category = mentioned_category(message)
+    attribute = None
+    if any(phrase in normalized for phrase in ("without meat", "no meat", "dont want meat", "don t want meat",
+                                              "sans viande", "ohne fleisch", "sin carne", "sem carne", "etsiz")):
+        attribute = "vegetarian"
+    else:
+        for candidate, terms in ATTRIBUTE_TERMS.items():
+            if any(any(word.startswith(term) if len(term) >= 3 else word == term for word in words) for term in terms):
+                attribute = candidate
+                break
+    if attribute is None and any(phrase in normalized for phrase in
+                                 ("not something heavy", "nothing heavy", "not too heavy")):
+        attribute = "light"
+    recommend = any(any(word.startswith(term) for word in words) for term in RECOMMEND_TERMS)
+    recommend = recommend or normalized in {"what should i get", "what should i eat", "what would you choose",
+                                             "what is good here", "whats good here", "any recommendations"}
+    recommend = recommend or ("should" in words and any(word in words for word in ("get", "choose", "eat", "order")))
+    recommend = recommend or any(phrase in normalized for phrase in
+                                  ("people usually order", "people normally order", "most people order"))
+    if attribute == "sweet" and category == "desserts" and not recommend and not any(
+        word in words for word in ("something", "anything", "quelque", "etwas", "algo", "alguma", "bir")):
+        attribute = None
+    if not attribute and not recommend:
+        return None
+    # A generic preference such as "light" should point to a real, relevant section.
+    if attribute == "sweet" and category is None:
+        category = "desserts"
+    if attribute == "cold" and category is None:
+        category = "drinks"
+    if attribute == "hot" and category is None and current_category == "drinks":
+        category = "drinks"
+    if attribute in ("hot", "cold") and category is None and any(word in words for word in
+                                                                  ("drink", "drinks", "boisson", "boissons", "getranke",
+                                                                   "bebida", "bebidas", "icecek", "icecekler")):
+        category = "drinks"
+    if recommend and category is None and attribute is None:
+        category = current_category
+    return CompactAction(action="recommend" if recommend else "query_menu", category=category,
+                         attribute=attribute)

@@ -137,8 +137,8 @@ def test_replacing_an_optional_item_with_first_main_uses_unavailability_rule():
 def test_review_and_payment_reject_premature_or_invalid_transitions():
     engine = RestaurantToolEngine(snapshot(), "en")
     assert engine.run("review_order", {}).reason == "main_required"
-    assert engine.run("start_payment", {}).reason == "review_required"
-    assert engine.run("choose_payment_method", {"method": "card"}).reason == "payment_unavailable"
+    assert engine.run("start_payment", {}).reason == "main_required"
+    assert engine.run("choose_payment_method", {"method": "card"}).reason == "main_required"
     assert engine.run("choose_payment_method", {"method": "crypto"}).reason == "invalid_payment_method"
     engine.run("add_order_item", {"item_id": "pizza"})
     assert engine.run("review_order", {}).ok

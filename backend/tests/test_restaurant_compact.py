@@ -60,8 +60,9 @@ def test_clear_food_requests_do_not_depend_on_model_tool_calls():
     assert vague.actions == []
     assert "What would you like to add?" in vague.reply
     recommended = waiter(provider).chat_with_tools("What do u recommend to eat?", "en", [], state())
-    assert "You could try" in recommended.reply
-    assert recommended.actions == []
+    assert "I'd recommend" in recommended.reply
+    assert recommended.state.category == "mains"
+    assert any(action.type == "SHOW_MENU_CATEGORY" for action in recommended.actions)
     assert provider.calls == 0
     polite = waiter(provider).chat_with_tools("Add a hamburger to my order.", "en", [], state())
     assert polite.state.order.mains == "burger"
@@ -108,13 +109,13 @@ def test_remove_resolves_against_selected_order_and_unknown_item_is_safe():
     assert missing.state.order.mains is None
 
 
-def test_recommendation_context_contains_only_bounded_category_candidates():
+def test_recommendation_uses_validated_category_without_sending_the_full_menu():
     provider = Provider("recommend", category="desserts")
     result = waiter(provider).chat_with_tools("Could you compare desserts and recommend one?", "en", [], state())
-    context = provider.messages[0]["content"]
-    assert "candidates" in context
-    assert "Cheesecake" in context
-    assert "Grilled chicken" not in context
+    assert provider.messages is None
+    assert provider.calls == 0
+    assert result.state.category == "desserts"
+    assert any(action.type == "SHOW_MENU_CATEGORY" for action in result.actions)
     assert len(compact_candidates("desserts", "en", "pasta")) <= 5
     assert "Cheesecake" in result.reply
 

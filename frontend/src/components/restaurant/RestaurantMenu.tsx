@@ -55,7 +55,7 @@ export function RestaurantMenu({ state, language, dispatch, onSelect, headingRef
           const name = item.meal ? text.foods[item.meal] : menu.extras[item.id as keyof typeof menu.extras];
           const price = formatRestaurantPrice(getRestaurantMenuItemPrice(item, language), language);
           const unavailable = item.id === state.unavailable;
-          const selected = state.order[category] === item.id;
+          const selected = state.order.lines.some((line) => line.item_id === item.id);
           return <button key={item.id} type="button" disabled={unavailable} aria-pressed={selected} data-menu-item-id={item.id}
             className={`restaurant-menu-item restaurant-menu-selectable ${selected ? "restaurant-menu-item-selected" : ""} ${focusItemId === item.id ? "restaurant-menu-item-chat-focus" : ""}`}
             onClick={() => onSelect(category, item.id)}>

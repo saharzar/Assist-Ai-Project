@@ -85,7 +85,7 @@ describe("guided restaurant ordering", () => {
 describe("restaurant order building", () => {
   const opened = restaurantReducer(initialRestaurantState, { type: "openMenu" });
   it("starts empty and keeps browsing separate from progression", () => {
-    expect(initialRestaurantState.order).toEqual({ mains: null, salads: null, soups: null, desserts: null, drinks: null });
+    expect(initialRestaurantState.order).toEqual({ mains: null, salads: null, soups: null, desserts: null, drinks: null, lines: [] });
     expect(restaurantReducer(opened, { type: "category", category: "desserts" })).toMatchObject({ step: "menu", category: "desserts" });
   });
   it("preserves other categories when the first main becomes unavailable", () => {
@@ -118,5 +118,23 @@ describe("restaurant order building", () => {
     expect(current).toMatchObject({ step: "alternative", order: { mains: "pizza", drinks: null } });
     current = restaurantReducer(current, { type: "reviewOrder" });
     expect(restaurantReducer(current, { type: "confirmOrder" }).step).toBe("success");
+  });
+  it("keeps optional-only orders in the menu when Review is requested", () => {
+    let current = restaurantReducer(opened, { type: "selectItem", category: "drinks", id: "water" });
+    current = restaurantReducer(current, { type: "selectItem", category: "desserts", id: "cheesecake" });
+    expect(current.order.mains).toBeNull();
+    expect(restaurantReducer(current, { type: "reviewOrder" }).step).toBe("menu");
+  });
+  it("accumulates quantities and keeps distinct items in the same category", () => {
+    let current = restaurantReducer(opened, { type: "selectItem", category: "mains", id: "pasta" });
+    current = restaurantReducer(current, { type: "selectItem", category: "mains", id: "pizza", quantity: 2 });
+    current = restaurantReducer(current, { type: "selectItem", category: "mains", id: "pizza" });
+    current = restaurantReducer(current, { type: "selectItem", category: "mains", id: "burger" });
+    expect(current.order.lines).toEqual([{ item_id: "pizza", quantity: 3 }, { item_id: "burger", quantity: 1 }]);
+    current = restaurantReducer(current, { type: "setQuantity", category: "mains", id: "pizza", quantity: 2 });
+    expect(current.order.lines.find((line) => line.item_id === "pizza")?.quantity).toBe(2);
+    current = restaurantReducer(current, { type: "removeItem", category: "mains", id: "burger" });
+    expect(current.order.lines).toEqual([{ item_id: "pizza", quantity: 2 }]);
+    expect(current.order.mains).toBe("pizza");
   });
 });

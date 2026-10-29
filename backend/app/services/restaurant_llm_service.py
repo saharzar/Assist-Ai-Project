@@ -1,6 +1,7 @@
 """Small, backend-only provider boundary for Restaurant waiter text chat."""
 
 import json
+import itertools
 import logging
 import re
 import unicodedata
@@ -12,15 +13,17 @@ from typing import Any, Protocol
 import httpx
 
 from app.core.config import Settings
+from app.services.llm_request_diagnostics import build_llm_request_diagnostics
 from app.services.restaurant_compact import (CompactAction, PendingClarification, compact_candidates,
                                              fast_path, mentioned_category, obvious_food_request,
                                              obvious_confirmation_request, obvious_menu_request, obvious_order_change,
                                              obvious_payment_method_request, obvious_progress_request,
-                                             resolve_action_item)
+                                             resolve_action_item, requested_quantity, semantic_menu_request,
+                                             semantic_order_request, semantic_review_request, semantic_food_query)
 from app.services.restaurant_tools import (
     CATALOG, TOOL_SCHEMAS, ApprovedAction, RestaurantSnapshot, RestaurantToolEngine,
 )
-from app.services.restaurant_waiter_reply import CATEGORY_NAMES, available_menu_items, name, result_reply, say
+from app.services.restaurant_waiter_reply import CATEGORY_NAMES, available_menu_items, name, quantity_text, result_reply, say
 
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -35,7 +38,11 @@ LANGUAGE_NAMES = {
 WAITER_SYSTEM_PROMPT = (
     "You are a calm, warm, professional restaurant waiter helping an autistic adult practice ordering. "
     "Reply in the requested language with one to three short sentences and one question at a time. "
-    "Use restaurant_action for menu facts or changes. Pass the user's food words in item_query, never an ID. "
+    "Use restaurant_action for menu facts or changes. For category questions choose show_category, not answer_only. "
+    "For explicit food requests choose add_item with quantity; for edits choose set_quantity or decrease_quantity. "
+    "For food preferences or ingredients choose query_menu or recommend with canonical category and attribute. "
+    "Recommendations should open their category. "
+    "Pass the user's food words in item_query, never an ID. "
     "On the review page, use back_to_menu for a general edit request, remove_item for a named removal, "
     "and replace_item for a named replacement. Never treat edit or remove words as food names. "
     "Application state and validated actions are authoritative. Never invent menu items, prices, availability, "
@@ -45,16 +52,17 @@ WAITER_SYSTEM_PROMPT = (
 )
 # Uvicorn's configured logger makes numeric diagnostics visible in the backend terminal.
 logger = logging.getLogger("uvicorn.error")
+_diagnostic_request_ids = itertools.count(1)
 MAX_CONTEXT_BYTES = 8000
-BASE_ACTIONS = ("show_category", "show_item", "search_menu", "recommend", "get_order", "get_total", "answer_only")
+BASE_ACTIONS = ("show_category", "show_item", "search_menu", "query_menu", "recommend", "get_order", "get_total", "answer_only")
 
 
 def compact_schema_for(state: RestaurantSnapshot) -> list[dict]:
     if state.step in ("menuCover", "alternativeCover", "menu", "alternative"):
-        allowed = (*BASE_ACTIONS, "open_menu", "add_item", "remove_item", "replace_item",
+        allowed = (*BASE_ACTIONS, "open_menu", "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item",
                    "review_order", "start_payment", "choose_payment")
     elif state.step == "review":
-        allowed = (*BASE_ACTIONS, "back_to_menu", "add_item", "remove_item", "replace_item",
+        allowed = (*BASE_ACTIONS, "back_to_menu", "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item",
                    "start_payment", "choose_payment")
     else:
         allowed = (*BASE_ACTIONS, "choose_payment")
@@ -71,7 +79,9 @@ UNVERIFIED_ORDER_CHANGE = re.compile(
     r"\b(?:i(?:['’]?ll| will|['’]?ve| have)|we(?:['’]?ll| will|['’]?ve| have))\b"
     r".{0,60}\b(?:add|added|remove|removed|change|changed|replace|replaced|select|selected)\b"
     r"|\b(?:added|removed|changed|replaced|selected|confirmed)\b.{0,60}\b(?:order|meal|dish|item)\b"
-    r"|\b(?:order|meal)\b.{0,60}\bconfirmed\b",
+    r"|\b(?:order|meal)\b.{0,60}\bconfirmed\b"
+    r"|\b(?:ajout[eé]|añadid[oa]|anadid[oa]|adicionad[oa]|hinzugefugt|eklend[iı]|retir[eé]|"
+    r"supprim[eé]|quitad[oa]|entfernt|cikarild[iı])\b",
     re.IGNORECASE,
 )
 
@@ -127,13 +137,31 @@ def _retry_after_seconds(value: str | None) -> int | None:
 
 
 class GroqRestaurantLLMProvider:
-    def __init__(self, api_key: str, transport: httpx.BaseTransport | None = None):
+    def __init__(self, api_key: str, transport: httpx.BaseTransport | None = None,
+                 diagnostics_enabled: bool = False):
         self._api_key = api_key
         self._transport = transport
+        self._diagnostics_enabled = diagnostics_enabled
         self.last_usage: tuple[int, int, int] | None = None
+        self.last_diagnostics: dict[str, Any] | None = None
+        self.last_request_id: str | None = None
 
     def _request(self, payload: dict[str, Any]) -> dict:
         self.last_usage = None
+        self.last_diagnostics = None
+        self.last_request_id = None
+        if self._diagnostics_enabled:
+            request_id = f"restaurant-llm-{next(_diagnostic_request_ids)}"
+            self.last_request_id = request_id
+            payload_bytes = len(httpx.Request("POST", GROQ_CHAT_URL, json=payload).content)
+            diagnostics = build_llm_request_diagnostics(payload, payload_bytes=payload_bytes)
+            self.last_diagnostics = diagnostics
+            model_label = "qwen/qwen3.8-27b" if payload.get("model") == "qwen/qwen3.8-27b" else "other"
+            logger.info("restaurant_llm.request_diagnostics request_id=%s timestamp=%s provider=groq "
+                        "model=%s summary=%s", request_id,
+                        datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        model_label,
+                        json.dumps(diagnostics, separators=(",", ":")))
         try:
             with httpx.Client(timeout=RESTAURANT_LLM_TIMEOUT_SECONDS, follow_redirects=False,
                               transport=self._transport) as client:
@@ -143,20 +171,42 @@ class GroqRestaurantLLMProvider:
                     json=payload,
                 )
         except httpx.TimeoutException:
+            if self._diagnostics_enabled:
+                logger.info("restaurant_llm.provider_result request_id=%s outcome=timeout", self.last_request_id)
             raise RestaurantLLMFailure("timeout") from None
         except httpx.RequestError:
+            if self._diagnostics_enabled:
+                logger.info("restaurant_llm.provider_result request_id=%s outcome=network", self.last_request_id)
             raise RestaurantLLMFailure("network") from None
 
         if response.status_code == 429:
+            if self._diagnostics_enabled:
+                logger.info("restaurant_llm.provider_result request_id=%s upstream_status=429", self.last_request_id)
             raise RestaurantLLMFailure("rate_limit", _retry_after_seconds(response.headers.get("Retry-After")))
         if response.status_code != 200:
+            if self._diagnostics_enabled:
+                logger.info("restaurant_llm.provider_result request_id=%s upstream_status=%d",
+                            self.last_request_id, response.status_code)
             raise RestaurantLLMFailure("upstream", upstream_status=response.status_code)
         try:
             body = response.json()
             usage = body.get("usage", {})
-            if isinstance(usage, dict) and all(isinstance(usage.get(key), int) for key in
+            if isinstance(usage, dict) and all(type(usage.get(key)) is int for key in
                                                   ("prompt_tokens", "completion_tokens", "total_tokens")):
                 self.last_usage = (usage["prompt_tokens"], usage["completion_tokens"], usage["total_tokens"])
+            if self._diagnostics_enabled:
+                if self.last_usage is None:
+                    logger.info("restaurant_llm.provider_usage request_id=%s available=false", self.last_request_id)
+                else:
+                    logger.info("restaurant_llm.provider_usage request_id=%s provider_input_tokens=%d "
+                                "provider_output_tokens=%d provider_total_tokens=%d",
+                                self.last_request_id, *self.last_usage)
+                    if self.last_usage[0] > 7000:
+                        logger.warning("Restaurant LLM prompt unexpectedly large severity=high request_id=%s "
+                                       "provider_input_tokens=%d", self.last_request_id, self.last_usage[0])
+                    elif self.last_usage[0] > 4000:
+                        logger.warning("Restaurant LLM prompt unexpectedly large severity=warning request_id=%s "
+                                       "provider_input_tokens=%d", self.last_request_id, self.last_usage[0])
             return body["choices"][0]["message"]
         except (ValueError, TypeError, KeyError, IndexError):
             raise RestaurantLLMFailure("malformed") from None
@@ -196,9 +246,11 @@ class GroqRestaurantLLMProvider:
 class RestaurantLLMService:
     def __init__(self, settings: Settings, provider: RestaurantLLMProvider | None = None):
         self._model = settings.restaurant_llm_model
+        self._diagnostics_enabled = settings.restaurant_llm_diagnostics
         key = settings.groq_api_key.get_secret_value()
         self._provider = provider or (
-            GroqRestaurantLLMProvider(key) if settings.restaurant_llm_provider == "groq" and key else None
+            GroqRestaurantLLMProvider(key, diagnostics_enabled=self._diagnostics_enabled)
+            if settings.restaurant_llm_provider == "groq" and key else None
         )
 
     def chat(self, message: str, language: str, history: list[dict[str, str]]) -> str:
@@ -258,6 +310,10 @@ class RestaurantLLMService:
                         pending: PendingClarification | None = None) -> RestaurantChatOutcome:
         if SENSITIVE_PAYMENT.search(message):
             return RestaurantChatOutcome(say(language, "privacy"), [], state)
+        if any(int(number) not in range(1, 100) for number in re.findall(r"\b\d+\b", message)) and (
+            re.search(r"\b(add|want|order|take|remove|set|change|need|ajout|veux|voudrais|quero|quiero|istiyorum|ekle)\w*\b", _fold(message))
+        ):
+            return RestaurantChatOutcome(say(language, "invalid_quantity"), [], state)
         if pending is None and _is_affirmative(_fold(message).strip(" .!?؟")) and history:
             last = history[-1]
             if last["role"] == "assistant":
@@ -326,8 +382,23 @@ class RestaurantLLMService:
                 return self._execute(CompactAction(action=pending.action, item_query=pending.item_query,
                                                    replacement_query=pending.replacement_query),
                                      message, language, state, trusted=True)
+        semantic_order = semantic_order_request(message, language, state.order)
+        if semantic_order:
+            return self._execute(semantic_order, message, language, state, trusted=True)
+        food_query = semantic_food_query(message, state.category if state.step in ("menu", "alternative") else "mains")
+        if food_query:
+            return self._execute(food_query, message, language, state, trusted=True, history=history)
         if _dietary_request(message):
             return RestaurantChatOutcome(say(language, "diet"), [], state)
+        menu_navigation = semantic_menu_request(message, language)
+        if menu_navigation and (menu_navigation.action != "open_menu" or state.step in ("menuCover", "alternativeCover", "menu", "alternative")):
+            return self._execute(menu_navigation, message, language, state, trusted=True, history=history)
+        if semantic_review_request(message):
+            return self._execute(CompactAction(action="review_order"), message, language, state, trusted=True)
+        normalized_message = _fold(message)
+        if re.search(r"\b(what did i order|what have i ordered|how many|combien|cuantos|quantos|kac tane|wie viele|"
+                     r"ma commande|mi pedido|meine bestellung|meu pedido|siparisimde)\b", normalized_message):
+            return self._execute(CompactAction(action="get_order"), message, language, state, trusted=True)
         if _is_menu_question(message):
             return self._menu_answer(message, language, history, state)
         payment_method = obvious_payment_method_request(message)
@@ -342,7 +413,7 @@ class RestaurantLLMService:
         progress = obvious_progress_request(message)
         if progress:
             logger.info("restaurant_llm.fast_path=true action=%s", "review_order" if progress == "review" else "start_order")
-            if progress == "start" and not state.order.mains:
+            if progress == "start" and not state.order.lines:
                 return self._execute(CompactAction(action="open_menu"), message, language, state, trusted=True)
             if state.step in ("review", "success"):
                 return self._execute(CompactAction(action="get_order"), message, language, state, trusted=True)
@@ -350,7 +421,7 @@ class RestaurantLLMService:
         direct = fast_path(message)
         if direct:
             logger.info("restaurant_llm.fast_path=true action=%s", direct.action)
-            return self._execute(direct, message, language, state, trusted=True)
+            return self._execute(direct, message, language, state, trusted=True, history=history)
         change = obvious_order_change(message, review=state.step == "review")
         if change:
             logger.info("restaurant_llm.fast_path=true action=%s", change.action)
@@ -362,7 +433,8 @@ class RestaurantLLMService:
             if kind == "ask_item":
                 return RestaurantChatOutcome(say(language, "ask_item"), [], state)
             action = CompactAction(action=kind, item_query=value if kind == "add_item" else None,
-                                   category=value if kind == "recommend" else None)
+                                   category=value if kind == "recommend" else None,
+                                   quantity=requested_quantity(message) if kind == "add_item" else None)
             return self._execute(action, message, language, state, trusted=True)
         menu_request = obvious_menu_request(message, language)
         if menu_request:
@@ -371,8 +443,7 @@ class RestaurantLLMService:
         if self._provider is None:
             raise RestaurantLLMFailure("unavailable")
         context = {"step": state.step, "category": state.category}
-        selected = {category: getattr(state.order, category) for category in ("mains", "salads", "soups", "desserts", "drinks")
-                    if getattr(state.order, category)}
+        selected = [[line.item_id, line.quantity] for line in state.order.lines]
         if selected:
             context["order"] = selected
         if state.unavailable:
@@ -407,8 +478,6 @@ class RestaurantLLMService:
             logger.info("restaurant_llm.input_tokens=%d restaurant_llm.output_tokens=%d "
                         "restaurant_llm.total_tokens=%d restaurant_llm.fast_path=false",
                         usage[0], usage[1], usage[2])
-            if usage[0] > 4000:
-                logger.warning("Restaurant LLM prompt unexpectedly large input_tokens=%d", usage[0])
         if len(model.tool_calls) != MAX_TOOL_CALLS:
             if not model.tool_calls and _needs_authoritative_menu_fact(message) and not _is_order_change_request(message):
                 return self._menu_answer(message, language, history, state)
@@ -457,16 +526,27 @@ class RestaurantLLMService:
         return RestaurantChatOutcome(say(language, "clarify", items=choices), [], state, pending)
 
     def _execute(self, action: CompactAction, message: str, language: str,
-                 state: RestaurantSnapshot, trusted: bool = False) -> RestaurantChatOutcome:
+                 state: RestaurantSnapshot, trusted: bool = False,
+                 history: list[dict[str, str]] | None = None) -> RestaurantChatOutcome:
+        previous_reply = next((turn["content"] for turn in reversed(history or [])
+                               if turn.get("role") == "assistant"), "")
         mapping = {"open_menu": "open_menu", "show_category": "show_menu_category",
                    "show_item": "show_menu_item", "search_menu": "get_menu_items", "recommend": "get_menu_items",
-                   "add_item": "add_order_item", "remove_item": "remove_order_item",
+                   "add_item": "add_order_item", "set_quantity": "set_order_quantity",
+                   "decrease_quantity": "decrease_order_quantity", "remove_item": "remove_order_item",
                    "replace_item": "replace_order_item", "get_order": "get_current_order",
                    "get_total": "get_order_total", "review_order": "review_order",
                    "back_to_menu": "go_back_to_menu", "start_payment": "start_payment",
                    "choose_payment": "choose_payment_method"}
         if action.action == "answer_only":
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
+        if action.action in ("query_menu", "recommend", "search_menu"):
+            engine = RestaurantToolEngine(state, language)
+            category = action.category or mentioned_category(message)
+            result = engine.query_menu(category, action.attribute, recommend=action.action == "recommend")
+            reply = result_reply(language, "query_menu", {"recommend": action.action == "recommend"},
+                                 result, engine.snapshot, message, previous_reply)
+            return RestaurantChatOutcome(reply[:MAX_WAITER_REPLY_LENGTH], engine.actions, engine.snapshot)
         tool = mapping.get(action.action)
         if tool is None:
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
@@ -478,17 +558,16 @@ class RestaurantLLMService:
             if action.payment_method is None:
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
             args = {"method": action.payment_method}
-        elif tool in ("show_menu_item", "add_order_item", "remove_order_item", "replace_order_item"):
+        elif tool in ("show_menu_item", "add_order_item", "set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item"):
             if not action.item_query:
                 if tool == "remove_order_item":
-                    selected_ids = [item_id for category in ("mains", "salads", "soups", "desserts", "drinks")
-                                    if (item_id := getattr(state.order, category))]
+                    selected_ids = [line.item_id for line in state.order.lines]
                     if selected_ids:
                         return self._clarify(language, state, PendingClarification(
                             action="remove_item", item_query="item", matches=selected_ids))
                     return RestaurantChatOutcome(say(language, "empty"), [], state)
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
-            selected = state.order if tool in ("remove_order_item", "replace_order_item") else None
+            selected = state.order if tool in ("set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item") else None
             found = resolve_action_item(action.item_query, language, order=selected)
             if selected is not None and found["status"] == "not_found":
                 category = mentioned_category(action.item_query)
@@ -505,6 +584,8 @@ class RestaurantLLMService:
             if found["status"] != "found":
                 return RestaurantChatOutcome(say(language, "not_found"), [], state)
             args = {"item_id": found["item_id"]}
+            if tool in ("add_order_item", "set_order_quantity", "decrease_order_quantity"):
+                args["quantity"] = action.quantity or requested_quantity(message) or 1
             if tool == "replace_order_item":
                 if not action.replacement_query:
                     return RestaurantChatOutcome(say(language, "ask_replacement"), [], state,
@@ -528,8 +609,23 @@ class RestaurantLLMService:
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
         engine = RestaurantToolEngine(state, language)
         result = engine.run(tool, args)
-        reply = result_reply(language, tool, args, result, engine.snapshot, message)
-        if result.ok and tool in ("get_menu", "get_menu_items", "show_menu_category", "show_menu_item") and self._provider:
+        reply = result_reply(language, tool, args, result, engine.snapshot, message, previous_reply)
+        if result.ok and tool == "get_current_order":
+            asked_item = resolve_action_item(message, language, order=engine.snapshot.order)
+            if asked_item["status"] == "found":
+                item_id = asked_item["item_id"]
+                reply = say(language, "order", items=quantity_text(name(item_id, language),
+                                                                     engine.snapshot.order.quantity(item_id), language))
+        if result.ok and tool == "show_menu_category":
+            available = [item["names"][language] for item_id, item in CATALOG.items()
+                         if item["category"] == args["category"] and item_id != engine.snapshot.unavailable]
+            if available:
+                prefix, suffix = say(language, "category_items", items="__items__").split("__items__")
+                same_opener = (previous_reply.startswith(prefix) if prefix else
+                               previous_reply.endswith(suffix)) and bool(previous_reply)
+                key = "category_items_alt" if same_opener else "category_items"
+                reply = say(language, key, items=", ".join(available[:4]))
+        if result.ok and tool in ("get_menu", "get_menu_items", "show_menu_item") and self._provider and callable(getattr(self._provider, "complete", None)):
             try:
                 reply = self._menu_answer(message, language, [], engine.snapshot).reply
             except RestaurantLLMFailure:
@@ -537,7 +633,7 @@ class RestaurantLLMService:
         if action.action == "recommend" and result.ok:
             # Only validated available candidates can be recommended or selected by a follow-up.
             matches = [item["id"] for item in available_menu_items(result, message)[:2]]
-            if matches and self._provider:
+            if matches and self._provider and callable(getattr(self._provider, "complete", None)):
                 try:
                     reply = self._menu_answer(message, language, [], engine.snapshot, matches).reply
                 except RestaurantLLMFailure:
@@ -684,8 +780,12 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
     if tool == "go_back_to_menu":
         return bool(re.search(r"\b(back|change|edit|again|volver|cambi\w*|retour|chang\w*|"
                               r"zuruck|ander\w*|voltar|troc\w*|geri|degistir\w*)\b", folded))
-    if tool not in ("add_order_item", "remove_order_item", "replace_order_item"):
+    if tool not in ("add_order_item", "set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item"):
         return True
+    if tool in ("set_order_quantity", "decrease_order_quantity"):
+        target = args.get("item_id")
+        return bool(target in CATALOG and state.order.quantity(target) and requested_quantity(message)
+                    and resolve_action_item(message, language, order=state.order).get("item_id") == target)
     if tool == "add_order_item":
         explicit = re.search(r"\b(add|take|want|give me|have|anad\w*|agreg\w*|quier\w*|"
                              r"ajout\w*|prend\w*|voudr\w*|fug\w*|hinzu\w*|nehm\w*|mocht\w*|"
@@ -694,7 +794,7 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
         target = args.get("item_id")
         if target not in CATALOG:
             return True  # The tool engine reports an unknown item without changing state.
-        mentioned = isinstance(target, str) and _item_mentioned(message, language, target)
+        mentioned = isinstance(target, str) and resolve_action_item(message, language).get("item_id") == target
         prior = bool(history and target in CATALOG and
                      _fold(CATALOG[target]["names"][language]) in _fold(history[-1]["content"]))
         return bool((explicit and mentioned) or (recent_confirmation and prior))
@@ -706,7 +806,7 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
         has_verb = re.search(r"\b(remove|take .* off|don't want|do not want|quit\w*|retir\w*|"
                              r"enlev\w*|supprim\w*|entfern\w*|weg|remov\w*|cikar\w*|kaldir\w*)\b", folded)
         category_word = _fold(category[:-1] if category.endswith("s") else category)
-        return bool(has_verb and (_item_mentioned(message, language, target) or category_word in folded))
+        return bool(has_verb and (resolve_action_item(message, language, order=state.order).get("item_id") == target or category_word in folded))
     old_id, new_id = args.get("old_item_id"), args.get("new_item_id")
     if old_id not in CATALOG or new_id not in CATALOG:
         return True

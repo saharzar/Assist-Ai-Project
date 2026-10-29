@@ -4,7 +4,7 @@ import { LogOut } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { restaurantTranslations } from "../../lib/restaurantTranslations";
 import { initialRestaurantState, restaurantReducer, type Meal, type MenuCategory, type RestaurantStep } from "../../lib/restaurantState";
-import { getOrderTotalCents } from "../../lib/restaurantOrder";
+import { getOrderReviewSpeech, getOrderTotalCents } from "../../lib/restaurantOrder";
 import { restaurantOrderTranslations } from "../../lib/restaurantOrderTranslations";
 import { RestaurantStaff } from "../../components/restaurant/RestaurantArt";
 import restaurantCounter from "../../assets/restaurant-counter.png";
@@ -172,7 +172,7 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
   useEffect(() => { heading.current?.focus(); }, [state.step, payment.phase]);
   const orderTotal = formatRestaurantPrice(getOrderTotalCents(state.order, language), language);
   const message = state.step === "success" ? restaurantPaymentMessage(payment, paymentText, orderTotal)
-    : state.step === "review" ? orderText.reviewCaption
+    : state.step === "review" ? getOrderReviewSpeech(state.order, language)
     : state.unavailable && !state.fullMenu ? orderText.unavailableCaption
     : state.step === "alternative" && state.selected ? orderText.replacementCaption
     : state.step === "menu" || state.step === "alternative" ? orderText.menuOpenGuidance
@@ -207,7 +207,7 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
     setFocusItemId(preview.focusItemId);
     return true;
   };
-  return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} onOrderAgain={onOrderAgain} allowOrderAgain={state.step === "success" && (payment.phase === "paid" || payment.phase === "receipt")} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={(category) => dispatch({ type: "removeItem", category })} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={state.step !== "success" ? <Link to="/scenarios" className="restaurant-leave-link inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link> : undefined} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
+  return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} onOrderAgain={onOrderAgain} allowOrderAgain={state.step === "success" && (payment.phase === "paid" || payment.phase === "receipt")} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={(category, id) => dispatch({ type: "removeItem", category, id })} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={state.step !== "success" ? <Link to="/scenarios" className="restaurant-leave-link inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link> : undefined} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
     {menuBook && <>
       <RestaurantMenu state={state} language={language} dispatch={dispatch} onSelect={select} headingRef={heading} focusItemId={focusItemId} onManualNavigate={() => setFocusItemId(null)} />
     </>}

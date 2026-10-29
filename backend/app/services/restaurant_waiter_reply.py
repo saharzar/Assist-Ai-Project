@@ -1,6 +1,6 @@
 """Short localized statements derived only from validated Restaurant tool results."""
 
-from app.services.restaurant_tools import CATALOG, RestaurantSnapshot, ToolResult, order_summary
+from app.services.restaurant_tools import CATALOG, CATEGORIES, RestaurantSnapshot, ToolResult, available_alternative, order_summary
 
 
 TEXT = {
@@ -12,6 +12,36 @@ TEXT = {
     "tr": {"privacy": "Gizliliğin için buraya gerçek kart veya banka bilgilerini yazma. Bu senaryoda ödeme yalnızca simülasyondur.", "unclear": "Ne yapmak istediğini açıkça söyleyebilir misin?", "unavailable": "Üzgünüm, bunu şu anda yapamıyorum. Menüyü kullanmaya devam edebilirsin.", "menu": "Elbette. İşte menü.", "category": "Elbette. İşte {category}.", "item": "Elbette. İşte {item}.", "added": "Elbette. {item} siparişine eklendi.", "removed": "Elbette. {item} siparişinden çıkarıldı.", "replaced": "Elbette. {old} yerine {item} seçildi.", "first_main_unavailable": "Üzgünüm, {item} bugün mevcut değil. Lütfen başka bir ana yemek seç.", "not_selected": "Bu ürün şu anda siparişinde yok.", "main_required": "Siparişini incelemeden önce bir ana yemek seç.", "review": "Siparişini inceleyelim.", "back": "Elbette. Siparişini menüden değiştirebilirsin.", "payment": "Siparişin simüle ödeme için hazır. Kart veya nakit seç.", "method": "{method} seçildi. Ekrandaki simüle ödeme adımlarını izle.", "order": "Siparişinde {items} var.", "empty": "Siparişin şu anda boş.", "total": "Toplam tutar {total}.", "recommend": "{items} deneyebilirsin. Ayrıntılar için menüye bak.", "diet": "Bunu doğrulamak için yeterli içerik bilgim yok. Mevcut yemekleri gösterebilirim.", "not_found": "Bu ürünü bugünkü menüde göremiyorum.", "list": "Mevcut seçenekler arasında {items} var.", "generic": "Bu değişikliği yapamadım. Menüden devam edebilirsin."},
 }
 
+# Keep acknowledgements tied to the action instead of repeating one opener.
+ACTION_COPY = {
+    "en": {"menu": "Here is our menu.", "category": "Here are our {category}.", "category_items": "We have {items}.", "category_items_alt": "You can choose from {items}.",
+           "item": "Here is {item}.", "added": "I've added {item} to your order.",
+           "removed": "I've removed {item} from your order.", "back": "You can change your order in the menu.",
+           "main_required": "You still need a main dish before we review your order. Would you like to see the main dishes?"},
+    "fr": {"menu": "Voici notre menu.", "category": "Voici nos {category}.", "category_items": "Nous avons {items}.", "category_items_alt": "Vous pouvez choisir parmi {items}.",
+           "item": "Voici {item}.", "added": "J'ai ajouté {item} à votre commande.",
+           "removed": "J'ai retiré {item} de votre commande.", "back": "Vous pouvez modifier votre commande dans le menu.",
+           "main_required": "Il vous faut encore un plat principal avant de revoir votre commande. Voulez-vous voir les plats principaux ?"},
+    "de": {"menu": "Hier ist unsere Speisekarte.", "category": "Hier sind unsere {category}.", "category_items": "Wir haben {items}.", "category_items_alt": "Zur Auswahl stehen {items}.",
+           "item": "Hier ist {item}.", "added": "Ich habe {item} zu deiner Bestellung hinzugefügt.",
+           "removed": "Ich habe {item} aus deiner Bestellung entfernt.", "back": "Du kannst deine Bestellung in der Speisekarte ändern.",
+           "main_required": "Vor der Bestellübersicht brauchst du noch ein Hauptgericht. Möchtest du die Hauptgerichte sehen?"},
+    "es": {"menu": "Aquí está el menú.", "category": "Aquí están nuestros {category}.", "category_items": "Tenemos {items}.", "category_items_alt": "Puedes elegir entre {items}.",
+           "item": "Aquí tienes {item}.", "added": "He añadido {item} a tu pedido.",
+           "removed": "He quitado {item} de tu pedido.", "back": "Puedes cambiar tu pedido en el menú.",
+           "main_required": "Aún necesitas un plato principal antes de revisar tu pedido. ¿Quieres ver los platos principales?"},
+    "pt": {"menu": "Aqui está a ementa.", "category": "Aqui estão os nossos {category}.", "category_items": "Temos {items}.", "category_items_alt": "Podes escolher entre {items}.",
+           "item": "Aqui está {item}.", "added": "Adicionei {item} ao teu pedido.",
+           "removed": "Retirei {item} do teu pedido.", "back": "Podes alterar o pedido na ementa.",
+           "main_required": "Ainda precisas de um prato principal antes de rever o pedido. Queres ver os pratos principais?"},
+    "tr": {"menu": "İşte menümüz.", "category": "{category} burada.", "category_items": "{items} var.", "category_items_alt": "{items} arasından seçebilirsin.",
+           "item": "İşte {item}.", "added": "{item} siparişine eklendi.",
+           "removed": "{item} siparişinden çıkarıldı.", "back": "Siparişini menüden değiştirebilirsin.",
+           "main_required": "Siparişini incelemeden önce bir ana yemek seçmelisin. Ana yemekleri görmek ister misin?"},
+}
+for _language, _copy in ACTION_COPY.items():
+    TEXT[_language].update(_copy)
+
 CATEGORY_NAMES = {
     "en": {"mains": "main dishes", "salads": "salads", "soups": "soups", "desserts": "desserts", "drinks": "drinks"},
     "es": {"mains": "platos principales", "salads": "ensaladas", "soups": "sopas", "desserts": "postres", "drinks": "bebidas"},
@@ -19,6 +49,78 @@ CATEGORY_NAMES = {
     "fr": {"mains": "plats principaux", "salads": "salades", "soups": "soupes", "desserts": "desserts", "drinks": "boissons"},
     "pt": {"mains": "pratos principais", "salads": "saladas", "soups": "sopas", "desserts": "sobremesas", "drinks": "bebidas"},
     "tr": {"mains": "ana yemekler", "salads": "salatalar", "soups": "çorbalar", "desserts": "tatlılar", "drinks": "içecekler"},
+}
+
+MENU_EXPLANATION = {
+    "en": "Here is our menu. We have {categories}. What would you like to see?",
+    "de": "Hier ist unsere Speisekarte. Wir haben {categories}. Was möchtest du dir ansehen?",
+    "fr": "Voici notre menu. Nous avons {categories}. Que souhaitez-vous voir ?",
+    "es": "Aquí está el menú. Tenemos {categories}. ¿Qué te gustaría ver?",
+    "pt": "Aqui está o menu. Temos {categories}. O que gostarias de ver?",
+    "tr": "İşte menümüz. {categories} var. Neye bakmak istersin?",
+}
+MENU_EXPLANATION_ALT = {
+    "en": "Let me show you the menu. We have {categories}. Where would you like to start?",
+    "de": "Schau dir die Speisekarte an. Wir haben {categories}. Womit möchtest du anfangen?",
+    "fr": "Je vous montre le menu. Nous avons {categories}. Par quoi souhaitez-vous commencer ?",
+    "es": "Te muestro el menú. Tenemos {categories}. ¿Por dónde te gustaría empezar?",
+    "pt": "Vou mostrar-te a ementa. Temos {categories}. Por onde queres começar?",
+    "tr": "Menüyü göstereyim. {categories} var. Nereden başlamak istersin?",
+}
+QUERY_REPLY = {
+    "en": "Yes. We have {items}.", "de": "Ja. Wir haben {items}.",
+    "fr": "Oui. Nous avons {items}.", "es": "Sí. Tenemos {items}.",
+    "pt": "Sim. Temos {items}.", "tr": "Evet. {items} var.",
+}
+RECOMMEND_REPLY = {
+    "en": "I'd recommend {item}. We also have {others}.",
+    "de": "Ich würde {item} empfehlen. Wir haben auch {others}.",
+    "fr": "Je vous recommande {item}. Nous avons aussi {others}.",
+    "es": "Te recomiendo {item}. También tenemos {others}.",
+    "pt": "Recomendo {item}. Também temos {others}.",
+    "tr": "{item} öneririm. Ayrıca {others} var.",
+}
+RECOMMEND_ONE = {
+    "en": "I'd recommend {item}.", "de": "Ich würde {item} empfehlen.",
+    "fr": "Je vous recommande {item}.", "es": "Te recomiendo {item}.",
+    "pt": "Recomendo {item}.", "tr": "{item} öneririm.",
+}
+RECOMMEND_ALT_REPLY = {
+    "en": "You might like {item}. Another option is {others}.",
+    "de": "{item} wäre eine gute Wahl. Wir haben auch {others}.",
+    "fr": "{item} pourrait vous plaire. Nous avons aussi {others}.",
+    "es": "Quizá te guste {item}. Otra opción es {others}.",
+    "pt": "Talvez gostes de {item}. Outra opção é {others}.",
+    "tr": "{item} iyi bir seçenek olabilir. Ayrıca {others} var.",
+}
+RECOMMEND_ALT_ONE = {
+    "en": "You might like {item}.", "de": "{item} wäre eine gute Wahl.",
+    "fr": "{item} pourrait vous plaire.", "es": "Quizá te guste {item}.",
+    "pt": "Talvez gostes de {item}.", "tr": "{item} iyi bir seçenek olabilir.",
+}
+ADDED_ALT = {
+    "en": "All right, I've added {item} to your order.",
+    "de": "Alles klar, {item} ist jetzt in deiner Bestellung.",
+    "fr": "Très bien, j'ai ajouté {item} à votre commande.",
+    "es": "Perfecto, he añadido {item} a tu pedido.",
+    "pt": "Está bem, adicionei {item} ao teu pedido.",
+    "tr": "Tamam, {item} siparişine eklendi.",
+}
+NO_ATTRIBUTE_MATCH = {
+    "en": "I'm sorry, we don't have a matching option available right now.",
+    "de": "Leider haben wir gerade keine passende Option verfügbar.",
+    "fr": "Je suis désolée, nous n'avons pas d'option correspondante pour le moment.",
+    "es": "Lo siento, ahora no tenemos una opción que corresponda.",
+    "pt": "Desculpa, não temos uma opção correspondente neste momento.",
+    "tr": "Üzgünüm, şu anda buna uygun bir seçenek yok.",
+}
+UNAVAILABLE_ALTERNATIVE = {
+    "en": "I'm sorry, {item} isn't available right now. You could try {alternative} instead.",
+    "de": "Tut mir leid, {item} ist gerade nicht verfügbar. Du könntest stattdessen {alternative} probieren.",
+    "fr": "Désolée, {item} n'est pas disponible pour le moment. Vous pourriez essayer {alternative} à la place.",
+    "es": "Lo siento, {item} no está disponible ahora. Podrías probar {alternative} en su lugar.",
+    "pt": "Desculpa, {item} não está disponível agora. Podes experimentar {alternative} em vez disso.",
+    "tr": "Üzgünüm, {item} şu anda yok. Onun yerine {alternative} deneyebilirsin.",
 }
 
 CLARIFICATION_TEXT = {
@@ -59,6 +161,17 @@ RECOMMENDATION_QUESTION = {
 for _language, _message in HELP_TEXT.items():
     TEXT[_language]["unclear"] = _message
 
+INVALID_QUANTITY = {
+    "en": "Please choose a quantity from 1 to 99.",
+    "de": "Bitte wähle eine Menge von 1 bis 99.",
+    "fr": "Veuillez choisir une quantité entre 1 et 99.",
+    "es": "Elige una cantidad entre 1 y 99, por favor.",
+    "pt": "Escolhe uma quantidade entre 1 e 99, por favor.",
+    "tr": "Lütfen 1 ile 99 arasında bir miktar seç.",
+}
+for _language, _message in INVALID_QUANTITY.items():
+    TEXT[_language]["invalid_quantity"] = _message
+
 def say(language: str, key: str, **values: str) -> str:
     return TEXT[language][key].format(**values)
 
@@ -70,6 +183,30 @@ def name(item_id: str, language: str) -> str:
 def total_text(snapshot: RestaurantSnapshot, language: str) -> str:
     cents = order_summary(snapshot, language)["total_cents"]
     return f"₺{cents // 100}" if language == "tr" else f"€{cents / 100:.2f}"
+
+
+def order_lines_text(snapshot: RestaurantSnapshot, language: str) -> str:
+    return ", ".join(quantity_text(item["name"], item["quantity"], language)
+                    for item in order_summary(snapshot, language)["items"])
+
+
+def quantity_text(item_name: str, quantity: int, language: str) -> str:
+    if language == "en":
+        number = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}.get(quantity, str(quantity))
+        plural = item_name if quantity == 1 or item_name.lower().endswith("fish") else (
+            item_name + "es" if item_name.lower().endswith(("s", "sh", "ch")) else item_name + "s")
+        return f"{number} {plural}"
+    return f"{quantity} {item_name}"
+
+
+REVIEW_SUMMARY = {
+    "en": "Your order is {items}. Your total is {total}. Please check it.",
+    "de": "Deine Bestellung: {items}. Gesamtbetrag: {total}. Bitte prüfe sie.",
+    "fr": "Votre commande : {items}. Le total est de {total}. Vérifiez-la, s'il vous plaît.",
+    "es": "Tu pedido: {items}. El total es {total}. Revísalo, por favor.",
+    "pt": "O teu pedido: {items}. O total é {total}. Confirma, por favor.",
+    "tr": "Siparişin: {items}. Toplam {total}. Lütfen kontrol et.",
+}
 
 
 def available_menu_items(result: ToolResult, user_message: str) -> list[dict]:
@@ -85,36 +222,76 @@ def available_menu_items(result: ToolResult, user_message: str) -> list[dict]:
 
 
 def result_reply(language: str, tool: str, args: dict, result: ToolResult,
-                 snapshot: RestaurantSnapshot, user_message: str) -> str:
+                 snapshot: RestaurantSnapshot, user_message: str, previous_reply: str = "") -> str:
     if not result.ok:
         reason = result.reason or "generic"
         if reason == "review_required":
-            return say(language, "review" if snapshot.step == "review" else "main_required")
-        if reason == "first_main_unavailable":
-            return say(language, reason, item=name(args.get("item_id") or args["new_item_id"], language))
-        if reason in ("not_selected", "main_required", "ambiguous_intent", "unknown_item", "item_unavailable"):
+            return (REVIEW_SUMMARY[language].format(items=order_lines_text(snapshot, language),
+                                                     total=total_text(snapshot, language))
+                    if snapshot.step == "review" else say(language, "main_required"))
+        if reason in ("first_main_unavailable", "item_unavailable"):
+            item_id = args.get("item_id") or args["new_item_id"]
+            alternative = available_alternative(item_id, snapshot.unavailable)
+            if alternative:
+                return UNAVAILABLE_ALTERNATIVE[language].format(item=name(item_id, language),
+                                                                 alternative=name(alternative, language))
+            return say(language, "first_main_unavailable", item=name(item_id, language))
+        if reason in ("not_selected", "main_required", "ambiguous_intent", "unknown_item", "invalid_quantity"):
             return say(language, {"ambiguous_intent": "unclear", "unknown_item": "not_found",
-                                  "item_unavailable": "unavailable"}.get(reason, reason))
+                                  }.get(reason, reason))
         return say(language, "generic")
     if tool == "open_menu":
-        return say(language, "menu")
+        base_prefix = MENU_EXPLANATION[language].split("{categories}", 1)[0]
+        template = MENU_EXPLANATION_ALT if previous_reply.startswith(base_prefix) else MENU_EXPLANATION
+        return template[language].format(categories=", ".join(CATEGORY_NAMES[language][group]
+                                                                for group in CATEGORIES))
+    if tool == "query_menu":
+        items = (result.data or {}).get("items", [])
+        if not items:
+            return NO_ATTRIBUTE_MATCH[language]
+        names = [item["name"] for item in items]
+        if args.get("recommend"):
+            chosen_id = (result.data or {}).get("recommended")
+            chosen = next((item for item in items if item["id"] == chosen_id), items[0])
+            others = [item for item in items if item["id"] != chosen["id"]]
+            chosen_tags = set(CATALOG[chosen["id"]]["tags"])
+            others.sort(key=lambda item: len(chosen_tags.intersection(CATALOG[item["id"]]["tags"])), reverse=True)
+            opener = RECOMMEND_REPLY[language].split("{item}", 1)[0]
+            repeated = (previous_reply.startswith(opener) if opener else
+                        previous_reply.startswith(f"{chosen['name']} öneririm")) and bool(previous_reply)
+            if others:
+                template = RECOMMEND_ALT_REPLY if repeated else RECOMMEND_REPLY
+                return template[language].format(item=chosen["name"],
+                                                 others=", ".join(item["name"] for item in others[:2]))
+            template = RECOMMEND_ALT_ONE if repeated else RECOMMEND_ONE
+            return template[language].format(item=chosen["name"])
+        return QUERY_REPLY[language].format(items=", ".join(names[:4]))
     if tool == "show_menu_category":
         return say(language, "category", category=CATEGORY_NAMES[language][args["category"]])
     if tool == "show_menu_item":
         return say(language, "item", item=name(args["item_id"], language))
     if tool == "add_order_item":
-        return say(language, "added", item=name(args["item_id"], language))
+        item = quantity_text(name(args["item_id"], language), args["quantity"], language)
+        if args["quantity"] > 1 or CATALOG[args["item_id"]]["category"] == "mains":
+            return ADDED_ALT[language].format(item=item)
+        return say(language, "added", item=item)
+    if tool in ("set_order_quantity", "decrease_order_quantity"):
+        quantity = snapshot.order.quantity(args["item_id"])
+        if quantity == 0:
+            return say(language, "removed", item=name(args["item_id"], language))
+        return say(language, "added", item=quantity_text(name(args["item_id"], language), quantity, language))
     if tool == "remove_order_item":
         return say(language, "removed", item=name(args["item_id"], language))
     if tool == "replace_order_item":
         return say(language, "replaced", old=name(args["old_item_id"], language), item=name(args["new_item_id"], language))
     if tool == "get_current_order":
-        items = [item["name"] for item in order_summary(snapshot, language)["items"]]
-        return say(language, "order", items=", ".join(items)) if items else say(language, "empty")
+        items = order_lines_text(snapshot, language)
+        return say(language, "order", items=items) if items else say(language, "empty")
     if tool == "get_order_total":
         return say(language, "total", total=total_text(snapshot, language))
     if tool == "review_order":
-        return say(language, "review")
+        return REVIEW_SUMMARY[language].format(items=order_lines_text(snapshot, language),
+                                               total=total_text(snapshot, language))
     if tool == "go_back_to_menu":
         return say(language, "back")
     if tool == "start_payment":

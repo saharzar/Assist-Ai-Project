@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import type { LanguageCode } from "../../i18n";
 import { formatRestaurantPrice, getRestaurantReceipt, type RestaurantPaymentAction, type RestaurantPaymentState } from "../../lib/restaurantPayment";
 import { restaurantPaymentTranslations, type RestaurantPaymentText } from "../../lib/restaurantPaymentTranslations";
-import { getOrderItem, getOrderItemName, getOrderTotalCents } from "../../lib/restaurantOrder";
-import { getRestaurantMenuItemPrice } from "../../lib/restaurantMenu";
-import { menuCategories, type Drink, type Meal, type RestaurantOrder } from "../../lib/restaurantState";
+import { getOrderLines, getOrderItemName, getOrderTotalCents } from "../../lib/restaurantOrder";
+import { getRestaurantMenuItemPrice, restaurantMenuItems } from "../../lib/restaurantMenu";
+import { type Drink, type Meal, type RestaurantOrder } from "../../lib/restaurantState";
 import { restaurantTranslations } from "../../lib/restaurantTranslations";
 import { PaymentMethodIllustration, PaymentTerminalIllustration, PaymentCardIllustration, CashPaymentIllustration } from "./RestaurantPaymentArt";
 
@@ -33,11 +33,11 @@ export function RestaurantPaymentPanel({ payment, meal, drink, order, language, 
     <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-lg font-bold"><dt>{text.total}</dt><dd>{total}</dd></div>
   </>;
   const orderLines = order ? <>
-    {menuCategories.flatMap((category) => {
-      const item = getOrderItem(order, category);
+    {getOrderLines(order).flatMap((line) => {
+      const item = restaurantMenuItems.find((entry) => entry.id === line.item_id);
       if (!item) return [];
-      const name = getOrderItemName(order, category, language)!;
-      return [<div key={category} className="restaurant-payment-order-line"><dt>{name}</dt><dd>{money(getRestaurantMenuItemPrice(item, language))}</dd></div>];
+      const name = getOrderItemName({ ...order, [item.category]: item.id }, item.category, language)!;
+      return [<div key={item.id} className="restaurant-payment-order-line"><dt>{name} ×{line.quantity}</dt><dd>{money(getRestaurantMenuItemPrice(item, language) * line.quantity)}</dd></div>];
     })}
     <div className="restaurant-payment-order-total"><dt>{text.total}</dt><dd>{total}</dd></div>
   </> : legacyOrderLines;

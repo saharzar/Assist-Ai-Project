@@ -22,7 +22,12 @@
         "tr": "Domates soslu, otlu ve parmesanlı makarna",
         "pt": "Massa com tomate, ervas e parmesão",
         "fr": "Pâtes à la tomate, aux herbes et au parmesan"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable"
+      ]
     },
     {
       "id": "chicken",
@@ -46,7 +51,15 @@
         "tr": "Mevsim sebzeli ızgara tavuk",
         "pt": "Frango grelhado com legumes da época",
         "fr": "Poulet grillé et légumes de saison"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "chicken",
+        "meat",
+        "light",
+        "vegetable"
+      ]
     },
     {
       "id": "pizza",
@@ -70,7 +83,12 @@
         "tr": "Domates, mozzarella ve taze fesleğen",
         "pt": "Tomate, mozzarella e manjericão fresco",
         "fr": "Tomate, mozzarella et basilic frais"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable"
+      ]
     },
     {
       "id": "rice",
@@ -94,7 +112,14 @@
         "tr": "Karışık mevsim sebzeli pilav",
         "pt": "Arroz com legumes da época",
         "fr": "Riz aux légumes de saison"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "vegetarian",
+        "light"
+      ]
     },
     {
       "id": "burger",
@@ -118,7 +143,13 @@
         "tr": "Marul, domates ve peynirli dana burger",
         "pt": "Hambúrguer de vaca com alface, tomate e queijo",
         "fr": "Bœuf, salade, tomate et fromage"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "beef",
+        "meat"
+      ]
     },
     {
       "id": "fish",
@@ -142,7 +173,14 @@
         "tr": "Limon ve sebzeli ızgara balık",
         "pt": "Peixe grelhado com limão e legumes",
         "fr": "Poisson grillé au citron et légumes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "fish",
+        "light",
+        "vegetable"
+      ]
     },
     {
       "id": "steak",
@@ -166,7 +204,13 @@
         "tr": "Sebze ve patatesli ızgara dana eti",
         "pt": "Vaca grelhada com legumes e batatas",
         "fr": "Bœuf grillé avec légumes et pommes de terre"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "beef",
+        "meat"
+      ]
     },
     {
       "id": "wrap",
@@ -190,7 +234,14 @@
         "tr": "Lavaşta tavuk, sebze ve yeşillik",
         "pt": "Frango e legumes em pão achatado",
         "fr": "Poulet et légumes dans une galette"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "chicken",
+        "meat",
+        "vegetable"
+      ]
     },
     {
       "id": "lasagna",
@@ -214,7 +265,12 @@
         "tr": "Et soslu ve peynirli kat kat makarna",
         "pt": "Camadas de massa com carne e queijo",
         "fr": "Pâtes en couches, sauce à la viande et fromage"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "meat"
+      ]
     },
     {
       "id": "risotto",
@@ -238,7 +294,12 @@
         "tr": "Mantarlı ve otlu kremalı pirinç",
         "pt": "Arroz cremoso com cogumelos e ervas",
         "fr": "Riz crémeux aux champignons et herbes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "mushroom"
+      ]
     },
     {
       "id": "salad",
@@ -262,7 +323,13 @@
         "tr": "Karışık yeşillik, domates ve salatalık",
         "pt": "Folhas verdes, tomate e pepino",
         "fr": "Salade verte, tomate et concombre"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "caesar",
@@ -286,7 +353,12 @@
         "tr": "Marul, parmesan, kruton ve Sezar sosu",
         "pt": "Alface, parmesão, croutons e molho César",
         "fr": "Laitue, parmesan, croûtons et sauce César"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable"
+      ]
     },
     {
       "id": "tomatoCucumber",
@@ -310,7 +382,13 @@
         "tr": "Taze otlu domates ve salatalık",
         "pt": "Tomate e pepino com ervas frescas",
         "fr": "Tomate et concombre aux herbes fraîches"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "greekSalad",
@@ -334,7 +412,12 @@
         "tr": "Domates, salatalık, zeytin ve feta",
         "pt": "Tomate, pepino, azeitonas e feta",
         "fr": "Tomate, concombre, olives et feta"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable"
+      ]
     },
     {
       "id": "tunaSalad",
@@ -358,7 +441,13 @@
         "tr": "Yeşillik ve çeri domatesli ton balığı",
         "pt": "Atum com folhas verdes e tomate cereja",
         "fr": "Thon, salade verte et tomates cerises"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "fish",
+        "tuna"
+      ]
     },
     {
       "id": "quinoaSalad",
@@ -382,7 +471,13 @@
         "tr": "Sebze ve otlu kinoa",
         "pt": "Quinoa com legumes e ervas",
         "fr": "Quinoa aux légumes et herbes"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "chickenSalad",
@@ -406,7 +501,14 @@
         "tr": "Karışık yeşillik üzerinde ızgara tavuk",
         "pt": "Frango grelhado sobre folhas verdes",
         "fr": "Poulet grillé sur salade verte"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "chicken",
+        "meat",
+        "vegetable"
+      ]
     },
     {
       "id": "avocadoSalad",
@@ -430,7 +532,13 @@
         "tr": "Yeşillik ve domatesli avokado",
         "pt": "Abacate com folhas verdes e tomate",
         "fr": "Avocat, salade verte et tomate"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "pastaSalad",
@@ -454,7 +562,13 @@
         "tr": "Domates, zeytin ve sebzeli makarna",
         "pt": "Massa com tomate, azeitonas e legumes",
         "fr": "Pâtes, tomate, olives et légumes"
-      }
+      },
+      "tags": [
+        "cold",
+        "light",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "soup",
@@ -478,7 +592,12 @@
         "tr": "Otlu kremalı sebze çorbası",
         "pt": "Sopa cremosa de legumes com ervas",
         "fr": "Soupe crémeuse de légumes aux herbes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable"
+      ]
     },
     {
       "id": "lentil",
@@ -502,7 +621,14 @@
         "tr": "Sebze ve hafif baharatlı mercimek",
         "pt": "Lentilhas com legumes e especiarias suaves",
         "fr": "Lentilles, légumes et épices douces"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "vegetarian",
+        "light"
+      ]
     },
     {
       "id": "vegetableSoup",
@@ -526,7 +652,13 @@
         "tr": "Hafif sebze suyunda karışık sebze",
         "pt": "Legumes em caldo leve",
         "fr": "Légumes variés dans un bouillon léger"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "light"
+      ]
     },
     {
       "id": "tomatoSoup",
@@ -550,7 +682,14 @@
         "tr": "Fesleğenli pürüzsüz domates çorbası",
         "pt": "Sopa de tomate cremosa com manjericão",
         "fr": "Velouté de tomate au basilic"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "vegetarian",
+        "light"
+      ]
     },
     {
       "id": "mushroomSoup",
@@ -574,7 +713,12 @@
         "tr": "Otlu kremalı mantar çorbası",
         "pt": "Sopa cremosa de cogumelos com ervas",
         "fr": "Soupe crémeuse aux champignons et herbes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "mushroom"
+      ]
     },
     {
       "id": "chickenSoup",
@@ -598,7 +742,15 @@
         "tr": "Hafif suda tavuk ve sebze",
         "pt": "Frango e legumes em caldo leve",
         "fr": "Poulet et légumes dans un bouillon léger"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "chicken",
+        "meat",
+        "vegetable",
+        "light"
+      ]
     },
     {
       "id": "pumpkinSoup",
@@ -622,7 +774,13 @@
         "tr": "Çekirdekli pürüzsüz balkabağı çorbası",
         "pt": "Sopa cremosa de abóbora com sementes",
         "fr": "Velouté de potiron aux graines"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "vegetarian"
+      ]
     },
     {
       "id": "minestrone",
@@ -646,7 +804,14 @@
         "tr": "Fasulye ve sebzeli domates suyu",
         "pt": "Caldo de tomate com feijão e legumes",
         "fr": "Bouillon de tomate, haricots et légumes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable",
+        "vegetarian",
+        "light"
+      ]
     },
     {
       "id": "broccoliSoup",
@@ -670,7 +835,12 @@
         "tr": "Otlu kremalı brokoli çorbası",
         "pt": "Sopa cremosa de brócolos com ervas",
         "fr": "Soupe crémeuse de brocoli aux herbes"
-      }
+      },
+      "tags": [
+        "hot",
+        "savory",
+        "vegetable"
+      ]
     },
     {
       "id": "cake",
@@ -694,7 +864,10 @@
         "tr": "Çikolata kremalı kakaolu kek",
         "pt": "Bolo de chocolate com creme de chocolate",
         "fr": "Génoise au chocolat et crème chocolatée"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "cheesecake",
@@ -718,7 +891,10 @@
         "tr": "Bisküvi tabanlı kremalı cheesecake",
         "pt": "Cheesecake cremoso com base de bolacha",
         "fr": "Cheesecake crémeux sur base biscuitée"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "fruit",
@@ -742,7 +918,13 @@
         "tr": "Taze mevsim meyveleri",
         "pt": "Fruta fresca da época",
         "fr": "Fruits frais de saison"
-      }
+      },
+      "tags": [
+        "sweet",
+        "cold",
+        "light",
+        "vegetarian"
+      ]
     },
     {
       "id": "iceCream",
@@ -766,7 +948,11 @@
         "tr": "Kremalı dondurma topları",
         "pt": "Bolas de gelado cremoso",
         "fr": "Boules de glace crémeuse"
-      }
+      },
+      "tags": [
+        "sweet",
+        "cold"
+      ]
     },
     {
       "id": "applePie",
@@ -790,7 +976,10 @@
         "tr": "Hamur içinde fırınlanmış elma",
         "pt": "Maçãs assadas em massa estaladiça",
         "fr": "Pommes cuites dans une pâte croustillante"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "tiramisu",
@@ -814,7 +1003,11 @@
         "tr": "Mascarponeli kahveli katlar",
         "pt": "Camadas de café e mascarpone",
         "fr": "Couches au café et mascarpone"
-      }
+      },
+      "tags": [
+        "sweet",
+        "caffeinated"
+      ]
     },
     {
       "id": "brownie",
@@ -838,7 +1031,10 @@
         "tr": "Yoğun çikolatalı brownie",
         "pt": "Brownie rico em chocolate",
         "fr": "Brownie riche en chocolat"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "pudding",
@@ -862,7 +1058,10 @@
         "tr": "Pürüzsüz vanilyalı puding",
         "pt": "Pudim suave de baunilha",
         "fr": "Pudding doux à la vanille"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "fruitTart",
@@ -886,7 +1085,10 @@
         "tr": "Taze meyveli tart",
         "pt": "Tarte de massa com fruta fresca",
         "fr": "Tarte aux fruits frais"
-      }
+      },
+      "tags": [
+        "sweet"
+      ]
     },
     {
       "id": "water",
@@ -910,7 +1112,10 @@
         "tr": "Durgun su",
         "pt": "Água sem gás",
         "fr": "Eau plate"
-      }
+      },
+      "tags": [
+        "drink"
+      ]
     },
     {
       "id": "orangeJuice",
@@ -934,7 +1139,12 @@
         "tr": "Portakal suyu",
         "pt": "Sumo de laranja",
         "fr": "Jus d’orange"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold",
+        "sweet"
+      ]
     },
     {
       "id": "appleJuice",
@@ -958,7 +1168,12 @@
         "tr": "Elma suyu",
         "pt": "Sumo de maçã",
         "fr": "Jus de pomme"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold",
+        "sweet"
+      ]
     },
     {
       "id": "tea",
@@ -982,7 +1197,12 @@
         "tr": "Sıcak siyah çay",
         "pt": "Chá preto quente",
         "fr": "Thé noir chaud"
-      }
+      },
+      "tags": [
+        "drink",
+        "hot",
+        "caffeinated"
+      ]
     },
     {
       "id": "lemonade",
@@ -1006,7 +1226,12 @@
         "tr": "Limon ve narenciye içeceği",
         "pt": "Bebida de limão e citrinos",
         "fr": "Boisson au citron et aux agrumes"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold",
+        "sweet"
+      ]
     },
     {
       "id": "coffee",
@@ -1030,7 +1255,12 @@
         "tr": "Taze demlenmiş kahve",
         "pt": "Café acabado de fazer",
         "fr": "Café fraîchement préparé"
-      }
+      },
+      "tags": [
+        "drink",
+        "hot",
+        "caffeinated"
+      ]
     },
     {
       "id": "sparklingWater",
@@ -1054,7 +1284,11 @@
         "tr": "Limonlu maden suyu",
         "pt": "Água com gás e lima",
         "fr": "Eau gazeuse au citron vert"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold"
+      ]
     },
     {
       "id": "icedTea",
@@ -1078,7 +1312,12 @@
         "tr": "Narenciyeli soğuk çay",
         "pt": "Chá frio com citrinos",
         "fr": "Thé froid aux agrumes"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold",
+        "caffeinated"
+      ]
     },
     {
       "id": "hotChocolate",
@@ -1102,7 +1341,12 @@
         "tr": "Kremalı sıcak kakao",
         "pt": "Cacau quente com natas",
         "fr": "Cacao chaud à la crème fouettée"
-      }
+      },
+      "tags": [
+        "drink",
+        "hot",
+        "sweet"
+      ]
     },
     {
       "id": "milkshake",
@@ -1126,7 +1370,12 @@
         "tr": "Kremalı çilekli milkshake",
         "pt": "Batido cremoso de morango",
         "fr": "Milkshake crémeux à la fraise"
-      }
+      },
+      "tags": [
+        "drink",
+        "cold",
+        "sweet"
+      ]
     }
   ]
 }

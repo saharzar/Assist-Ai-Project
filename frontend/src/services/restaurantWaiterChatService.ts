@@ -17,9 +17,9 @@ export type RestaurantWaiterSnapshot = {
   payment_method: RestaurantPaymentState["method"];
 };
 export type RestaurantWaiterAction = {
-  type: "OPEN_MENU" | "SHOW_MENU_CATEGORY" | "SHOW_MENU_ITEM" | "SELECT_ITEM" | "REMOVE_ITEM" |
+  type: "OPEN_MENU" | "SHOW_MENU_CATEGORY" | "SHOW_MENU_ITEM" | "SELECT_ITEM" | "SET_QUANTITY" | "REMOVE_ITEM" |
     "REVIEW_ORDER" | "CHANGE_ORDER" | "CONFIRM_ORDER" | "CHOOSE_PAYMENT_METHOD";
-  category?: MenuCategory | null; item_id?: string | null; method?: "card" | "cash" | null;
+  category?: MenuCategory | null; item_id?: string | null; method?: "card" | "cash" | null; quantity?: number | null;
 };
 export type RestaurantWaiterChatRequest = {
   message: string;
@@ -35,7 +35,7 @@ export type RestaurantWaiterChatResponse = {
 
 export function restaurantWaiterSnapshot(state: RestaurantState, payment: RestaurantPaymentState): RestaurantWaiterSnapshot {
   return { step: state.step, category: state.category, unavailable: state.unavailable,
-    order: { ...state.order }, payment_phase: payment.phase, payment_method: payment.method };
+    order: { ...state.order, lines: state.order.lines.map((line) => ({ ...line })) }, payment_phase: payment.phase, payment_method: payment.method };
 }
 
 export async function chatWithRestaurantWaiter(payload: RestaurantWaiterChatRequest, signal?: AbortSignal) {

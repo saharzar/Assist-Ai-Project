@@ -172,11 +172,13 @@ Production camera access requires HTTPS. MediaPipe currently downloads its WASM 
 
 Open **Restaurant Ordering** from the scenario catalogue (`/scenario/restaurant-ordering`). The introduction explains the activity, and Start uses the existing consent-aware camera and face checks. The practice route is `/scenario/restaurant-ordering/run`.
 
-Choose pasta, grilled chicken, salad, or soup. The first choice becomes unavailable for this practice attempt. Choose one of the other meals, or reopen the menu (the unavailable dish remains disabled). Confirm the meal, choose water, juice, or no drink, then confirm the complete order. The drink choice can be changed without restarting. There is no payment, reservation, pricing, real order, or AI conversation. The restaurant counter background stays visible throughout; the staff avatar and four food illustrations are original lightweight SVGs. The waiter's mouth animates during assistant speech. Instructions, food and drink names, assistant messages, and actions support English, Spanish, German, Turkish, Portuguese, and French.
+Browse the menu, talk to the waiter by text or voice, review the order, and complete a simulated card or cash payment. The first main dish chosen can be unavailable, so the guest can choose another. The waiter uses validated menu and order actions, with Groq for some conversational responses. No real order or payment is placed. The scenario supports English, Spanish, German, Turkish, Portuguese, and French.
 
 The existing speech assistant reads staff messages and provides sound/stop/repeat controls. Scenario analytics use the same actor authorization, guest progress consent, queued events, duplicate protection, and final-flush conventions as bill payment. Registered users and consenting guests have completed or abandoned attempts saved from the menu onward. Admin → Scenario Analytics → Restaurant Ordering shows paginated attempts at `/admin/restaurant-analytics`.
 
 Existing computer vision consent, recording, and admin preview behavior also apply. Restaurant recordings are linked to their attempt and appear under the restaurant card in Computer Vision Recordings. Migration `20261015_0018` adds restaurant sessions/events and their CV link; it preserves existing ATM and bill recordings. It adds no environment variables. Scenario duration includes startup, while CV duration begins at the first valid measurement, so those durations may differ.
+
+For local LLM request diagnostics, set `RESTAURANT_LLM_DIAGNOSTICS=true` in the backend environment and restart FastAPI. The backend terminal then emits `restaurant_llm.request_diagnostics` before each Groq request and `restaurant_llm.provider_usage` after a successful response. Match them by `request_id`. The breakdown uses `ceil(characters/4)` estimates; Groq usage is authoritative. Diagnostics are off by default and log counts and field names, never request text or secrets.
 
 ## User Roles
 

@@ -5,7 +5,7 @@ import { initialRestaurantState, restaurantReducer, type RestaurantState } from 
 import { restaurantWaiterSnapshot, type RestaurantWaiterAction } from "../services/restaurantWaiterChatService";
 
 const base = (): RestaurantState => ({ ...initialRestaurantState, order: { ...initialRestaurantState.order } });
-const ready = (): RestaurantState => ({ ...base(), step: "alternative", unavailable: "pasta", order: { ...base().order, mains: "pizza", drinks: "water" } });
+const ready = (): RestaurantState => ({ ...base(), step: "alternative", unavailable: "pasta", order: { ...base().order, mains: "pizza", drinks: "water", lines: [{ item_id: "pizza", quantity: 1 }, { item_id: "water", quantity: 1 }] } });
 const preview = (state: RestaurantState, actions: RestaurantWaiterAction[]) => previewRestaurantWaiterActions(state, initialRestaurantPayment, actions);
 
 describe("validated Restaurant waiter action projection", () => {
@@ -70,5 +70,17 @@ describe("validated Restaurant waiter action projection", () => {
     const afterManualSelection = restaurantReducer(afterManualCategory, { type: "selectItem", category: "drinks", id: "orangeJuice" });
     expect(afterManualSelection.order).toMatchObject({ mains: "pizza", salads: "caesar", drinks: "orangeJuice" });
     expect(afterManualSelection.category).toBe("drinks");
+  });
+  it("projects validated quantity actions into the exact cart", () => {
+    const initial = ready();
+    const projected = preview(initial, [
+      { type: "SELECT_ITEM", category: "mains", item_id: "pizza", quantity: 2 },
+      { type: "SET_QUANTITY", category: "drinks", item_id: "water", quantity: 3 },
+    ]);
+    expect(projected?.snapshot.order.lines).toEqual([
+      { item_id: "pizza", quantity: 3 }, { item_id: "water", quantity: 3 },
+    ]);
+    expect(projected && sameRestaurantSnapshot(projected.snapshot, restaurantWaiterSnapshot(
+      projected.restaurantActions.reduce(restaurantReducer, initial), initialRestaurantPayment))).toBe(true);
   });
 });
