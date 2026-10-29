@@ -12,6 +12,7 @@ class SttUsageResponse(BaseModel):
     stt_used_seconds: int
     stt_remaining_seconds: int
     stt_reset_date: date
+    unlimited: bool = False
 
 
 class SttRecognitionResponse(SttUsageResponse):

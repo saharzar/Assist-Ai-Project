@@ -1135,7 +1135,7 @@ export function AtmScenarioPage() {
           setIsPreparingVoice(false);
           listeningStartedAtRef.current = Date.now();
           setIsListening(true);
-          sttAutoStopTimerRef.current = window.setTimeout(() => {
+          if (!usage.unlimited) sttAutoStopTimerRef.current = window.setTimeout(() => {
             setSpeechError(text.speechLimitReached);
             recognizerRef.current?.stop();
             finishListeningSession();
@@ -1205,7 +1205,7 @@ export function AtmScenarioPage() {
           setIsPreparingVoice(false);
           listeningStartedAtRef.current = Date.now();
           setIsListening(true);
-          sttAutoStopTimerRef.current = window.setTimeout(() => {
+          if (!usage.unlimited) sttAutoStopTimerRef.current = window.setTimeout(() => {
             setSpeechError(text.speechLimitReached);
             recognizerRef.current?.stop();
             finishListeningSession();
@@ -1332,7 +1332,7 @@ export function AtmScenarioPage() {
           setIsPreparingVoice(false);
           listeningStartedAtRef.current = Date.now();
           setIsListening(true);
-          sttAutoStopTimerRef.current = window.setTimeout(() => {
+          if (!usage.unlimited) sttAutoStopTimerRef.current = window.setTimeout(() => {
             setSpeechError(text.speechLimitReached);
             recognizerRef.current?.stop();
             finishListeningSession();
@@ -1475,7 +1475,7 @@ export function AtmScenarioPage() {
           setIsPreparingVoice(false);
           listeningStartedAtRef.current = Date.now();
           setIsListening(true);
-          sttAutoStopTimerRef.current = window.setTimeout(() => {
+          if (!usage.unlimited) sttAutoStopTimerRef.current = window.setTimeout(() => {
             setSpeechError(text.speechLimitReached);
             recognizerRef.current?.stop();
             finishListeningSession();

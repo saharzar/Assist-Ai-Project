@@ -67,6 +67,14 @@ MENU_EXPLANATION_ALT = {
     "pt": "Vou mostrar-te a ementa. Temos {categories}. Por onde queres começar?",
     "tr": "Menüyü göstereyim. {categories} var. Nereden başlamak istersin?",
 }
+EDIT_ORDER_REPLIES = {
+    "en": ("What would you like to add, remove or change?", "Sure. What would you like to change?", "What would you like to update in your order?"),
+    "fr": ("Que souhaitez-vous ajouter, retirer ou modifier ?", "Bien sûr. Que souhaitez-vous changer ?", "Que voulez-vous modifier dans votre commande ?"),
+    "de": ("Was möchtest du hinzufügen, entfernen oder ändern?", "Gerne. Was möchtest du ändern?", "Was möchtest du an deiner Bestellung ändern?"),
+    "es": ("¿Qué quieres añadir, quitar o cambiar?", "Claro. ¿Qué quieres cambiar?", "¿Qué te gustaría modificar en tu pedido?"),
+    "pt": ("O que queres adicionar, retirar ou alterar?", "Claro. O que gostarias de mudar?", "O que queres alterar no teu pedido?"),
+    "tr": ("Ne eklemek, çıkarmak veya değiştirmek istersin?", "Olur. Neyi değiştirmek istersin?", "Siparişinde neyi değiştirmek istersin?"),
+}
 QUERY_REPLY = {
     "en": "Yes. We have {items}.", "de": "Ja. Wir haben {items}.",
     "fr": "Oui. Nous avons {items}.", "es": "Sí. Tenemos {items}.",
@@ -196,6 +204,9 @@ def quantity_text(item_name: str, quantity: int, language: str) -> str:
         plural = item_name if quantity == 1 or item_name.lower().endswith("fish") else (
             item_name + "es" if item_name.lower().endswith(("s", "sh", "ch")) else item_name + "s")
         return f"{number} {plural}"
+    if language == "tr":
+        number = {1: "bir", 2: "iki", 3: "üç", 4: "dört", 5: "beş"}.get(quantity, str(quantity))
+        return f"{number} {item_name.lower()}"
     return f"{quantity} {item_name}"
 
 
@@ -272,6 +283,8 @@ def result_reply(language: str, tool: str, args: dict, result: ToolResult,
         return say(language, "item", item=name(args["item_id"], language))
     if tool == "add_order_item":
         item = quantity_text(name(args["item_id"], language), args["quantity"], language)
+        if language == "tr":
+            return f"Tamam, {item} ekledim." if args["quantity"] > 1 else f"{name(args['item_id'], language)} siparişine eklendi."
         if args["quantity"] > 1 or CATALOG[args["item_id"]]["category"] == "mains":
             return ADDED_ALT[language].format(item=item)
         return say(language, "added", item=item)
@@ -293,9 +306,19 @@ def result_reply(language: str, tool: str, args: dict, result: ToolResult,
         return REVIEW_SUMMARY[language].format(items=order_lines_text(snapshot, language),
                                                total=total_text(snapshot, language))
     if tool == "go_back_to_menu":
-        return say(language, "back")
+        options = EDIT_ORDER_REPLIES[language]
+        return options[(options.index(previous_reply) + 1) % len(options)] if previous_reply in options else options[0]
     if tool == "start_payment":
         return say(language, "payment")
+    if tool == "start_new_order":
+        return {
+            "en": "Let's start a new order. Would you like to see the menu?",
+            "fr": "Commençons une nouvelle commande. Voulez-vous voir le menu ?",
+            "de": "Beginnen wir eine neue Bestellung. Möchtest du die Speisekarte sehen?",
+            "es": "Empecemos un nuevo pedido. ¿Quieres ver el menú?",
+            "pt": "Vamos começar um novo pedido. Queres ver a ementa?",
+            "tr": "Yeni bir siparişe başlayalım. Menüyü görmek ister misin?",
+        }[language]
     if tool == "choose_payment_method":
         methods = {"card": {"en": "card", "es": "tarjeta", "de": "Karte", "fr": "la carte", "pt": "cartão", "tr": "kart"},
                    "cash": {"en": "cash", "es": "efectivo", "de": "Bargeld", "fr": "les espèces", "pt": "dinheiro", "tr": "nakit"}}

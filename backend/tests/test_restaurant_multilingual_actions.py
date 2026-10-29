@@ -56,11 +56,12 @@ def test_language_actions_change_real_state(language, menu, category, add, remov
     assert any(action.type == "SELECT_ITEM" for action in restored.actions)
     asked = service.chat_with_tools(question, language, [], restored.state)
     assert asked.actions == []
-    assert ("two Pizzas" if language == "en" else "2 Pizza") in asked.reply
+    expected_quantity = "two Pizzas" if language == "en" else "iki pizza" if language == "tr" else "2 Pizza"
+    assert expected_quantity in asked.reply
     reviewed = service.chat_with_tools(review, language, [], restored.state)
     assert reviewed.state.step == "review"
     assert any(action.type == "REVIEW_ORDER" for action in reviewed.actions)
-    assert ("two Pizzas" if language == "en" else "2 Pizza") in reviewed.reply
+    assert expected_quantity in reviewed.reply
     assert ("₺760" if language == "tr" else "€24.00") in reviewed.reply
 
 

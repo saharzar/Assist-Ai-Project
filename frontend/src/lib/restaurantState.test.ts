@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { drinks, initialRestaurantState, meals, menuCategories, optionalOrderCategories, requiredOrderCategories, restaurantReducer } from "./restaurantState";
+import { drinks, initialRestaurantState, meals, menuCategories, optionalOrderCategories, requiredOrderCategories, restaurantReducer, type RestaurantState } from "./restaurantState";
 import { restaurantTranslations } from "./restaurantTranslations";
 
 describe("guided restaurant ordering", () => {
@@ -136,5 +136,39 @@ describe("restaurant order building", () => {
     current = restaurantReducer(current, { type: "removeItem", category: "mains", id: "burger" });
     expect(current.order.lines).toEqual([{ item_id: "pizza", quantity: 2 }]);
     expect(current.order.mains).toBe("pizza");
+  });
+  it("keeps cart insertion order through quantity changes, review, editing, and re-adding", () => {
+    let current = restaurantReducer(opened, { type: "selectItem", category: "mains", id: "pasta" });
+    for (const [category, id] of [["mains", "pizza"], ["mains", "chicken"], ["drinks", "water"]] as const) {
+      current = restaurantReducer(current, { type: "selectItem", category, id });
+    }
+    const ids = () => current.order.lines.map((line) => line.item_id);
+    expect(ids()).toEqual(["pizza", "chicken", "water"]);
+    current = restaurantReducer(current, { type: "setQuantity", category: "mains", id: "pizza", quantity: 2 });
+    current = restaurantReducer(current, { type: "setQuantity", category: "mains", id: "chicken", quantity: 5 });
+    current = restaurantReducer(current, { type: "selectItem", category: "mains", id: "pizza", quantity: 2 });
+    expect(ids()).toEqual(["pizza", "chicken", "water"]);
+    expect(current.order.lines.map((line) => line.quantity)).toEqual([4, 5, 1]);
+    current = restaurantReducer(current, { type: "reviewOrder" });
+    expect(current.step).toBe("review");
+    expect(ids()).toEqual(["pizza", "chicken", "water"]);
+    current = restaurantReducer(current, { type: "changeOrder" });
+    current = restaurantReducer(current, { type: "selectItem", category: "desserts", id: "cake" });
+    current = restaurantReducer(current, { type: "reviewOrder" });
+    expect(ids()).toEqual(["pizza", "chicken", "water", "cake"]);
+    current = restaurantReducer(current, { type: "changeOrder" });
+    current = restaurantReducer(current, { type: "removeItem", category: "mains", id: "pizza" });
+    current = restaurantReducer(current, { type: "selectItem", category: "mains", id: "pizza" });
+    expect(ids()).toEqual(["chicken", "water", "cake", "pizza"]);
+  });
+  it("keeps Pasta, Pizza, Chicken, Water in exactly that order at quantities 2 and 5", () => {
+    let current: RestaurantState = { ...opened, step: "alternative", unavailable: "steak",
+      order: { ...opened.order, mains: "chicken", drinks: "water", lines: [
+        { item_id: "pasta", quantity: 1 }, { item_id: "pizza", quantity: 1 },
+        { item_id: "chicken", quantity: 1 }, { item_id: "water", quantity: 1 },
+      ] } };
+    current = restaurantReducer(current, { type: "setQuantity", category: "mains", id: "pizza", quantity: 2 });
+    current = restaurantReducer(current, { type: "setQuantity", category: "mains", id: "chicken", quantity: 5 });
+    expect(current.order.lines.map((line) => line.item_id)).toEqual(["pasta", "pizza", "chicken", "water"]);
   });
 });

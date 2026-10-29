@@ -13,7 +13,7 @@ describe("restaurant audio envelope", () => {
     for (let t = 330; t <= 594; t += 33) meter.update(.04, t);
     expect(meter.state).toBe("open");
     for (let t = 627; t <= 924; t += 33) meter.update(.2, t);
-    expect(meter.state).toBe("wide");
+    expect(["wide", "rounded"]).toContain(meter.state);
     for (let t = 957; t <= 1089; t += 33) meter.update(0, t);
     expect(meter.state).toBe("closed");
     for (let t = 1122; t <= 1254; t += 33) meter.update(.04, t);

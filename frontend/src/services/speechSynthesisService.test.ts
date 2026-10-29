@@ -13,10 +13,11 @@ let audios: TestAudio[];
 class TestAudio {
   src = ""; preload = ""; currentTime = 0; volume = 1;
   onplay: (() => void) | null = null;
+  onplaying: (() => void) | null = null;
   onended: (() => void) | null = null;
   onerror: (() => void) | null = null;
   pause = vi.fn(); load = vi.fn(); removeAttribute = vi.fn();
-  play = vi.fn(() => mediaPlay().then(() => this.onplay?.()));
+  play = vi.fn(() => mediaPlay().then(() => { this.onplay?.(); this.onplaying?.(); }));
   constructor() { audios.push(this); }
 }
 const audioResponse = () => new Response(new Blob(["audio"], { type: "audio/mpeg" }),
@@ -108,6 +109,22 @@ describe("Soniox voice after refresh", () => {
     await flush();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ text: "Same text", language });
+  });
+  it("reuses identical final waiter audio and separates changed text and language", async () => {
+    service.speakAssistantMessage("What would you like to change?", { scenario: "restaurant" }, "en");
+    await flush();
+    service.stopAssistantSpeech();
+    service.speakAssistantMessage("What would you like to change?", { scenario: "restaurant" }, "en");
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    service.stopAssistantSpeech();
+    service.speakAssistantMessage("What would you like to add?", { scenario: "restaurant" }, "en");
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    service.stopAssistantSpeech();
+    service.speakAssistantMessage("What would you like to change?", { scenario: "restaurant" }, "fr");
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
   it("plays Soniox normally when autoplay is permitted", async () => {
     const onStart = vi.fn();

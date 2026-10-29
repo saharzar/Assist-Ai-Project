@@ -31,18 +31,25 @@ describe("restaurant ordering layout", () => {
     expect(stableLayout).toContain(".restaurant-order-remove { border-color: #dfaba9; background: #fff4f1; color: #a4312a;");
   });
   it("uses one uncropped waiter layout and menu-paper surfaces throughout", () => {
-    expect(sharedLayout).toContain("left: 50%; bottom: 130px; width: 280px; height: 360px;");
+    expect(sharedLayout).toContain("left: 50%; bottom: 50px; width: 360px;");
     expect(sharedLayout).toContain(".restaurant-page:not(.restaurant-introduction) .restaurant-waiter-frame { object-fit: contain; object-position: bottom center; }");
     expect(sharedLayout).toContain(".restaurant-menu-book-stage .restaurant-menu-book-image { height: 360px;");
     expect(sharedLayout).toContain(".restaurant-voice-controls { display: inline-flex;");
-    expect(sharedLayout).toContain(".restaurant-scene-footer { display: flex; justify-content: flex-end;");
+    expect(sharedLayout).toContain(".restaurant-scenario-header { position: sticky; top: 0;");
     expect(sharedLayout).toContain(".restaurant-content-surface {");
     expect(sharedLayout).toContain(".restaurant-payment-choice-card, .restaurant-payment-choice-cash { border-color: #c9b394; background: #fff8eb;");
-    expect(sharedLayout).toContain(".restaurant-receipt { max-width: 700px; margin: 0 auto; border: 1px solid #bda988; background: #fff9ec;");
+    expect(sharedLayout).toContain(".restaurant-receipt { max-width: 580px; padding: 15px 19px; border: 1px solid #bda988; border-radius: 5px; background: #fffdf6;");
     expect(sharedLayout).toContain(".restaurant-review-stage, .restaurant-receipt-stage { height: auto; align-self: start; margin: 18px auto; }");
     expect(sharedLayout).toContain(".restaurant-review-stage .restaurant-review-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }");
     expect(sharedLayout).toContain(".restaurant-receipt-stage { width: calc(100% - 36px); max-width: 650px; overflow: visible; }");
     expect(sharedLayout).toContain(".restaurant-receipt .restaurant-payment-order-line { min-height: 0;");
     expect(sharedLayout).toContain(".restaurant-receipt-actions { max-width: 580px; margin: 18px auto 0;");
+  });
+  it("keeps compact controls, Review rows, and Exit away from floating controls", () => {
+    expect(sharedLayout).toContain(".restaurant-order-quantity-controls button { width: 34px; height: 34px;");
+    expect(sharedLayout).toContain(".restaurant-order-remove { grid-area: remove; width: 34px; height: 34px;");
+    expect(sharedLayout).toContain('grid-template-areas: "image copy quantity remove"');
+    expect(sharedLayout).toContain(".restaurant-scenario-header { position: sticky; top: 0;");
+    expect(sharedLayout).toContain(".restaurant-review-stage .restaurant-order-selected-items { min-height: 0; flex: 1;");
   });
 });

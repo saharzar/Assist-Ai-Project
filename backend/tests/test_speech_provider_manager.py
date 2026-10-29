@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 import pytest
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +14,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models import SpeechProviderEvent, SpeechUsage, User, UserTtsUsage
 from app.routes import stt as stt_routes
+from app.schemas.stt import SttUsageRequest
 from app.schemas.speech_provider import GlobalSpeechRoutingUpdate
 from app.services import speech_provider_manager as manager
 from app.services.soniox_service import SonioxSttResult
@@ -397,6 +399,44 @@ def test_exhausted_user_tts_quota_falls_back_to_browser(monkeypatch):
         assert response.status_code == 204
         assert response.headers["X-Speech-Provider"] == "browser"
         assert response.headers["X-Speech-Status"] == "quota_fallback"
+
+
+def test_restaurant_stt_quota_uses_browser_before_calling_soniox(monkeypatch):
+    monkeypatch.setattr(stt_routes, "get_settings", lambda: SimpleNamespace(count_browser_usage_against_user_quota=False))
+    usage = SimpleNamespace(enabled=True, stt_limit_seconds=1, extra_seconds=0, stt_used_seconds=1)
+    monkeypatch.setattr(stt_routes, "get_or_create_stt_usage", lambda *_: usage)
+    monkeypatch.setattr(stt_routes, "get_wav_duration_seconds", lambda *_: 1)
+    recorded = []
+    monkeypatch.setattr(stt_routes, "record_request_result", lambda *args: recorded.append(args))
+    browser = SimpleNamespace(provider="browser")
+    fallback = stt_routes.restaurant_quota_fallback(None, 1, "request-1", b"audio", [browser])
+    assert fallback.status_code == 204
+    assert fallback.headers["X-Speech-Provider"] == "browser"
+    assert fallback.headers["X-Speech-Status"] == "quota_fallback"
+    assert len(recorded) == 1
+    with pytest.raises(HTTPException) as denied:
+        stt_routes.restaurant_quota_fallback(None, 1, "request-2", b"audio", [])
+    assert denied.value.status_code == 403
+    assert "allowance" in denied.value.detail
+    usage.stt_used_seconds = 0
+    assert stt_routes.restaurant_quota_fallback(None, 1, "request-3", b"audio", [browser]) is None
+
+
+def test_admin_stt_has_no_personal_allowance(monkeypatch):
+    admin = User(id=1, role="admin")
+    regular_user = User(id=2, role="user")
+    assert stt_routes.billable_stt_user_id(admin) is None
+    assert stt_routes.billable_stt_user_id(regular_user) == 2
+
+    def fail_if_usage_checked(*_args):
+        pytest.fail("Admin speech must not access a personal quota")
+
+    monkeypatch.setattr(stt_routes, "get_or_create_stt_usage", fail_if_usage_checked)
+    monkeypatch.setattr(stt_routes, "record_stt_seconds", fail_if_usage_checked)
+    assert stt_routes.get_stt_usage(current_user=admin, db=None).unlimited is True
+    assert stt_routes.create_stt_usage(
+        SttUsageRequest(seconds=300), current_user=admin, db=None,
+    ).unlimited is True
 
 
 def test_empty_provider_transcript_falls_back_to_next_stt_provider(monkeypatch):

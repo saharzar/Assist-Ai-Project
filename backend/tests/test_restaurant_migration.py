@@ -46,7 +46,7 @@ def test_restaurant_upgrade_preserves_existing_cv_rows(tmp_path):
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT count(*) FROM computer_vision_sessions")) == 1
         assert connection.scalar(text("SELECT count(*) FROM computer_vision_samples")) == 1
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261015_0018"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261023_0019"
     engine.dispose()
 
 

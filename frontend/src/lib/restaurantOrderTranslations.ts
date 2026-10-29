@@ -3,18 +3,28 @@ import type { MenuCategory } from "./restaurantState";
 
 type OrderText = {
   title: string; slots: Record<MenuCategory, string>; required: string; progress: string;
-  review: string; change: string; confirm: string; remove: string; empty: string;
+  review: string; change: string; confirm: string; remove: string; increase: string; decrease: string; empty: string;
   total: string; selected: string; noDrink: string; menuPrompt: string; reviewPrompt: string;
   welcomeCaption: string; menuOpenGuidance: string; unavailableCaption: string; replacementCaption: string; reviewCaption: string; orderAgainCaption: string;
   menuChoiceComments: readonly [string, string, string];
   noItems: string; conversationLabel: string; conversationPlaceholder: string; conversationSoon: string; conversationThinking: string; conversationUnavailable: string; microphoneLabel: string; sendLabel: string;
   conversationSpeakHint: string; conversationListening: string; conversationVoiceError: string; conversationReviewSpeech: string; conversationBrowserFallback: string;
+  conversationReleaseLabel: string; conversationProcessingLabel: string; conversationWaiterSpeaking: string;
+};
+
+export const restaurantQuotaBrowserFallback: Record<LanguageCode, string> = {
+  en: "Speech allowance reached. Hold again to use browser speech.",
+  es: "Se agotó el tiempo de voz. Mantén pulsado otra vez para usar el navegador.",
+  de: "Dein Sprachkontingent ist aufgebraucht. Halte für die Browsererkennung erneut gedrückt.",
+  tr: "Sesli konuşma hakkın doldu. Tarayıcı tanıması için tekrar basılı tut.",
+  pt: "Esgotaste o tempo de voz. Mantém premido novamente para usar o navegador.",
+  fr: "Votre temps de parole est épuisé. Maintenez à nouveau pour utiliser le navigateur.",
 };
 
 export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
   en: { title: "Your order", slots: { mains: "Main dish", salads: "Salad", soups: "Soup", desserts: "Dessert", drinks: "Drink" },
     required: "Required", progress: "{count} of {total} required choices complete", review: "Review order",
-    change: "Change order", confirm: "Confirm order", remove: "Remove {item} from order", empty: "None",
+    change: "Change order", confirm: "Confirm order", remove: "Remove {item} from order", increase: "Increase {item} quantity", decrease: "Decrease {item} quantity", empty: "None",
     total: "Total", selected: "Selected", noDrink: "No, thank you",
     menuPrompt: "Take your time. Choose what you would like, then review your order.",
     reviewPrompt: "Take a moment to review your order. You can change it or confirm it.",
@@ -25,10 +35,10 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Here is your order so far. Take a moment to check everything. If you'd like to add, remove, or change anything, you can go back and update your order.",
     orderAgainCaption: "Of course. Let's take another look at the menu.",
     menuChoiceComments: ["Nice choice!", "Take your time. You can keep looking.", "That sounds lovely!"],
-    noItems: "No items selected yet.", conversationLabel: "Ask the waiter", conversationPlaceholder: "Type a message...", conversationSoon: "Voice input is unavailable in this browser", conversationThinking: "The waiter is thinking...", conversationUnavailable: "Sorry, I can't answer right now. You can continue using the menu.", microphoneLabel: "Speak to the waiter", sendLabel: "Send", conversationSpeakHint: "Tap the microphone to speak", conversationListening: "Listening... Tap again to finish", conversationVoiceError: "I couldn't hear that. Please try again or type.", conversationReviewSpeech: "Check the text, then press Send.", conversationBrowserFallback: "Soniox is unavailable. Browser listening now; please speak again." },
+    noItems: "No items selected yet.", conversationLabel: "Ask the waiter", conversationPlaceholder: "Type a message...", conversationSoon: "Voice input is unavailable in this browser", conversationThinking: "The waiter is thinking...", conversationUnavailable: "Sorry, I can't answer right now. You can continue using the menu.", microphoneLabel: "Hold to talk to restaurant staff", sendLabel: "Send", conversationSpeakHint: "Hold to talk", conversationListening: "Listening... Release to send", conversationVoiceError: "I didn't catch that. Please try again.", conversationReviewSpeech: "Processing...", conversationBrowserFallback: "Soniox is unavailable. Hold again to use browser speech.", conversationReleaseLabel: "Release to send your message", conversationProcessingLabel: "Processing your message", conversationWaiterSpeaking: "Wait for the waiter to finish speaking" },
   es: { title: "Tu pedido", slots: { mains: "Plato principal", salads: "Ensalada", soups: "Sopa", desserts: "Postre", drinks: "Bebida" },
     required: "Obligatorio", progress: "{count} de {total} opciones obligatorias completadas", review: "Revisar pedido",
-    change: "Cambiar pedido", confirm: "Confirmar pedido", remove: "Quitar {item} del pedido", empty: "Ninguno",
+    change: "Cambiar pedido", confirm: "Confirmar pedido", remove: "Quitar {item} del pedido", increase: "Aumentar la cantidad de {item}", decrease: "Reducir la cantidad de {item}", empty: "Ninguno",
     total: "Total", selected: "Seleccionado", noDrink: "No, gracias",
     menuPrompt: "Tómate tu tiempo. Elige lo que quieras y revisa tu pedido.",
     reviewPrompt: "Revisa tu pedido. Puedes cambiarlo o confirmarlo.",
@@ -39,10 +49,10 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Aquí tienes tu pedido por ahora. Revísalo con calma. Si quieres añadir, quitar o cambiar algo, puedes volver al menú.",
     orderAgainCaption: "Claro. Volvamos a mirar el menú.",
     menuChoiceComments: ["¡Buena elección!", "Tómate tu tiempo. Puedes seguir mirando.", "¡Suena muy bien!"],
-    noItems: "Aún no has elegido nada.", conversationLabel: "Pregunta al personal", conversationPlaceholder: "Escribe un mensaje...", conversationSoon: "Entrada de voz no disponible en este navegador", conversationThinking: "El personal está pensando...", conversationUnavailable: "Lo siento, ahora no puedo responder. Puedes seguir usando el menú.", microphoneLabel: "Hablar con el personal", sendLabel: "Enviar", conversationSpeakHint: "Toca el micrófono para hablar", conversationListening: "Escuchando... Toca de nuevo para terminar", conversationVoiceError: "No pude oírte. Inténtalo de nuevo o escribe.", conversationReviewSpeech: "Revisa el texto y pulsa Enviar.", conversationBrowserFallback: "Soniox no está disponible. El navegador escucha ahora; habla de nuevo." },
+    noItems: "Aún no has elegido nada.", conversationLabel: "Pregunta al personal", conversationPlaceholder: "Escribe un mensaje...", conversationSoon: "Entrada de voz no disponible en este navegador", conversationThinking: "El personal está pensando...", conversationUnavailable: "Lo siento, ahora no puedo responder. Puedes seguir usando el menú.", microphoneLabel: "Mantén pulsado para hablar con el personal", sendLabel: "Enviar", conversationSpeakHint: "Mantén pulsado para hablar", conversationListening: "Escuchando... Suelta para enviar", conversationVoiceError: "No he entendido bien. Inténtalo de nuevo.", conversationReviewSpeech: "Procesando...", conversationBrowserFallback: "Soniox no está disponible. Mantén pulsado otra vez para usar el navegador.", conversationReleaseLabel: "Suelta para enviar tu mensaje", conversationProcessingLabel: "Procesando tu mensaje", conversationWaiterSpeaking: "Espera a que termine de hablar el personal" },
   de: { title: "Deine Bestellung", slots: { mains: "Hauptgericht", salads: "Salat", soups: "Suppe", desserts: "Dessert", drinks: "Getränk" },
     required: "Erforderlich", progress: "{count} von {total} erforderlichen Optionen gewählt", review: "Bestellung prüfen",
-    change: "Bestellung ändern", confirm: "Bestellung bestätigen", remove: "{item} aus der Bestellung entfernen", empty: "Keines",
+    change: "Bestellung ändern", confirm: "Bestellung bestätigen", remove: "{item} aus der Bestellung entfernen", increase: "Anzahl von {item} erhöhen", decrease: "Anzahl von {item} verringern", empty: "Keines",
     total: "Gesamt", selected: "Ausgewählt", noDrink: "Nein, danke",
     menuPrompt: "Lass dir Zeit. Wähle deine Speisen und prüfe dann deine Bestellung.",
     reviewPrompt: "Prüfe deine Bestellung. Du kannst sie ändern oder bestätigen.",
@@ -53,10 +63,10 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Hier ist deine Bestellung bisher. Schau sie dir in Ruhe an. Wenn du etwas hinzufügen, entfernen oder ändern möchtest, kannst du zur Speisekarte zurückkehren.",
     orderAgainCaption: "Natürlich. Schauen wir uns die Speisekarte noch einmal an.",
     menuChoiceComments: ["Gute Wahl!", "Lass dir Zeit. Du kannst dich weiter umsehen.", "Das klingt lecker!"],
-    noItems: "Noch nichts ausgewählt.", conversationLabel: "Personal fragen", conversationPlaceholder: "Nachricht eingeben...", conversationSoon: "Spracheingabe ist in diesem Browser nicht verfügbar", conversationThinking: "Das Personal überlegt...", conversationUnavailable: "Entschuldigung, ich kann gerade nicht antworten. Du kannst das Menü weiter nutzen.", microphoneLabel: "Mit dem Personal sprechen", sendLabel: "Senden", conversationSpeakHint: "Zum Sprechen auf das Mikrofon tippen", conversationListening: "Ich höre zu... Zum Beenden erneut tippen", conversationVoiceError: "Ich konnte dich nicht verstehen. Bitte versuche es erneut oder tippe.", conversationReviewSpeech: "Prüfe den Text und drücke dann Senden.", conversationBrowserFallback: "Soniox ist nicht verfügbar. Der Browser hört jetzt zu; bitte sprich erneut." },
+    noItems: "Noch nichts ausgewählt.", conversationLabel: "Personal fragen", conversationPlaceholder: "Nachricht eingeben...", conversationSoon: "Spracheingabe ist in diesem Browser nicht verfügbar", conversationThinking: "Das Personal überlegt...", conversationUnavailable: "Entschuldigung, ich kann gerade nicht antworten. Du kannst das Menü weiter nutzen.", microphoneLabel: "Zum Sprechen mit dem Personal gedrückt halten", sendLabel: "Senden", conversationSpeakHint: "Zum Sprechen gedrückt halten", conversationListening: "Ich höre zu... Zum Senden loslassen", conversationVoiceError: "Ich habe das nicht verstanden. Bitte versuche es noch einmal.", conversationReviewSpeech: "Wird verarbeitet...", conversationBrowserFallback: "Soniox ist nicht verfügbar. Für Browsererkennung erneut gedrückt halten.", conversationReleaseLabel: "Zum Senden loslassen", conversationProcessingLabel: "Nachricht wird verarbeitet", conversationWaiterSpeaking: "Bitte warten, bis das Personal fertig gesprochen hat" },
   tr: { title: "Siparişin", slots: { mains: "Ana yemek", salads: "Salata", soups: "Çorba", desserts: "Tatlı", drinks: "İçecek" },
     required: "Gerekli", progress: "{total} gerekli seçimden {count} tamamlandı", review: "Siparişi gözden geçir",
-    change: "Siparişi değiştir", confirm: "Siparişi onayla", remove: "{item} öğesini siparişten kaldır", empty: "Yok",
+    change: "Siparişi değiştir", confirm: "Siparişi onayla", remove: "{item} öğesini siparişten kaldır", increase: "{item} miktarını artır", decrease: "{item} miktarını azalt", empty: "Yok",
     total: "Toplam", selected: "Seçildi", noDrink: "Hayır, teşekkürler",
     menuPrompt: "Acele etme. İstediklerini seç, sonra siparişini gözden geçir.",
     reviewPrompt: "Siparişini kontrol et. Değiştirebilir veya onaylayabilirsin.",
@@ -67,10 +77,10 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Şu ana kadarki siparişin burada. Lütfen her şeyi kontrol et. Bir şey eklemek, çıkarmak veya değiştirmek istersen menüye dönebilirsin.",
     orderAgainCaption: "Elbette. Menüye bir kez daha bakalım.",
     menuChoiceComments: ["Güzel seçim!", "Acele etme. Menüye bakmaya devam edebilirsin.", "Kulağa çok güzel geliyor!"],
-    noItems: "Henüz ürün seçilmedi.", conversationLabel: "Garsona sor", conversationPlaceholder: "Mesaj yaz...", conversationSoon: "Bu tarayıcıda sesli giriş kullanılamıyor", conversationThinking: "Garson düşünüyor...", conversationUnavailable: "Üzgünüm, şu anda yanıt veremiyorum. Menüyü kullanmaya devam edebilirsin.", microphoneLabel: "Garsonla konuş", sendLabel: "Gönder", conversationSpeakHint: "Konuşmak için mikrofona dokun", conversationListening: "Dinliyorum... Bitirmek için tekrar dokun", conversationVoiceError: "Seni duyamadım. Tekrar dene veya yaz.", conversationReviewSpeech: "Metni kontrol edip Gönder'e bas.", conversationBrowserFallback: "Soniox kullanılamıyor. Tarayıcı şimdi dinliyor; lütfen tekrar konuş." },
+    noItems: "Henüz ürün seçilmedi.", conversationLabel: "Garsona sor", conversationPlaceholder: "Mesaj yaz...", conversationSoon: "Bu tarayıcıda sesli giriş kullanılamıyor", conversationThinking: "Garson düşünüyor...", conversationUnavailable: "Üzgünüm, şu anda yanıt veremiyorum. Menüyü kullanmaya devam edebilirsin.", microphoneLabel: "Garsonla konuşmak için basılı tut", sendLabel: "Gönder", conversationSpeakHint: "Konuşmak için basılı tut", conversationListening: "Dinliyorum... Göndermek için bırak", conversationVoiceError: "Sizi anlayamadım. Lütfen tekrar deneyin.", conversationReviewSpeech: "İşleniyor...", conversationBrowserFallback: "Soniox kullanılamıyor. Tarayıcı tanıması için tekrar basılı tut.", conversationReleaseLabel: "Mesajı göndermek için bırak", conversationProcessingLabel: "Mesajınız işleniyor", conversationWaiterSpeaking: "Garson konuşmasını bitirene kadar bekleyin" },
   pt: { title: "O teu pedido", slots: { mains: "Prato principal", salads: "Salada", soups: "Sopa", desserts: "Sobremesa", drinks: "Bebida" },
     required: "Obrigatório", progress: "{count} de {total} escolhas obrigatórias concluídas", review: "Rever pedido",
-    change: "Alterar pedido", confirm: "Confirmar pedido", remove: "Remover {item} do pedido", empty: "Nenhum",
+    change: "Alterar pedido", confirm: "Confirmar pedido", remove: "Remover {item} do pedido", increase: "Aumentar a quantidade de {item}", decrease: "Diminuir a quantidade de {item}", empty: "Nenhum",
     total: "Total", selected: "Selecionado", noDrink: "Não, obrigado",
     menuPrompt: "Leva o teu tempo. Escolhe o que quiseres e depois revê o pedido.",
     reviewPrompt: "Confere o teu pedido. Podes alterá-lo ou confirmá-lo.",
@@ -81,10 +91,10 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Aqui está o teu pedido até agora. Confere tudo com calma. Se quiseres acrescentar, retirar ou alterar algo, podes voltar ao menu.",
     orderAgainCaption: "Claro. Vamos ver o menu mais uma vez.",
     menuChoiceComments: ["Boa escolha!", "Leva o teu tempo. Podes continuar a ver o menu.", "Parece ótimo!"],
-    noItems: "Ainda não escolheste nada.", conversationLabel: "Pergunta ao empregado", conversationPlaceholder: "Escreve uma mensagem...", conversationSoon: "A entrada de voz não está disponível neste navegador", conversationThinking: "O empregado está a pensar...", conversationUnavailable: "Desculpa, não consigo responder agora. Podes continuar a usar o menu.", microphoneLabel: "Falar com o empregado", sendLabel: "Enviar", conversationSpeakHint: "Toca no microfone para falar", conversationListening: "A ouvir... Toca novamente para terminar", conversationVoiceError: "Não consegui ouvir. Tenta novamente ou escreve.", conversationReviewSpeech: "Revê o texto e carrega em Enviar.", conversationBrowserFallback: "O Soniox não está disponível. O navegador está a ouvir; fala novamente." },
+    noItems: "Ainda não escolheste nada.", conversationLabel: "Pergunta ao empregado", conversationPlaceholder: "Escreve uma mensagem...", conversationSoon: "A entrada de voz não está disponível neste navegador", conversationThinking: "O empregado está a pensar...", conversationUnavailable: "Desculpa, não consigo responder agora. Podes continuar a usar o menu.", microphoneLabel: "Mantém premido para falar com o empregado", sendLabel: "Enviar", conversationSpeakHint: "Mantém premido para falar", conversationListening: "A ouvir... Solta para enviar", conversationVoiceError: "Não consegui perceber. Tenta novamente.", conversationReviewSpeech: "A processar...", conversationBrowserFallback: "Soniox indisponível. Mantém premido novamente para usar o navegador.", conversationReleaseLabel: "Solta para enviar a mensagem", conversationProcessingLabel: "A processar a mensagem", conversationWaiterSpeaking: "Espera que o empregado acabe de falar" },
   fr: { title: "Ta commande", slots: { mains: "Plat principal", salads: "Salade", soups: "Soupe", desserts: "Dessert", drinks: "Boisson" },
     required: "Obligatoire", progress: "{count} choix obligatoires sur {total} effectués", review: "Vérifier la commande",
-    change: "Modifier la commande", confirm: "Confirmer la commande", remove: "Retirer {item} de la commande", empty: "Aucun",
+    change: "Modifier la commande", confirm: "Confirmer la commande", remove: "Retirer {item} de la commande", increase: "Augmenter la quantité de {item}", decrease: "Diminuer la quantité de {item}", empty: "Aucun",
     total: "Total", selected: "Sélectionné", noDrink: "Non, merci",
     menuPrompt: "Prends ton temps. Choisis ce que tu veux, puis vérifie ta commande.",
     reviewPrompt: "Vérifie ta commande. Tu peux la modifier ou la confirmer.",
@@ -95,5 +105,5 @@ export const restaurantOrderTranslations: Record<LanguageCode, OrderText> = {
     reviewCaption: "Voici ta commande pour le moment. Prends le temps de tout vérifier. Si tu veux ajouter, retirer ou changer quelque chose, tu peux retourner au menu.",
     orderAgainCaption: "Bien sûr. Regardons le menu à nouveau.",
     menuChoiceComments: ["Bon choix !", "Prends ton temps. Tu peux continuer à regarder.", "Ça a l'air délicieux !"],
-    noItems: "Aucun article choisi pour le moment.", conversationLabel: "Demander au personnel", conversationPlaceholder: "Écris un message...", conversationSoon: "La saisie vocale n'est pas disponible dans ce navigateur", conversationThinking: "Le personnel réfléchit...", conversationUnavailable: "Désolé, je ne peux pas répondre maintenant. Vous pouvez continuer avec le menu.", microphoneLabel: "Parler au personnel", sendLabel: "Envoyer", conversationSpeakHint: "Appuyez sur le micro pour parler", conversationListening: "J'écoute... Appuyez à nouveau pour terminer", conversationVoiceError: "Je n'ai pas compris. Réessayez ou écrivez.", conversationReviewSpeech: "Vérifiez le texte, puis appuyez sur Envoyer.", conversationBrowserFallback: "Soniox est indisponible. Le navigateur écoute maintenant ; parlez à nouveau." },
+    noItems: "Aucun article choisi pour le moment.", conversationLabel: "Demander au personnel", conversationPlaceholder: "Écris un message...", conversationSoon: "La saisie vocale n'est pas disponible dans ce navigateur", conversationThinking: "Le personnel réfléchit...", conversationUnavailable: "Désolé, je ne peux pas répondre maintenant. Vous pouvez continuer avec le menu.", microphoneLabel: "Maintenir pour parler au personnel", sendLabel: "Envoyer", conversationSpeakHint: "Maintenez pour parler", conversationListening: "J'écoute... Relâchez pour envoyer", conversationVoiceError: "Je n'ai pas bien entendu. Vous pouvez réessayer.", conversationReviewSpeech: "Traitement en cours...", conversationBrowserFallback: "Soniox est indisponible. Maintenez à nouveau pour utiliser le navigateur.", conversationReleaseLabel: "Relâchez pour envoyer votre message", conversationProcessingLabel: "Traitement de votre message", conversationWaiterSpeaking: "Attendez que le personnel ait fini de parler" },
 };

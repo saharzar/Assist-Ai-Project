@@ -5,8 +5,9 @@ import { apiRequest } from "./api";
 
 export type RestaurantWaiterTurn = { role: "user" | "assistant"; content: string };
 export type RestaurantPendingClarification = {
-  action: "add_item" | "remove_item" | "replace_item" | "describe_item";
+  action: "add_item" | "remove_item" | "replace_item" | "describe_item" | "set_quantity";
   item_query: string;
+  quantity?: number | null;
   replacement_query?: string | null;
   matches: string[];
   clarify_field: "item" | "replacement";
@@ -18,7 +19,7 @@ export type RestaurantWaiterSnapshot = {
 };
 export type RestaurantWaiterAction = {
   type: "OPEN_MENU" | "SHOW_MENU_CATEGORY" | "SHOW_MENU_ITEM" | "SELECT_ITEM" | "SET_QUANTITY" | "REMOVE_ITEM" |
-    "REVIEW_ORDER" | "CHANGE_ORDER" | "CONFIRM_ORDER" | "CHOOSE_PAYMENT_METHOD";
+    "REVIEW_ORDER" | "CHANGE_ORDER" | "CONFIRM_ORDER" | "CHOOSE_PAYMENT_METHOD" | "NEW_ORDER";
   category?: MenuCategory | null; item_id?: string | null; method?: "card" | "cash" | null; quantity?: number | null;
 };
 export type RestaurantWaiterChatRequest = {

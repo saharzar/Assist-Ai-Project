@@ -19,7 +19,9 @@ from app.services.restaurant_compact import (CompactAction, PendingClarification
                                              obvious_confirmation_request, obvious_menu_request, obvious_order_change,
                                              obvious_payment_method_request, obvious_progress_request,
                                              resolve_action_item, requested_quantity, semantic_menu_request,
-                                             semantic_order_request, semantic_review_request, semantic_food_query)
+                                             semantic_order_request, semantic_review_request, semantic_food_query,
+                                             semantic_edit_request, semantic_compound_order_request,
+                                             semantic_new_order_request)
 from app.services.restaurant_tools import (
     CATALOG, TOOL_SCHEMAS, ApprovedAction, RestaurantSnapshot, RestaurantToolEngine,
 )
@@ -40,6 +42,10 @@ WAITER_SYSTEM_PROMPT = (
     "Reply in the requested language with one to three short sentences and one question at a time. "
     "Use restaurant_action for menu facts or changes. For category questions choose show_category, not answer_only. "
     "For explicit food requests choose add_item with quantity; for edits choose set_quantity or decrease_quantity. "
+    "Interpret the whole utterance in its language before choosing the canonical action. "
+    "Wanting to get a dish, including Turkish 'Lazanya almak istiyorum', is add_item, never remove_item. "
+    "Use remove_item only when the learner actually asks to remove, cancel, or stop wanting a selected dish. "
+    "Use conversation and order context for 'another one', 'make that three', and similar follow-ups; clarify if the referent is ambiguous. "
     "For food preferences or ingredients choose query_menu or recommend with canonical category and attribute. "
     "Recommendations should open their category. "
     "Pass the user's food words in item_query, never an ID. "
@@ -64,8 +70,12 @@ def compact_schema_for(state: RestaurantSnapshot) -> list[dict]:
     elif state.step == "review":
         allowed = (*BASE_ACTIONS, "back_to_menu", "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item",
                    "start_payment", "choose_payment")
+    elif state.payment_phase == "method":
+        allowed = ("get_order", "get_total", "choose_payment", "answer_only")
+    elif state.payment_phase in ("paid", "receipt"):
+        allowed = ("get_order", "get_total", "new_order", "answer_only")
     else:
-        allowed = (*BASE_ACTIONS, "choose_payment")
+        allowed = ("get_order", "get_total", "answer_only")
     schema = json.loads(json.dumps(TOOL_SCHEMAS[0]))
     schema["function"]["parameters"]["properties"]["action"]["enum"] = list(allowed)
     return [schema]
@@ -364,11 +374,13 @@ class RestaurantLLMService:
                                            item_query=selected_query if pending.clarify_field == "item"
                                            else pending.item_query,
                                            replacement_query=selected_query if pending.clarify_field == "replacement"
-                                           else pending.replacement_query)
+                                           else pending.replacement_query,
+                                           quantity=pending.quantity)
                     return self._execute(action, message, language, state, trusted=True)
                 if affirmative and len(pending.matches) == 1:
                     return self._execute(CompactAction(action=pending.action,
-                                                       item_query=name(pending.matches[0], language)),
+                                                       item_query=name(pending.matches[0], language),
+                                                       quantity=pending.quantity),
                                          message, language, state, trusted=True)
                 if affirmative:
                     return self._clarify(language, state, pending)
@@ -382,15 +394,52 @@ class RestaurantLLMService:
                 return self._execute(CompactAction(action=pending.action, item_query=pending.item_query,
                                                    replacement_query=pending.replacement_query),
                                      message, language, state, trusted=True)
+        quantity_follow_up = _fold(message).strip(" .!?؟")
+        if len(state.order.lines) > 1 and re.fullmatch(r"(?:bir|iki|uc|dort|bes|\d+) tane olsun", quantity_follow_up):
+            return self._clarify(language, state, PendingClarification(
+                action="set_quantity", item_query="item", quantity=requested_quantity(message),
+                matches=[line.item_id for line in state.order.lines[:5]]))
+        if state.step == "success" and state.payment_phase in ("paid", "receipt") and semantic_new_order_request(message):
+            return self._execute(CompactAction(action="new_order"), message, language, state, trusted=True)
+        if state.step == "review" and obvious_confirmation_request(message):
+            return self._execute(CompactAction(action="start_payment"), message, language, state, trusted=True)
+        if state.step in ("menu", "alternative", "menuCover", "alternativeCover") and obvious_confirmation_request(message):
+            return self._execute(CompactAction(action="review_order"), message, language, state, trusted=True)
+        if state.step == "success" and state.payment_phase == "method":
+            payment_choice = obvious_payment_method_request(message)
+            if payment_choice:
+                return self._execute(payment_choice, message, language, state, trusted=True)
+        menu_navigation = semantic_menu_request(message, language)
+        explicit_browse = bool(re.search(
+            r"\b(show|see|look|open|voir|montre\w*|zeig\w*|sehen|ver|muestra\w*|mostre\w*|goster\w*|gorme\w*)\b",
+            _fold(message)))
+        short_follow_up = _fold(message).strip(" ?!.؟") in {
+            "et les boissons", "et les soupes", "und die getranke", "y las bebidas",
+            "e as bebidas", "icecekler", "and soups", "what about drinks"}
+        if menu_navigation and menu_navigation.action == "show_category" and (explicit_browse or short_follow_up):
+            return self._execute(menu_navigation, message, language, state, trusted=True, history=history)
+        compound = semantic_compound_order_request(message, language, state.order)
+        if compound:
+            outcomes = []
+            current = state
+            for change in compound:
+                outcome = self._execute(change, message, language, current, trusted=True)
+                outcomes.append(outcome)
+                current = outcome.state
+            return RestaurantChatOutcome(" ".join(outcome.reply for outcome in outcomes),
+                                         [action for outcome in outcomes for action in outcome.actions], current)
         semantic_order = semantic_order_request(message, language, state.order)
         if semantic_order:
             return self._execute(semantic_order, message, language, state, trusted=True)
+        if state.step == "review":
+            edit_request = semantic_edit_request(message, language)
+            if edit_request:
+                return self._execute(edit_request, message, language, state, trusted=True, history=history)
         food_query = semantic_food_query(message, state.category if state.step in ("menu", "alternative") else "mains")
         if food_query:
             return self._execute(food_query, message, language, state, trusted=True, history=history)
         if _dietary_request(message):
             return RestaurantChatOutcome(say(language, "diet"), [], state)
-        menu_navigation = semantic_menu_request(message, language)
         if menu_navigation and (menu_navigation.action != "open_menu" or state.step in ("menuCover", "alternativeCover", "menu", "alternative")):
             return self._execute(menu_navigation, message, language, state, trusted=True, history=history)
         if semantic_review_request(message):
@@ -537,7 +586,7 @@ class RestaurantLLMService:
                    "replace_item": "replace_order_item", "get_order": "get_current_order",
                    "get_total": "get_order_total", "review_order": "review_order",
                    "back_to_menu": "go_back_to_menu", "start_payment": "start_payment",
-                   "choose_payment": "choose_payment_method"}
+                   "choose_payment": "choose_payment_method", "new_order": "start_new_order"}
         if action.action == "answer_only":
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
         if action.action in ("query_menu", "recommend", "search_menu"):
@@ -609,6 +658,12 @@ class RestaurantLLMService:
             return RestaurantChatOutcome(say(language, "unclear"), [], state)
         engine = RestaurantToolEngine(state, language)
         result = engine.run(tool, args)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("restaurant_action request_id=restaurant-action-%s language=%s step_before=%s action=%s "
+                         "canonical=%s validation_success=%s step_after=%s frontend_actions=%s",
+                         next(_diagnostic_request_ids), language, state.step, tool,
+                         args.get("category") or args.get("item_id") or args.get("method") or "-",
+                         result.ok, engine.snapshot.step, ",".join(item.type for item in engine.actions) or "-")
         reply = result_reply(language, tool, args, result, engine.snapshot, message, previous_reply)
         if result.ok and tool == "get_current_order":
             asked_item = resolve_action_item(message, language, order=engine.snapshot.order)
@@ -702,12 +757,12 @@ def _offer_pending(reply: str, user_message: str, language: str,
 
 
 ACTION_WORDS = re.compile(
-    r"\b(add|take|want|give|have|remove|delete|change|edit|modify|update|replace|switch|pay|card|cash|review|done|confirm|"
-    r"anadir|agregar|quiero|quitar|cambiar|pagar|revisar|"
-    r"ajouter|prendre|retirer|enlever|changer|payer|verifier|"
-    r"hinzufugen|nehmen|entfernen|ersetzen|zahlen|prufen|"
-    r"adicionar|quero|retirar|trocar|pagar|rever|"
-    r"ekle|istiyorum|cikar|degistir|ode|incele)\b", re.IGNORECASE,
+    r"\b(add|take|want|give|have|remove|delete|change|edit|modify|update|replace|switch|pay|card|cash|review|done|confirm|show|see|"
+    r"anad|agreg|quier|quit|cambi|pagar|revis|mostr|"
+    r"ajout|prendr|retir|enlev|chang|payer|verifi|confirm|veux|voudr|voir|montre|command|"
+    r"hinzufug|nehm|entfern|ersetz|zahl|pruf|bestell|sehen|zeig|"
+    r"adicion|quero|retir|troc|pagar|rever|pedir|"
+    r"ekle|istiyor|cikar|degistir|ode|incele|siparis|goster)\w*\b", re.IGNORECASE,
 )
 
 
@@ -767,7 +822,10 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
     payment_intent = bool(re.search(r"\b(pay\w*|card|cash|pagar\w*|tarjeta|efectivo|payer\w*|carte|especes|"
                                     r"zahl\w*|karte|bargeld|cartao|dinheiro|od\w*|kart|nakit)\b", folded))
     if tool == "start_payment":
-        return payment_intent or bool(re.search(r"\b(confirm\w*|confirmed)\b", folded))
+        return state.step == "review" and (payment_intent or obvious_confirmation_request(message) or
+                bool(re.search(r"\b(confirm\w*|confirmed)\b", folded)))
+    if tool == "start_new_order":
+        return state.step == "success" and semantic_new_order_request(message)
     if tool == "choose_payment_method":
         method = args.get("method")
         words = ("card", "tarjeta", "carte", "karte", "cartao", "kart") if method == "card" else (
@@ -782,6 +840,15 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
                               r"zuruck|ander\w*|voltar|troc\w*|geri|degistir\w*)\b", folded))
     if tool not in ("add_order_item", "set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item"):
         return True
+    semantic = semantic_order_request(message, language, state.order)
+    if semantic and semantic.item_query:
+        semantic_item = resolve_action_item(semantic.item_query, language).get("item_id")
+        proposed_item = args.get("item_id")
+        if semantic_item == proposed_item and (
+            semantic.action == "add_item" and tool in ("remove_order_item", "decrease_order_quantity") or
+            semantic.action in ("remove_item", "decrease_quantity") and tool == "add_order_item"
+        ):
+            return False
     if tool in ("set_order_quantity", "decrease_order_quantity"):
         target = args.get("item_id")
         return bool(target in CATALOG and state.order.quantity(target) and requested_quantity(message)
@@ -789,7 +856,7 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
     if tool == "add_order_item":
         explicit = re.search(r"\b(add|take|want|give me|have|anad\w*|agreg\w*|quier\w*|"
                              r"ajout\w*|prend\w*|voudr\w*|fug\w*|hinzu\w*|nehm\w*|mocht\w*|"
-                             r"adicion\w*|quer\w*|ekle\w*|istiyor\w*)\b", folded)
+                             r"adicion\w*|quer\w*|ekle\w*|istiyor\w*|istiyom|almak|alayim|alabilir\w*|siparis\w*|bana|lutfen)\b", folded)
         recent_confirmation = re.search(r"\b(yes|si|oui|ja|evet|sim)\b.*\b(add|it|lo|le|es|ekle)\b", folded)
         target = args.get("item_id")
         if target not in CATALOG:
@@ -804,7 +871,7 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
             return True  # Engine returns unknown_item without mutation.
         category = CATALOG[target]["category"]
         has_verb = re.search(r"\b(remove|take .* off|don't want|do not want|quit\w*|retir\w*|"
-                             r"enlev\w*|supprim\w*|entfern\w*|weg|remov\w*|cikar\w*|kaldir\w*)\b", folded)
+                             r"enlev\w*|supprim\w*|entfern\w*|weg|remov\w*|cikar\w*|kaldir\w*|sil\w*|iptal\w*|vazgec\w*|istemiyorum)\b", folded)
         category_word = _fold(category[:-1] if category.endswith("s") else category)
         return bool(has_verb and (resolve_action_item(message, language, order=state.order).get("item_id") == target or category_word in folded))
     old_id, new_id = args.get("old_item_id"), args.get("new_item_id")

@@ -31,6 +31,31 @@ from app.services.soniox_service import SonioxProviderError, recognize_soniox_st
 router = APIRouter(prefix="/api/stt", tags=["stt"])
 
 
+def billable_stt_user_id(actor: User | GuestSession) -> int | None:
+    return actor.id if isinstance(actor, User) and actor.role != "admin" else None
+
+
+def restaurant_quota_fallback(db: Session, user_id: int, request_id: str,
+                              audio: bytes, decisions: list) -> Response | None:
+    """Avoid a Soniox call when a Restaurant user's speech allowance is exhausted."""
+    usage = get_or_create_stt_usage(db, user_id)
+    seconds_needed = get_wav_duration_seconds(audio)
+    remaining = usage.stt_limit_seconds + usage.extra_seconds - usage.stt_used_seconds
+    if usage.enabled and remaining >= seconds_needed:
+        return None
+    browser = next((item for item in decisions if item.provider == "browser"), None)
+    if browser is not None and not get_settings().count_browser_usage_against_user_quota:
+        record_request_result(db, request_id, "stt", "browser", "success")
+        return Response(status_code=204, headers={
+            "X-Speech-Provider": "browser", "X-Speech-Status": "quota_fallback",
+        })
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=("Speech access is disabled for this account." if not usage.enabled else
+                "You have reached your current speech allowance. Continue with keyboard input or request additional access."),
+    )
+
+
 @router.get("/usage", response_model=SttUsageResponse)
 def get_stt_usage(
     current_user: User | GuestSession = Depends(get_speech_actor),
@@ -42,6 +67,11 @@ def get_stt_usage(
             stt_used_seconds=0,
             stt_remaining_seconds=3600,
             stt_reset_date=date.today(),
+        )
+    if current_user.role == "admin":
+        return SttUsageResponse(
+            stt_limit_seconds=0, stt_used_seconds=0,
+            stt_remaining_seconds=0, stt_reset_date=date.today(), unlimited=True,
         )
     usage = get_or_create_stt_usage(db, current_user.id)
     db.commit()
@@ -59,6 +89,11 @@ def create_stt_usage(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SttUsageResponse:
+    if current_user.role == "admin":
+        return SttUsageResponse(
+            stt_limit_seconds=0, stt_used_seconds=0,
+            stt_remaining_seconds=0, stt_reset_date=date.today(), unlimited=True,
+        )
     usage = record_stt_seconds(db, current_user.id, payload.seconds)
     return SttUsageResponse(
         stt_limit_seconds=usage.limit_seconds,
@@ -92,7 +127,10 @@ async def create_stt_transcript(
             status_code=204,
             headers={"X-Speech-Provider": "browser", "X-Speech-Status": "normal"},
         )
-    user_id = current_user.id if isinstance(current_user, User) else None
+    # Admins can use Soniox without a personal STT allowance, as for TTS.
+    # Provider availability and browser fallback still apply.
+    is_admin = isinstance(current_user, User) and current_user.role == "admin"
+    user_id = billable_stt_user_id(current_user)
     processed = find_processed_request(db, request_id, "stt")
     if processed and processed.outcome == "success" and processed.result_payload:
         stored = json.loads(processed.result_payload)
@@ -107,6 +145,7 @@ async def create_stt_transcript(
             stt_used_seconds=usage.used_seconds if usage else 0,
             stt_remaining_seconds=usage.remaining_seconds if usage else 0,
             stt_reset_date=usage.reset_date if usage else date.today(),
+            unlimited=is_admin,
         )
 
     decisions = get_provider_chain(db, "stt", browser_supported=browser_speech_supported)
@@ -114,6 +153,12 @@ async def create_stt_transcript(
         decisions.sort(key=lambda decision: decision.provider != "soniox")
     db.commit()
     audio = await request.body()
+    # Check the user's allowance before sending audio to Soniox. Browser STT
+    # does not consume that allowance unless explicitly configured to do so.
+    if user_id is not None and mode == "restaurant":
+        fallback = restaurant_quota_fallback(db, user_id, request_id, audio, decisions)
+        if fallback is not None:
+            return fallback
     last_error: HTTPException | None = None
     for index, decision in enumerate(decisions):
         if decision.provider == "browser":
@@ -168,5 +213,6 @@ async def create_stt_transcript(
             transcript=transcript, detected_language=detected_language, confidence=confidence,
             stt_limit_seconds=usage.limit_seconds, stt_used_seconds=usage.used_seconds,
             stt_remaining_seconds=usage.remaining_seconds, stt_reset_date=usage.reset_date,
+            unlimited=is_admin,
         )
     raise last_error or HTTPException(status_code=503, detail="No STT provider is available on this device.")

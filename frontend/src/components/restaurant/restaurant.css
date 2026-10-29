@@ -327,11 +327,17 @@
 .restaurant-order-ticket { padding: 10px; border-color: #bea783; background: #fff8eada; box-shadow: 2px 5px 12px #382b2420; backdrop-filter: blur(3px); }
 .restaurant-order-ticket h3 { margin: 0 0 7px; border-bottom: 1px solid #d7c4a7; padding-bottom: 6px; color: #4b3824; font-family: Georgia, serif; font-size: 17px; }
 .restaurant-order-selected-items { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.restaurant-order-selected-item { display: flex; min-width: 0; min-height: 55px; align-items: center; gap: 5px; border-bottom: 1px solid #e0d0b9; padding: 3px 0; animation: restaurant-order-change 240ms ease-out both; }
+.restaurant-order-selected-item { display: flex; flex-wrap: wrap; min-width: 0; min-height: 55px; align-items: center; gap: 5px; border-bottom: 1px solid #e0d0b9; padding: 3px 0; animation: restaurant-order-change 240ms ease-out both; }
 .restaurant-order-thumbnail { width: 50px; height: 50px; flex: none; object-fit: contain; }
-.restaurant-order-item-copy { display: grid; min-width: 0; gap: 1px; color: #463725; font-size: 11px; line-height: 1.2; }
+.restaurant-order-item-copy { display: grid; flex: 1 1 105px; min-width: 0; gap: 1px; color: #463725; font-size: 11px; line-height: 1.2; }
 .restaurant-order-item-copy strong { overflow-wrap: anywhere; font-size: 12px; }
-.restaurant-order-remove { width: 28px; height: 28px; flex: none; margin-left: auto; font-size: 17px; }
+.restaurant-order-quantity-controls { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.restaurant-order-quantity-controls button { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid #bda584; border-radius: 7px; background: #fffaf0; color: #513d25; font-size: 21px; font-weight: 700; }
+.restaurant-order-quantity-controls button:hover:not(:disabled) { background: #efdfc6; }
+.restaurant-order-quantity-controls button:disabled { opacity: .45; }
+.restaurant-order-quantity-controls button:focus-visible { outline: 3px solid #0aa6b1; outline-offset: 2px; }
+.restaurant-order-quantity-controls > span { min-width: 23px; text-align: center; font-size: 14px; font-weight: 700; }
+.restaurant-order-remove { width: 40px; height: 40px; flex: none; margin-left: 4px; font-size: 18px; }
 .restaurant-order-ticket-footer { display: grid; gap: 8px; margin-top: 7px; padding-top: 7px; }
 .restaurant-order-ticket-footer p { justify-content: space-between; font-size: 13px; }
 .restaurant-order-review-button { width: 100%; min-height: 40px; font-size: 12px; }
@@ -395,9 +401,13 @@
 .restaurant-social-actions { position: absolute; z-index: 4; right: 16px; bottom: 17px; left: 16px; display: grid; justify-items: start; gap: 7px; }
 .restaurant-conversation-bar { width: 100%; max-width: 380px; border: 1px solid #cdbda5; border-radius: 9px; padding: 7px 9px; background: #fff9eddb; box-shadow: 0 3px 9px #382b241a; backdrop-filter: blur(3px); }
 .restaurant-conversation-bar label { display: block; margin-bottom: 4px; color: #4f3e2a; font-size: 12px; font-weight: 700; }
-.restaurant-conversation-controls { display: flex; gap: 6px; }
+.restaurant-conversation-controls { display: grid; gap: 7px; }
+.restaurant-conversation-text-row { display: flex; gap: 6px; }
 .restaurant-conversation-controls input { min-width: 0; min-height: 37px; flex: 1; border: 1px solid #c9bcab; border-radius: 7px; padding: 7px 9px; background: #f9f7f3; color: #6c6258; font-size: 12px; opacity: .82; }
 .restaurant-conversation-controls button { display: grid; width: 38px; height: 37px; flex: none; place-items: center; border: 1px solid #c9bcab; border-radius: 7px; background: #f5f1ea; color: #6d675e; opacity: .76; }
+.restaurant-conversation-controls .restaurant-hold-to-talk { display: inline-flex; width: 100%; min-height: 56px; gap: 10px; justify-content: center; padding: 7px 12px; border-color: #813c34; background: #813c34; color: #fff; font-size: 13px; font-weight: 700; touch-action: none; user-select: none; opacity: 1; }
+.restaurant-conversation-controls .restaurant-hold-to-talk span { text-align: center; line-height: 1.2; }
+.restaurant-conversation-controls .restaurant-hold-to-talk[aria-pressed="true"] { border-color: #5e2823; background: #5e2823; color: #fff; box-shadow: 0 0 0 3px #813c3440; }
 .restaurant-conversation-controls :disabled { cursor: not-allowed; }
 .restaurant-conversation-bar p { margin: 4px 0 0; color: #766f66; font-size: 10px; }
 .restaurant-social-actions .restaurant-leave-link { min-height: 35px; border-color: #aa9e8e; padding: 5px 9px; background: #fff9edcc; color: #574b3e; font-size: 11px; box-shadow: none; }
@@ -549,7 +559,6 @@
 .restaurant-page:not(.restaurant-introduction) .restaurant-waiter-caption .restaurant-dialogue-message { display: block; max-height: 132px; overflow-y: auto; -webkit-line-clamp: unset; font-size: 13px; line-height: 1.45; }
 .restaurant-conversation-controls input:not(:disabled) { background: #fff; color: #39312b; opacity: 1; }
 .restaurant-conversation-controls button:not(:disabled) { cursor: pointer; opacity: 1; }
-.restaurant-conversation-controls button[aria-pressed="true"] { background: #fff0ed; border-color: #bd4e44; color: #ad352d; }
 .restaurant-conversation-controls input:focus-visible, .restaurant-conversation-controls button:focus-visible { outline: 2px solid #087f8c; outline-offset: 2px; }
 .restaurant-conversation-controls .restaurant-conversation-send:not(:disabled) { background: #087f8c; border-color: #087f8c; color: #fff; opacity: 1; cursor: pointer; }
 .restaurant-conversation-controls .restaurant-conversation-send:not(:disabled):hover { background: #066b76; }
@@ -570,4 +579,46 @@
   .restaurant-receipt { padding: 12px; }
   .restaurant-receipt-actions { grid-template-columns: 1fr; }
   .restaurant-review-stage .restaurant-review-actions { grid-template-columns: 1fr; }
+}
+
+/* Keep the scenario exit visible above the scene and away from floating controls. */
+.restaurant-scenario-header { position: sticky; top: 0; z-index: 20; display: flex; min-height: 65px; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 5px 0; background: #f4f1ed; }
+.restaurant-scenario-header .restaurant-leave-link { display: inline-flex; min-height: 44px; flex: none; align-items: center; justify-content: center; gap: 8px; border: 1px solid #a98e6d; border-radius: 9px; padding: 8px 13px; background: #fffaf0; color: #553d24; font-size: 14px; font-weight: 700; text-decoration: none; }
+.restaurant-scenario-header .restaurant-leave-link:hover { background: #f0e3cf; }
+.restaurant-scenario-header .restaurant-leave-link:focus-visible { outline: 3px solid #0aa6b1; outline-offset: 3px; }
+
+/* A connected secondary control keeps the row stable for one and two digit counts. */
+.restaurant-order-selected-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) 34px; grid-template-areas: "image copy remove" "image quantity quantity"; min-height: 64px; align-items: center; gap: 3px 7px; }
+.restaurant-order-thumbnail { grid-area: image; width: 44px; height: 44px; }
+.restaurant-order-item-copy { grid-area: copy; min-width: 0; }
+.restaurant-order-quantity-controls { grid-area: quantity; display: inline-grid; grid-template-columns: 34px 30px 34px; width: max-content; gap: 0; margin-left: auto; overflow: hidden; border: 1px solid #c6ad88; border-radius: 7px; background: #fffaf0; }
+.restaurant-order-quantity-controls button { width: 34px; height: 34px; border: 0; border-radius: 0; background: transparent; font-size: 19px; line-height: 1; }
+.restaurant-order-quantity-controls button:hover:not(:disabled) { background: #efdfc6; }
+.restaurant-order-quantity-controls button:first-child { border-right: 1px solid #ddccb2; }
+.restaurant-order-quantity-controls button:last-child { border-left: 1px solid #ddccb2; }
+.restaurant-order-quantity-controls > span { display: grid; min-width: 30px; place-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.restaurant-order-remove { grid-area: remove; width: 34px; height: 34px; margin: 0; border-radius: 7px; font-size: 18px; }
+.restaurant-order-area .restaurant-order-ticket { display: flex; height: 100%; max-height: 100%; min-height: 0; flex-direction: column; overflow: hidden; }
+.restaurant-order-area .restaurant-order-selected-items { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.restaurant-order-area .restaurant-order-ticket-footer { flex: none; background: #fff8ea; }
+
+/* Review lines use a full row, with total and actions kept below the scrolling list. */
+.restaurant-review-stage { display: flex; height: calc(100% - 36px); max-width: 760px; flex-direction: column; overflow: hidden; }
+.restaurant-review-stage > h2 { flex: none; }
+.restaurant-review-stage .restaurant-order-review { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+.restaurant-review-stage .restaurant-order-selected-items { min-height: 0; flex: 1; grid-template-columns: 1fr; overflow-y: auto; overscroll-behavior: contain; }
+.restaurant-review-stage .restaurant-order-selected-item { grid-template-columns: 68px minmax(0, 1fr) auto 34px; grid-template-areas: "image copy quantity remove"; min-height: 76px; gap: 10px; }
+.restaurant-review-stage .restaurant-order-review .restaurant-order-thumbnail { width: 68px; height: 68px; }
+.restaurant-review-stage .restaurant-order-ticket-footer,
+.restaurant-review-stage .restaurant-review-actions { flex: none; background: #fffaf0; }
+.restaurant-review-stage .restaurant-review-actions { margin-top: 10px; }
+@media (max-width: 900px) {
+  .restaurant-order-area { max-height: 340px; }
+  .restaurant-review-stage { height: min(650px, calc(100vh - 120px)); max-height: none; }
+}
+@media (max-width: 560px) {
+  .restaurant-scenario-header h1 { font-size: 20px; }
+  .restaurant-scenario-header .restaurant-leave-link { padding: 7px 9px; font-size: 12px; }
+  .restaurant-review-stage .restaurant-order-selected-item { grid-template-columns: 54px minmax(0, 1fr) 34px; grid-template-areas: "image copy remove" "image quantity quantity"; min-height: 82px; gap: 3px 7px; }
+  .restaurant-review-stage .restaurant-order-review .restaurant-order-thumbnail { width: 54px; height: 54px; }
 }

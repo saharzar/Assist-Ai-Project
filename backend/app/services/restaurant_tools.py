@@ -16,7 +16,7 @@ Step = Literal["menuCover", "menu", "alternative", "alternativeCover", "review",
 PaymentPhase = Literal["method", "card", "cash", "processing", "paid", "receipt"]
 ActionType = Literal[
     "OPEN_MENU", "SHOW_MENU_CATEGORY", "SHOW_MENU_ITEM", "SELECT_ITEM", "SET_QUANTITY", "REMOVE_ITEM",
-    "REVIEW_ORDER", "CHANGE_ORDER", "CONFIRM_ORDER", "CHOOSE_PAYMENT_METHOD",
+    "REVIEW_ORDER", "CHANGE_ORDER", "CONFIRM_ORDER", "CHOOSE_PAYMENT_METHOD", "NEW_ORDER",
 ]
 CATALOG = {item["id"]: item for item in json.loads(
     (Path(__file__).resolve().parent.parent / "data" / "restaurant_catalog.json").read_text(encoding="utf-8")
@@ -70,9 +70,14 @@ class OrderSnapshot(BaseModel):
         return next((line.quantity for line in self.lines if line.item_id == item_id), 0)
 
     def set_quantity(self, item_id: str, quantity: int) -> None:
-        self.lines = [line for line in self.lines if line.item_id != item_id]
-        if quantity > 0:
-            self.lines.append(OrderLine(item_id=item_id, quantity=quantity))
+        existing = next((index for index, line in enumerate(self.lines) if line.item_id == item_id), None)
+        if existing is None:
+            if quantity > 0:
+                self.lines.append(OrderLine(item_id=item_id, quantity=quantity))
+        elif quantity > 0:
+            self.lines[existing] = OrderLine(item_id=item_id, quantity=quantity)
+        else:
+            self.lines.pop(existing)
         category = CATALOG[item_id]["category"]
         remaining = [line.item_id for line in self.lines if CATALOG[line.item_id]["category"] == category]
         setattr(self, category, remaining[-1] if remaining else None)
@@ -186,6 +191,7 @@ TOOLS = [
     ("review_order", "Move to the existing order review when a main is selected", {}),
     ("go_back_to_menu", "Return from review to the existing menu", {}),
     ("start_payment", "Confirm the reviewed order and show simulated payment", {}),
+    ("start_new_order", "Start a fresh order from a completed receipt", {}),
     ("choose_payment_method", "Choose a simulated payment method", {"method": {"type": "string", "enum": ["card", "cash"]}}),
 ]
 TOOL_SCHEMAS = [
@@ -225,7 +231,7 @@ def _singular(value: str) -> str:
     def token(word: str) -> str:
         if word in irregular:
             return irregular[word]
-        for suffix in ("yi", "yu", "ni", "nu", "i", "u"):
+        for suffix in ("dan", "den", "tan", "ten", "yi", "yu", "ni", "nu", "i", "u"):
             if word.endswith(suffix) and word[:-len(suffix)] in CATALOG_LAST_TOKENS:
                 return word[:-len(suffix)]
         return word[:-1] if len(word) > 3 and word.endswith("s") else word
@@ -238,6 +244,13 @@ def resolve_menu_item(query: str, language: str, category: str | None = None,
     if not isinstance(query, str) or not query.strip() or len(query) > 120:
         return {"status": "not_found"}
     needle = _normalize_name(query)
+    # Speech often mixes a localized food name with an English catalog word.
+    localized_aliases = {
+        "tavuk wrap": _normalize_name(CATALOG["wrap"]["names"]["tr"]),
+        "sezar salata": _normalize_name(CATALOG["caesar"]["names"]["tr"]),
+    }
+    for spoken, catalog_name in localized_aliases.items():
+        needle = re.sub(rf"\b{re.escape(spoken)}\b", catalog_name, needle)
     articles = {"the", "a", "an", "my", "our", "el", "la", "los", "las", "le", "les", "un", "une", "der", "die", "das", "o", "os", "as", "bir"}
     words = needle.split()
     stripped = " ".join(words[1:]) if words and words[0] in articles else needle
@@ -273,13 +286,14 @@ def resolve_menu_item(query: str, language: str, category: str | None = None,
                     if len(label.split()) == 1:
                         before = source.split(f" {label} ", 1)[0].split()
                         if before and before[-1] not in {
-                            "a", "an", "the", "one", "two", "three", "four", "five", "1", "2", "3", "4", "5",
+                            "a", "an", "the", "la", "le", "die", "der", "das", "el", "los", "las", "one", "two", "three", "four", "five", "1", "2", "3", "4", "5",
                             "un", "une", "deux", "trois", "eine", "ein", "zwei", "drei", "uno", "una", "dos",
-                            "uma", "um", "duas", "dua", "dois", "bir", "iki", "uc", "dort", "want", "like", "have", "take",
+                            "uma", "um", "duas", "dua", "dois", "bir", "iki", "uc", "dort", "tane", "want", "like", "have", "take",
                             "get", "add", "order", "need", "me", "for", "commander", "veux", "voudrais",
-                            "mochte", "quiero", "quero", "istiyorum", "please", "another", "more",
+                            "mochte", "quiero", "quero", "istiyorum", "ben", "please", "another", "autre", "otra", "outro", "outra", "more", "daha",
                             "many", "combien", "cuantos", "quantos", "viele", "kac", "de",
-                            "show", "ajoute", "ajouter", "fuge", "anade", "adiciona", "ekle"}:
+                            "show", "ajoute", "ajouter", "fuge", "anade", "adiciona", "ekle",
+                            "remove", "retirez", "retirer", "entferne", "quita", "quitar", "remova", "remover", "cikar"}:
                             continue
                     spans.append((len(label), item_id))
         if spans:
@@ -441,6 +455,12 @@ class RestaurantToolEngine:
             self.snapshot.payment_phase = "method"
             self._action("CONFIRM_ORDER")
             return ToolResult(ok=True, data={"payment_phase": "method"})
+        if name == "start_new_order":
+            if self.snapshot.step != "success" or self.snapshot.payment_phase not in ("paid", "receipt"):
+                return ToolResult(ok=False, reason="order_not_complete")
+            self.snapshot = RestaurantSnapshot(step="menuCover", category="mains", order=OrderSnapshot())
+            self._action("NEW_ORDER")
+            return ToolResult(ok=True)
         if name == "choose_payment_method":
             if not has_main_dish(self.snapshot.order):
                 self._category("mains")
@@ -458,6 +478,7 @@ class RestaurantToolEngine:
         return ToolResult(ok=False, reason="unsupported_tool")
 
     def _change_order(self, name: str, args: dict) -> ToolResult:
+        was_review = self.snapshot.step == "review"
         if name in ("remove_order_item", "set_order_quantity", "decrease_order_quantity"):
             item_id = args["item_id"]
             if not self.snapshot.order.quantity(item_id):
@@ -482,6 +503,8 @@ class RestaurantToolEngine:
             item_id = args["item_id"]
             quantity = args["quantity"]
             category = CATALOG[item_id]["category"]
+            if was_review:
+                self._category(category)
             if category == "mains" and self.snapshot.unavailable is None:
                 self.snapshot.unavailable = item_id
                 self.snapshot.step = "alternative"
@@ -496,6 +519,8 @@ class RestaurantToolEngine:
             return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))
         if name in ("set_order_quantity", "decrease_order_quantity"):
             item_id, amount = args["item_id"], args["quantity"]
+            if was_review:
+                self._category(CATALOG[item_id]["category"])
             current = self.snapshot.order.quantity(item_id)
             desired = amount if name == "set_order_quantity" else max(0, current - amount)
             self.snapshot.order.set_quantity(item_id, desired)
@@ -505,6 +530,8 @@ class RestaurantToolEngine:
         if name == "remove_order_item":
             item_id = args["item_id"]
             category = CATALOG[item_id]["category"]
+            if was_review:
+                self._category(category)
             self.snapshot.order.set_quantity(item_id, 0)
             self._action("REMOVE_ITEM", category=category, item_id=item_id)
             return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))

@@ -24,15 +24,9 @@ import { chatWithRestaurantWaiter, type RestaurantWaiterTurn, type RestaurantPen
 import { restaurantWaiterSnapshot, type RestaurantWaiterAction, type RestaurantWaiterSnapshot } from "../../services/restaurantWaiterChatService";
 import { previewRestaurantWaiterActions, sameRestaurantSnapshot } from "../../lib/restaurantWaiterActions";
 
-function isOrderAgainRequest(message: string) {
-  const words = message.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-  return /^(?:(?:i|we) (?:want|would like|d like|need) to |(?:can|could) (?:i|we) |please )?(?:order again|start (?:a |another |new )?order|place another order|make another order)(?: please)?$/.test(words);
-}
-
-export function RestaurantShell({ message, menuComment, children, orderTray, leaveAction, preview, confirmation = false, introHeader, menuBook = false, receipt = false, review = false, allowOrderAgain = false, onOrderAgain, onWaiterMessageSettled, waiterContext, onApprovedActions }: {
-  message: string; children: ReactNode; orderTray?: ReactNode; leaveAction?: ReactNode; preview?: ReactNode; confirmation?: boolean; introHeader?: ReactNode; menuBook?: boolean; receipt?: boolean; review?: boolean; allowOrderAgain?: boolean;
+export function RestaurantShell({ message, menuComment, children, orderTray, leaveAction, preview, confirmation = false, introHeader, menuBook = false, receipt = false, review = false, onWaiterMessageSettled, waiterContext, onApprovedActions }: {
+  message: string; children: ReactNode; orderTray?: ReactNode; leaveAction?: ReactNode; preview?: ReactNode; confirmation?: boolean; introHeader?: ReactNode; menuBook?: boolean; receipt?: boolean; review?: boolean;
   menuComment?: { text: string; id: number } | null;
-  onOrderAgain?: () => void;
   onWaiterMessageSettled?: (message: string, outcome: AssistantSpeechOutcome) => void;
   waiterContext?: RestaurantWaiterSnapshot;
   onApprovedActions?: (actions: RestaurantWaiterAction[], projected: RestaurantWaiterSnapshot, expected: RestaurantWaiterSnapshot) => boolean;
@@ -43,7 +37,9 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
   const [chatDraft, setChatDraft] = useState("");
   const [chatReply, setChatReply] = useState<{ text: string; state: RestaurantWaiterSnapshot; spoken: boolean } | null>(null);
   const [chatSpeechRequestId, setChatSpeechRequestId] = useState(0);
+  const [stopSpeechRequestId, setStopSpeechRequestId] = useState(0);
   const [chatPending, setChatPending] = useState(false);
+  const [waitingForSpeech, setWaitingForSpeech] = useState(false);
   const chatHistory = useRef<RestaurantWaiterTurn[]>([]);
   const pendingClarification = useRef<{ value: RestaurantPendingClarification; state: RestaurantWaiterSnapshot } | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
@@ -54,6 +50,7 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
     chatRequest.current?.abort();
     chatBusy.current = false;
     setChatPending(false);
+    setWaitingForSpeech(false);
     setChatReply(null);
     pendingClarification.current = null;
   }, [language]);
@@ -62,10 +59,6 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
   const sendChat = async (voiceMessage?: string) => {
     const messageToSend = (voiceMessage ?? chatDraft).trim();
     if (!messageToSend || chatBusy.current) return;
-    if (allowOrderAgain && onOrderAgain && isOrderAgainRequest(messageToSend)) {
-      onOrderAgain();
-      return;
-    }
     const request = new AbortController();
     const requestState = { ...contextRef.current, order: { ...contextRef.current.order } };
     chatRequest.current = request;
@@ -85,8 +78,9 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
       pendingClarification.current = result.pending ? { value: result.pending, state: result.state } : null;
       chatHistory.current = [...chatHistory.current, { role: "user" as const, content: messageToSend }, { role: "assistant" as const, content: result.reply }].slice(-4);
       setChatReply({ text: result.reply, state: result.state, spoken: true });
+      setWaitingForSpeech(true);
       setChatSpeechRequestId((current) => current + 1);
-      setChatDraft("");
+      if (voiceMessage === undefined) setChatDraft("");
     } catch {
       if (!request.signal.aborted) setChatReply({ text: orderText.conversationUnavailable, state: requestState, spoken: false });
     } finally {
@@ -104,7 +98,7 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
   return <section className={`restaurant-page min-h-screen px-4 py-5 sm:px-6 ${introHeader ? "restaurant-introduction" : ""}`}>
     <div className="mx-auto max-w-[1500px]">
       <div className="min-w-0">
-        {introHeader ?? <header className="mb-4"><p className="text-xs font-bold text-[#087f8c]">ASSIST-AI</p><h1 className="mt-1 font-display text-2xl font-extrabold text-[#1d1a5e]">{text.title}</h1></header>}
+        {introHeader ?? <header className="restaurant-scenario-header"><div><p className="text-xs font-bold text-[#087f8c]">ASSIST-AI</p><h1 className="mt-1 font-display text-2xl font-extrabold text-[#1d1a5e]">{text.title}</h1></div>{leaveAction}</header>}
         <div className="restaurant-scene">
           <div className="restaurant-environment" aria-hidden="true"><img src={restaurantCounter} alt="" className="restaurant-background" /><img src={restaurantCounter} alt="" className="restaurant-counter-front" /></div>
           <div className="restaurant-staff-zone">
@@ -112,11 +106,11 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
             <div className="restaurant-dialogue restaurant-waiter-caption">
               <div className="restaurant-dialogue-heading">
                 <p className="text-xs font-bold text-[#526e6d]">{text.staff}</p>
-                <div className="restaurant-voice-controls"><AtmSetupVoiceAssistant compact scenario="restaurant" streamAudio={Boolean(activeChatReply?.spoken)} language={language} message={spokenMessage} modeLabel={text.title} speechRequestId={chatSpeechRequestId + (menuComment?.id ?? 0)} speechDelayMs={!activeChatReply && message === orderText.welcomeCaption ? 650 : 0} onSpeakingChange={setSpeaking} onMessageSettled={onWaiterMessageSettled} /></div>
+                <div className="restaurant-voice-controls"><AtmSetupVoiceAssistant compact scenario="restaurant" streamAudio={Boolean(activeChatReply?.spoken)} language={language} message={spokenMessage} modeLabel={text.title} speechRequestId={chatSpeechRequestId + (menuComment?.id ?? 0)} stopRequestId={stopSpeechRequestId} speechDelayMs={!activeChatReply && message === orderText.welcomeCaption ? 650 : 0} onSpeakingChange={setSpeaking} onMessageSettled={(settledMessage, outcome) => { setWaitingForSpeech(false); onWaiterMessageSettled?.(settledMessage, outcome); }} /></div>
               </div>
               <p className="restaurant-dialogue-message" aria-live="polite">{displayedMessage}</p>
             </div>
-            <div className="restaurant-social-actions"><WaiterConversationBar language={language} value={chatDraft} pending={chatPending} onChange={setChatDraft} onSend={() => sendChat()} onVoiceResult={setChatDraft} /></div>
+            <div className="restaurant-social-actions"><WaiterConversationBar language={language} value={chatDraft} pending={chatPending} speaking={speaking || waitingForSpeech} onInterruptWaiter={() => { setStopSpeechRequestId((current) => current + 1); setSpeaking(false); setWaitingForSpeech(false); }} onChange={setChatDraft} onSend={() => { void sendChat(); }} onVoiceSubmit={sendChat} /></div>
           </div>
           <div className={`restaurant-content-zone ${orderTray ? "restaurant-content-with-order" : ""}`}>
             {orderTray && <div className="restaurant-order-area">{orderTray}</div>}
@@ -125,7 +119,6 @@ export function RestaurantShell({ message, menuComment, children, orderTray, lea
             </div>
           </div>
         </div>
-        {leaveAction && <div className="restaurant-scene-footer">{leaveAction}</div>}
       </div>
       {preview}
     </div>
@@ -199,21 +192,47 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
   };
   const onApprovedActions = (actions: RestaurantWaiterAction[], projected: RestaurantWaiterSnapshot, expected: RestaurantWaiterSnapshot) => {
     const current = latest.current;
-    if (!sameRestaurantSnapshot(restaurantWaiterSnapshot(current.state, current.payment), expected)) return false;
+    const diagnose = (success: boolean, stepAfter: string) => {
+      if (import.meta.env.DEV) console.debug("restaurant_frontend_action", { stepBefore: current.state.step,
+        actions: actions.map((action) => action.type), validationSuccess: success, stepAfter });
+    };
+    if (!sameRestaurantSnapshot(restaurantWaiterSnapshot(current.state, current.payment), expected)) {
+      diagnose(false, current.state.step); return false;
+    }
+    if (actions.length === 1 && actions[0].type === "NEW_ORDER") {
+      if (current.state.step !== "success" || !["paid", "receipt"].includes(current.payment.phase) ||
+          !sameRestaurantSnapshot(projected, restaurantWaiterSnapshot(initialRestaurantState, initialRestaurantPayment))) {
+        diagnose(false, current.state.step); return false;
+      }
+      diagnose(true, "menuCover");
+      onOrderAgain();
+      return true;
+    }
     const preview = previewRestaurantWaiterActions(current.state, current.payment, actions);
-    if (!preview || !sameRestaurantSnapshot(preview.snapshot, projected)) return false;
+    if (!preview || !sameRestaurantSnapshot(preview.snapshot, projected)) {
+      diagnose(false, current.state.step); return false;
+    }
+    diagnose(true, preview.snapshot.step);
     preview.restaurantActions.forEach(dispatch);
     preview.paymentActions.forEach(dispatchPayment);
     setFocusItemId(preview.focusItemId);
     return true;
   };
-  return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} onOrderAgain={onOrderAgain} allowOrderAgain={state.step === "success" && (payment.phase === "paid" || payment.phase === "receipt")} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={(category, id) => dispatch({ type: "removeItem", category, id })} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={state.step !== "success" ? <Link to="/scenarios" className="restaurant-leave-link inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-300 focus:ring-offset-2"><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link> : undefined} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
+  const updateLineQuantity = (category: MenuCategory, id: string, quantity: number) => {
+    if (state.step === "review") dispatch({ type: "changeOrder" });
+    dispatch({ type: "setQuantity", category, id, quantity });
+  };
+  const removeOrderLine = (category: MenuCategory, id: string) => {
+    if (state.step === "review") dispatch({ type: "changeOrder" });
+    dispatch({ type: "removeItem", category, id });
+  };
+  return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={removeOrderLine} onQuantityChange={updateLineQuantity} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={<Link to="/scenarios" className="restaurant-leave-link" aria-label={text.leave}><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>
     {menuBook && <>
       <RestaurantMenu state={state} language={language} dispatch={dispatch} onSelect={select} headingRef={heading} focusItemId={focusItemId} onManualNavigate={() => setFocusItemId(null)} />
     </>}
     {state.step === "review" && <>
       <h2 ref={heading} tabIndex={-1} className="mb-4 text-xl font-bold text-[#1d1a5e] focus:outline-none">{orderText.review}</h2>
-      <RestaurantOrderTicket order={state.order} language={language} review />
+      <RestaurantOrderTicket order={state.order} language={language} review onRemove={removeOrderLine} onQuantityChange={updateLineQuantity} />
       <div className="restaurant-review-actions">
         <button type="button" className="restaurant-action-secondary" onClick={() => { analytics.event("menu_reopened"); dispatch({ type: "changeOrder" }); }}>{orderText.change}</button>
         <button type="button" className="restaurant-action-primary" onClick={() => { analytics.event("order_confirmed", state.order.mains as Meal); dispatch({ type: "confirmOrder" }); }}>{orderText.confirm}</button>

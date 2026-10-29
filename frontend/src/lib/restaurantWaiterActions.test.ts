@@ -83,4 +83,16 @@ describe("validated Restaurant waiter action projection", () => {
     expect(projected && sameRestaurantSnapshot(projected.snapshot, restaurantWaiterSnapshot(
       projected.restaurantActions.reduce(restaurantReducer, initial), initialRestaurantPayment))).toBe(true);
   });
+  it("keeps an existing item in place for voice quantity changes", () => {
+    const initial = { ...ready(), order: { ...ready().order, desserts: "cake", lines: [
+      { item_id: "pizza", quantity: 1 }, { item_id: "chicken", quantity: 1 },
+      { item_id: "water", quantity: 1 }, { item_id: "cake", quantity: 1 },
+    ] } };
+    const result = preview(initial, [
+      { type: "SET_QUANTITY", category: "mains", item_id: "pizza", quantity: 3 },
+      { type: "SELECT_ITEM", category: "mains", item_id: "chicken", quantity: 2 },
+    ]);
+    expect(result?.snapshot.order.lines.map((line) => line.item_id)).toEqual(["pizza", "chicken", "water", "cake"]);
+    expect(result?.snapshot.order.lines.map((line) => line.quantity)).toEqual([3, 3, 1, 1]);
+  });
 });

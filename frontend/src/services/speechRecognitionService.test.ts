@@ -1,10 +1,45 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   cleanSpokenAmountTranscript,
   cleanSpokenLetterTranscript,
   parseSpokenConfirmation,
+  createSpeechRecognizer,
 } from "./speechRecognitionService";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("Restaurant browser STT fallback", () => {
+  it("never promotes an interim result to a final utterance on release", () => {
+    const instances: BrowserRecognizer[] = [];
+    class BrowserRecognizer {
+      lang = ""; continuous = false; interimResults = false;
+      onstart: (() => void) | null = null;
+      onresult: ((event: { results: unknown[] }) => void) | null = null;
+      onerror: ((event: { error?: string }) => void) | null = null;
+      onend: (() => void) | null = null;
+      constructor() { instances.push(this); }
+      start() { this.onstart?.(); }
+      stop() { this.onend?.(); }
+      abort() { this.onend?.(); }
+    }
+    vi.stubGlobal("window", { SpeechRecognition: BrowserRecognizer, dispatchEvent: vi.fn() });
+    vi.stubGlobal("navigator", { mediaDevices: undefined });
+    const onResult = vi.fn();
+    const callbacks = { onResult, onError: vi.fn(), onEnd: vi.fn(), onPartialResult: vi.fn() };
+    const first = createSpeechRecognizer(callbacks, "restaurant", "fr")!;
+    first.start();
+    instances[0].onresult?.({ results: [{ 0: { transcript: "Je veux" }, length: 1, isFinal: false }] });
+    first.stop();
+    expect(onResult).not.toHaveBeenCalled();
+    const second = createSpeechRecognizer(callbacks, "restaurant", "fr")!;
+    second.start();
+    instances[1].onresult?.({ results: [{ 0: { transcript: "Je veux voir les soupes" }, length: 1, isFinal: true }] });
+    second.stop();
+    expect(onResult).toHaveBeenCalledExactlyOnceWith("Je veux voir les soupes");
+    expect(instances[1].lang).toBe("fr-FR");
+  });
+});
 
 describe("cleanSpokenLetterTranscript", () => {
   it.each([

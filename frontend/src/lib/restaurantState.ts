@@ -32,14 +32,17 @@ export function restaurantReducer(state: RestaurantState, action: RestaurantActi
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) return state;
     const current = state.order.lines.find((line) => line.item_id === action.id)?.quantity ?? 0;
     if (current + quantity > 99) return state;
-    const lines = [...state.order.lines.filter((line) => line.item_id !== action.id), { item_id: action.id, quantity: current + quantity }];
+    const lines = current
+      ? state.order.lines.map((line) => line.item_id === action.id ? { ...line, quantity: current + quantity } : line)
+      : [...state.order.lines, { item_id: action.id, quantity }];
     return { ...state, order: { ...state.order, [action.category]: action.id, lines }, selected: action.category === "mains" ? action.id as Meal : state.selected, fullMenu: action.category === "mains" ? true : state.fullMenu };
   }
   if (action.type === "setQuantity" && (state.step === "menu" || state.step === "alternative") && Number.isInteger(action.quantity) && action.quantity >= 0 && action.quantity <= 99) {
     const current = state.order.lines.find((line) => line.item_id === action.id);
     if (!current || !restaurantMenuItems.some((item) => item.category === action.category && item.id === action.id)) return state;
-    const lines = state.order.lines.filter((line) => line.item_id !== action.id);
-    if (action.quantity) lines.push({ item_id: action.id, quantity: action.quantity });
+    const lines = action.quantity
+      ? state.order.lines.map((line) => line.item_id === action.id ? { ...line, quantity: action.quantity } : line)
+      : state.order.lines.filter((line) => line.item_id !== action.id);
     const remaining = lines.filter((line) => restaurantMenuItems.some((item) => item.category === action.category && item.id === line.item_id));
     return { ...state, order: { ...state.order, lines, [action.category]: remaining[remaining.length - 1]?.item_id ?? null },
       selected: action.category === "mains" ? (remaining[remaining.length - 1]?.item_id as Meal | undefined) ?? null : state.selected };

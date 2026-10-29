@@ -10,7 +10,7 @@ type SpeechRecognitionLanguage = "en" | "es" | "de" | "tr" | "pt" | "fr";
 type SpeechRecognitionCallbacks = {
   onReady?: () => void;
   onPartialResult?: SpeechRecognitionResultCallback;
-  onFallback?: () => void;
+  onFallback?: (reason?: "quota" | "provider") => void;
   onResult: SpeechRecognitionResultCallback;
   onError: (message: string) => void;
   onEnd: () => void;
@@ -29,6 +29,7 @@ type SpeechRecognitionErrorMessages = {
 };
 
 const BROWSER_FALLBACK_CODE = "browser-stt-fallback";
+let restaurantBrowserFallbackUntil = 0;
 
 type SttResponse = {
   transcript: string;
@@ -38,6 +39,7 @@ type SttResponse = {
   stt_used_seconds: number;
   stt_remaining_seconds: number;
   stt_reset_date: string;
+  unlimited?: boolean;
 };
 
 type RecorderNode = ScriptProcessorNode & {
@@ -53,7 +55,7 @@ declare global {
 }
 
 type BrowserSpeechRecognitionEvent = Event & {
-  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+  results: ArrayLike<(ArrayLike<{ transcript: string }> & { isFinal?: boolean })>;
 };
 
 type BrowserSpeechRecognitionErrorEvent = Event & { error?: string };
@@ -300,8 +302,9 @@ function mapSttUsage(response: SttResponse): SttUsage {
   return {
     limit: response.stt_limit_seconds,
     used: response.stt_used_seconds,
-    remaining: response.stt_remaining_seconds,
+    remaining: response.unlimited ? Number.POSITIVE_INFINITY : response.stt_remaining_seconds,
     resetDate: response.stt_reset_date,
+    unlimited: response.unlimited,
   };
 }
 
@@ -339,7 +342,8 @@ async function transcribeServerSpeech(
 
   if (response.status === 204 && response.headers.get("X-Speech-Provider") === "browser") {
     notifySpeechProviderUsed("stt", "browser");
-    throw new ApiError(BROWSER_FALLBACK_CODE, 503);
+    throw new ApiError(response.headers.get("X-Speech-Status") === "quota_fallback"
+      ? "browser-stt-quota-fallback" : BROWSER_FALLBACK_CODE, 503);
   }
 
   const data = (await response.json()) as SttResponse;
@@ -508,16 +512,18 @@ class BackendSpeechRecognizer {
         Boolean(window.SpeechRecognition || window.webkitSpeechRecognition) &&
         Boolean(this.callbacks.onFallback);
       const providerFailed = (error instanceof ApiError && (
-        error.message === BROWSER_FALLBACK_CODE || [502, 503, 504].includes(error.status)
+        error.message === BROWSER_FALLBACK_CODE || error.message === "browser-stt-quota-fallback" ||
+        [502, 503, 504].includes(error.status)
       )) || error instanceof TypeError;
       if (browserFallbackAvailable && providerFailed) {
-        this.callbacks.onFallback?.();
+        this.callbacks.onFallback?.(error instanceof ApiError && error.message === "browser-stt-quota-fallback"
+          ? "quota" : "provider");
       } else if (error instanceof ApiError && error.message === BROWSER_FALLBACK_CODE) {
         this.callbacks.onError(this.errorMessages.browserFallback);
       } else if (error instanceof ApiError && error.status === 422) {
         this.callbacks.onError(this.errorMessages.noSpeech);
       } else if (error instanceof ApiError && error.status === 403) {
-        this.callbacks.onError(this.errorMessages.limitReached);
+        this.callbacks.onError(error.message || this.errorMessages.limitReached);
       } else if (error instanceof ApiError && error.status === 401) {
         this.callbacks.onError(this.errorMessages.sessionExpired);
       } else if (error instanceof ApiError && error.status === 409) {
@@ -593,11 +599,11 @@ class BrowserSpeechRecognizer {
     recognition.onstart = () => this.callbacks.onReady?.();
     recognition.onresult = (event) => {
       if (this.mode === "restaurant") {
-        const transcript = Array.from(event.results, (result) => result[0]?.transcript ?? "").join(" ").trim();
-        if (transcript) {
-          this.latestTranscript = transcript;
-          this.callbacks.onPartialResult?.(transcript);
-        }
+        const results = Array.from(event.results);
+        const transcript = results.map((result) => result[0]?.transcript ?? "").join(" ").trim();
+        this.latestTranscript = results.filter((result) => result.isFinal)
+          .map((result) => result[0]?.transcript ?? "").join(" ").trim();
+        if (transcript) this.callbacks.onPartialResult?.(transcript);
         return;
       }
       const transcript = event.results[0]?.[0]?.transcript ?? "";
@@ -669,6 +675,10 @@ class ManagedSpeechRecognizer {
   private async selectAndStart() {
     if (this.mode === "restaurant") {
       if (this.stopRequested) { this.endOnce(); return; }
+      if (Date.now() < restaurantBrowserFallbackUntil) {
+        this.startBrowserFallback();
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia || !(window.AudioContext || window.webkitAudioContext)) {
         this.startBrowserFallback();
         return;
@@ -677,9 +687,13 @@ class ManagedSpeechRecognizer {
       notifySpeechProviderUsed("stt", "soniox");
       this.delegate = new BackendSpeechRecognizer({
         ...this.callbacks,
-        onFallback: () => { fallbackRequested = true; this.callbacks.onFallback?.(); },
+        onFallback: (reason) => {
+          fallbackRequested = true;
+          restaurantBrowserFallbackUntil = reason === "quota" ? Number.POSITIVE_INFINITY : Date.now() + 60_000;
+          this.callbacks.onFallback?.(reason);
+        },
         onEnd: () => {
-          if (fallbackRequested) this.startBrowserFallback();
+          if (fallbackRequested && !this.stopRequested) this.startBrowserFallback();
           else this.endOnce();
         },
       }, this.mode, this.language, this.errorMessages);

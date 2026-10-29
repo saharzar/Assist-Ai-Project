@@ -7,8 +7,8 @@ export function sameRestaurantSnapshot(left: RestaurantWaiterSnapshot, right: Re
   return left.step === right.step && left.category === right.category && left.unavailable === right.unavailable &&
     left.payment_phase === right.payment_phase && left.payment_method === right.payment_method &&
     menuCategories.every((category) => left.order[category] === right.order[category]) &&
-    left.order.lines.length === right.order.lines.length && left.order.lines.every((line) =>
-      right.order.lines.some((other) => other.item_id === line.item_id && other.quantity === line.quantity));
+    left.order.lines.length === right.order.lines.length && left.order.lines.every((line, index) =>
+      right.order.lines[index]?.item_id === line.item_id && right.order.lines[index]?.quantity === line.quantity);
 }
 
 export function previewRestaurantWaiterActions(state: RestaurantState, payment: RestaurantPaymentState,

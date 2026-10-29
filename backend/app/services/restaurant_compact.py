@@ -11,7 +11,7 @@ from app.services.restaurant_tools import CATALOG, CATEGORIES, MENU_ATTRIBUTES, 
 CompactActionName = Literal[
     "open_menu", "show_category", "show_item", "search_menu", "query_menu", "recommend",
     "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item", "get_order", "get_total",
-    "review_order", "back_to_menu", "start_payment", "choose_payment", "answer_only",
+    "review_order", "back_to_menu", "start_payment", "choose_payment", "new_order", "answer_only",
 ]
 
 
@@ -29,8 +29,9 @@ class CompactAction(BaseModel):
 
 class PendingClarification(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["add_item", "remove_item", "replace_item", "describe_item"]
+    action: Literal["add_item", "remove_item", "replace_item", "describe_item", "set_quantity"]
     item_query: str = Field(min_length=1, max_length=120)
+    quantity: int | None = Field(default=None, ge=1, le=99)
     replacement_query: str | None = Field(default=None, max_length=120)
     matches: list[str] = Field(default_factory=list, max_length=5)
     clarify_field: Literal["item", "replacement"] = "item"
@@ -105,6 +106,15 @@ def fast_path(message: str) -> CompactAction | None:
 def obvious_payment_method_request(message: str) -> CompactAction | None:
     """Accept short spoken answers to the payment-method question."""
     normalized = _simple(message)
+    spoken = {
+        "card": ("par carte", "je paie par carte", "avec la carte", "mit karte", "ich zahle mit karte",
+                 "con tarjeta", "pago con tarjeta", "com cartao", "pago com cartao", "kartla", "kartla odeyecegim"),
+        "cash": ("en especes", "je paie en especes", "bar", "ich zahle bar", "en efectivo",
+                 "pago en efectivo", "em dinheiro", "pago em dinheiro", "nakit", "nakit odeyecegim"),
+    }
+    for method, phrases in spoken.items():
+        if normalized in phrases:
+            return CompactAction(action="choose_payment", payment_method=method)
     methods = {
         "card": r"card|credit card|debit card|tarjeta|karte|carte|cartao|kart",
         "cash": r"cash|efectivo|bargeld|especes|dinheiro|nakit",
@@ -123,6 +133,13 @@ def obvious_payment_method_request(message: str) -> CompactAction | None:
 def obvious_confirmation_request(message: str) -> bool:
     """Recognize an explicit decision to confirm the current order."""
     normalized = _simple(message)
+    if normalized in CONFIRMATION_PHRASES:
+        return True
+    # Common spoken forms survive missing Turkish diacritics and minor STT endings.
+    if re.fullmatch(r"(?:evet )?(?:siparisimi? |siparisi )?onayla(?:mak istiy(?:orum|om)|yorum|yin|yabilir miyim)?", normalized):
+        return True
+    if re.fullmatch(r"(?:evet )?(?:siparisim dogru|her sey dogru|her sey tamam|bu sekilde tamam|tamamdir|devam edebiliriz|odemeye gec(?:mek istiyorum|elim))", normalized):
+        return True
     return bool(re.fullmatch(
         r"(?:(?:yes|okay|ok) )?(?:(?:i|we) )?(?:confirm|confirm (?:it|my order|the order|our order))"
         r"(?: now| please)?|(?:please )?confirm (?:my|the|our) order(?: now| please)?|"
@@ -130,6 +147,39 @@ def obvious_confirmation_request(message: str) -> bool:
         r"(?: now| please)?|(?:let s |please )?(?:proceed to payment|go to payment|pay now)",
         normalized,
     ))
+
+
+CONFIRMATION_PHRASES = {_simple(phrase) for phrase in (
+    "I confirm my order", "confirm my order", "yes that's my order", "that's correct", "everything looks good",
+    "I'm happy with my order", "this is fine", "I'm ready to pay", "I want to continue", "let's continue",
+    "I'm done", "that's all", "I think that's everything", "I'm good", "that's all for me", "we can continue",
+    "I'm finished choosing", "let's pay", "can we pay now", "I'd like to pay",
+    "Je confirme ma commande", "Je confirme", "Oui c'est bon", "La commande est correcte", "Tout est correct",
+    "Ça me va", "C'est tout", "J'ai terminé", "Je veux continuer", "Je suis prêt à payer", "On peut continuer",
+    "Ich bestätige meine Bestellung", "Die Bestellung stimmt", "Das ist richtig", "Das passt", "Ich bin fertig",
+    "Ich möchte bezahlen", "Weiter bitte", "Confirmo mi pedido", "El pedido está bien", "Está correcto",
+    "Eso es todo", "He terminado", "Quiero pagar", "Podemos continuar", "Confirmo o meu pedido",
+    "O pedido está correto", "Está tudo certo", "É só isso", "Terminei", "Quero pagar", "Podemos continuar",
+    "Siparişimi onaylıyorum", "Siparişim doğru", "Evet doğru", "Her şey tamam", "Bu kadar", "Bitirdim",
+    "Ödemeye geçmek istiyorum", "Ödemeye hazırım", "Devam edebiliriz",
+)}
+
+
+NEW_ORDER_PHRASES = {_simple(phrase) for phrase in (
+    "I want to order again", "I want another order", "Can I order again", "Let's order again", "I want to start again",
+    "I'd like to eat again", "New order please", "Can we start over", "Let's order from the beginning again",
+    "Je veux commander encore une fois", "Je veux commander une autre fois", "Je voudrais commander à nouveau",
+    "Je veux faire une nouvelle commande", "Je veux recommencer", "Nouvelle commande", "Je voudrais commander encore",
+    "Ich möchte noch einmal bestellen", "Ich möchte erneut bestellen", "Eine neue Bestellung bitte", "Ich möchte von vorne anfangen",
+    "Quiero pedir otra vez", "Quiero hacer otro pedido", "Quiero volver a pedir", "Un nuevo pedido",
+    "Quero pedir novamente", "Quero fazer outro pedido", "Quero começar de novo", "Um novo pedido",
+    "Tekrar sipariş vermek istiyorum", "Yeniden sipariş vermek istiyorum", "Yeni bir sipariş vermek istiyorum",
+    "Baştan başlamak istiyorum",
+)}
+
+
+def semantic_new_order_request(message: str) -> bool:
+    return _simple(message) in NEW_ORDER_PHRASES
 
 
 def obvious_progress_request(message: str) -> Literal["start", "review"] | None:
@@ -303,8 +353,15 @@ def semantic_menu_request(message: str, language: str) -> CompactAction | None:
         return None
     category = mentioned_category(message)
     item = resolve_menu_item(message, language)
+    browse_words = ("show", "see", "look", "open", "montre", "voir", "zeig", "sehen",
+                    "ver", "muestra", "mostre", "goster", "gorme")
     if item["status"] == "found" and re.search(r"\b(show|see|open|montre|zeig|mostrar|goster)\w*\b", normalized):
         return CompactAction(action="show_item", item_query=CATALOG[item["item_id"]]["names"][language])
+    if category and (any(word.startswith(term) for word in normalized.split() for term in browse_words) or
+                     normalized in {"et les boissons", "et les soupes", "und die getranke", "y las bebidas",
+                                    "e as bebidas", "icecekler", "and soups", "what about drinks"}):
+        if not re.search(r"\b(add|ajout|agreg|anad|adicion|ekle|remove|retir|enlev|quitar|remov|cikar)\w*\b", normalized):
+            return CompactAction(action="show_category", category=category)
     if category and not re.search(r"\b(add|order|take|want|like|remove|change|replace|ajout|command|prendr|veux|voudrais|"
                                   r"bestell|mocht|quier|pedir|adicion|quero|siparis|istiyorum)\b", normalized):
         return CompactAction(action="show_category", category=category)
@@ -334,12 +391,25 @@ def semantic_order_request(message: str, language: str, selected: OrderSnapshot)
     selected_match = resolve_menu_item(message, language, selected=selected)
     any_match = resolve_menu_item(message, language)
     if any_match["status"] != "found":
+        # A short follow-up may omit the item only when the cart gives one clear referent.
+        if len(selected.lines) == 1:
+            context_item = selected.lines[0].item_id
+            context_query = CATALOG[context_item]["names"][language]
+            quantity = requested_quantity(message)
+            if quantity and re.fullmatch(r"(?:(?:actually |i ll |i will |can i |could i )?(?:make that |set it to |take |have |get )?)?(?:one|two|three|four|five|bir|iki|uc|dort|bes|\d+)", normalized):
+                return CompactAction(action="set_quantity", item_query=context_query, quantity=quantity)
+            if quantity and re.fullmatch(r"(?:bir|iki|uc|dort|bes|\d+) tane olsun", normalized):
+                return CompactAction(action="set_quantity", item_query=context_query, quantity=quantity)
+            if re.fullmatch(r"(?:another one|one more|can i get another one|bir tane daha)", normalized):
+                return CompactAction(action="add_item", item_query=context_query, quantity=1)
+            if re.fullmatch(r"(?:i don t want this anymore|i changed my mind|bunu istemiyorum|vazgectim)", normalized):
+                return CompactAction(action="remove_item", item_query=context_query)
         return None
     item_id = any_match["item_id"]
     item_query = CATALOG[item_id]["names"][language]
     # Only explicit ordering or quantity language is permitted to mutate the cart.
     if selected_match["status"] == "found" and re.search(
-        r"\b(remove|delete|retir|enlev|supprim|quitar|eliminar|entfern|weg|remover|tirar|cikar|sil)\w*\b", normalized
+        r"\b(remove|delete|retir|enlev|supprim|quit|eliminar|entfern|weg|remover|tirar|cikar|kaldir|sil|iptal|vazgec|istemiyorum)\w*\b", normalized
     ):
         quantity = requested_quantity(message)
         return CompactAction(action="decrease_quantity" if quantity or " one " in f" {normalized} " else "remove_item",
@@ -348,15 +418,54 @@ def semantic_order_request(message: str, language: str, selected: OrderSnapshot)
         r"\b(make|set|change|only|just|passe|mettre|seulement|nur|mach|cambia|deja|apenas|so|yap|olsun)\w*\b", normalized
     ) and requested_quantity(message):
         return CompactAction(action="set_quantity", item_query=item_query, quantity=requested_quantity(message, last=True))
-    if re.search(r"\b(another|one more|more|encore|weiter|otro|otra|mais|daha)\b", normalized) and selected.quantity(item_id):
+    if re.search(r"\b(another|one more|more|encore|autre|noch|weiter|otro|otra|mais|daha)\b", normalized) and selected.quantity(item_id):
         return CompactAction(action="add_item", item_query=item_query, quantity=requested_quantity(message) or 1)
+    if selected.quantity(item_id) and re.search(r"\b(sayisini|make|set|change|yap|olsun)\w*\b", normalized) and requested_quantity(message):
+        return CompactAction(action="set_quantity", item_query=item_query, quantity=requested_quantity(message, last=True))
+    quantity = requested_quantity(message)
+    if quantity:
+        bare_item = " ".join(word for word in normalized.split()
+                             if word not in NUMBER_WORDS and not word.isdecimal() and word not in {"tane", "daha"})
+        if bare_item and resolve_menu_item(bare_item, language).get("item_id") == item_id:
+            return CompactAction(action="add_item", item_query=item_query, quantity=quantity)
     if re.search(
         r"\b(want|like|take|have|get|give|add|order|need|please|veux|voudrais|commander|prends|ajout|"
         r"mochte|moechte|bestellen|nehme|bitte|fuge|anade|quiero|quisiera|dame|pedir|agrega|quero|gostaria|"
-        r"pedido|adicion|istiyorum|alabilir|ekle|siparis)\w*\b", normalized
+        r"pedido|adicion|istiyorum|istiyom|almak|alayim|alabilir|ekle|ekler|siparis|bana|lutfen)\w*\b", normalized
     ):
         return CompactAction(action="add_item", item_query=item_query, quantity=requested_quantity(message) or 1)
     return None
+
+
+EDIT_TERMS = {
+    "en": ("change", "edit", "modify", "adjust", "add", "remove", "forgot", "another", "else", "quantity", "back"),
+    "fr": ("modifi", "chang", "ajout", "enlev", "retir", "oubli", "autre", "quantit", "retour"),
+    "de": ("ander", "hinzufug", "entfern", "vergess", "noch", "zuruck", "menge"),
+    "es": ("cambi", "anad", "agreg", "quit", "falt", "otra", "volver", "cantidad"),
+    "pt": ("alter", "adicion", "acrescent", "remov", "esqueci", "outra", "voltar", "quantidade"),
+    "tr": ("degistir", "ekle", "cikar", "unutt", "daha", "geri", "miktar"),
+}
+
+
+def semantic_edit_request(message: str, language: str) -> CompactAction | None:
+    """Recognize an edit request without inventing an item or mutating the order."""
+    words = _simple(message).split()
+    if not any(word.startswith(term) for word in words for term in EDIT_TERMS[language]):
+        return None
+    category = mentioned_category(message)
+    return CompactAction(action="show_category", category=category) if category else CompactAction(action="back_to_menu")
+
+
+def semantic_compound_order_request(message: str, language: str,
+                                    selected: OrderSnapshot) -> list[CompactAction] | None:
+    """Handle two explicit item changes in one utterance using the same validated actions."""
+    connectors = {"en": "and", "fr": "et", "de": "und", "es": "y", "pt": "e", "tr": "ve"}
+    parts = re.split(rf"\b{connectors[language]}\b", _simple(message), maxsplit=1)
+    if len(parts) != 2:
+        return None
+    actions = [semantic_order_request(part.strip(), language, selected) for part in parts]
+    allowed = {"add_item", "remove_item", "decrease_quantity", "set_quantity"}
+    return actions if all(action is not None and action.action in allowed for action in actions) else None
 
 
 # The catalog tags and these normalized food terms share one canonical filter set.
