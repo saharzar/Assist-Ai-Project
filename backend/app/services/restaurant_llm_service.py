@@ -21,7 +21,7 @@ from app.services.restaurant_compact import (CompactAction, PendingClarification
                                              resolve_action_item, requested_quantity, semantic_menu_request,
                                              semantic_order_request, semantic_review_request, semantic_food_query,
                                              semantic_edit_request, semantic_compound_order_request,
-                                             semantic_new_order_request)
+                                             semantic_new_order_request, semantic_navigation_request)
 from app.services.restaurant_tools import (
     CATALOG, TOOL_SCHEMAS, ApprovedAction, RestaurantSnapshot, RestaurantToolEngine,
 )
@@ -49,6 +49,9 @@ WAITER_SYSTEM_PROMPT = (
     "For food preferences or ingredients choose query_menu or recommend with canonical category and attribute. "
     "Recommendations should open their category. "
     "Pass the user's food words in item_query, never an ID. "
+    "While choosing food, requests to see/confirm/pay for the order or finish choosing use review_order first. "
+    "Only on the review page may confirmation, continuing or payment requests use start_payment. "
+    "On the review page, order inspection uses get_order; edits take priority over confirmation. "
     "On the review page, use back_to_menu for a general edit request, remove_item for a named removal, "
     "and replace_item for a named replacement. Never treat edit or remove words as food names. "
     "Application state and validated actions are authoritative. Never invent menu items, prices, availability, "
@@ -66,10 +69,10 @@ BASE_ACTIONS = ("show_category", "show_item", "search_menu", "query_menu", "reco
 def compact_schema_for(state: RestaurantSnapshot) -> list[dict]:
     if state.step in ("menuCover", "alternativeCover", "menu", "alternative"):
         allowed = (*BASE_ACTIONS, "open_menu", "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item",
-                   "review_order", "start_payment", "choose_payment")
+                   "review_order")
     elif state.step == "review":
         allowed = (*BASE_ACTIONS, "back_to_menu", "add_item", "set_quantity", "decrease_quantity", "remove_item", "replace_item",
-                   "start_payment", "choose_payment")
+                   "start_payment")
     elif state.payment_phase == "method":
         allowed = ("get_order", "get_total", "choose_payment", "answer_only")
     elif state.payment_phase in ("paid", "receipt"):
@@ -401,10 +404,6 @@ class RestaurantLLMService:
                 matches=[line.item_id for line in state.order.lines[:5]]))
         if state.step == "success" and state.payment_phase in ("paid", "receipt") and semantic_new_order_request(message):
             return self._execute(CompactAction(action="new_order"), message, language, state, trusted=True)
-        if state.step == "review" and obvious_confirmation_request(message):
-            return self._execute(CompactAction(action="start_payment"), message, language, state, trusted=True)
-        if state.step in ("menu", "alternative", "menuCover", "alternativeCover") and obvious_confirmation_request(message):
-            return self._execute(CompactAction(action="review_order"), message, language, state, trusted=True)
         if state.step == "success" and state.payment_phase == "method":
             payment_choice = obvious_payment_method_request(message)
             if payment_choice:
@@ -435,6 +434,9 @@ class RestaurantLLMService:
             edit_request = semantic_edit_request(message, language)
             if edit_request:
                 return self._execute(edit_request, message, language, state, trusted=True, history=history)
+        navigation = semantic_navigation_request(message, language, state.step)
+        if navigation:
+            return self._execute(navigation, message, language, state, trusted=True)
         food_query = semantic_food_query(message, state.category if state.step in ("menu", "alternative") else "mains")
         if food_query:
             return self._execute(food_query, message, language, state, trusted=True, history=history)
@@ -443,7 +445,8 @@ class RestaurantLLMService:
         if menu_navigation and (menu_navigation.action != "open_menu" or state.step in ("menuCover", "alternativeCover", "menu", "alternative")):
             return self._execute(menu_navigation, message, language, state, trusted=True, history=history)
         if semantic_review_request(message):
-            return self._execute(CompactAction(action="review_order"), message, language, state, trusted=True)
+            action = "get_order" if state.step == "review" else "review_order"
+            return self._execute(CompactAction(action=action), message, language, state, trusted=True)
         normalized_message = _fold(message)
         if re.search(r"\b(what did i order|what have i ordered|how many|combien|cuantos|quantos|kac tane|wie viele|"
                      r"ma commande|mi pedido|meine bestellung|meu pedido|siparisimde)\b", normalized_message):
@@ -455,10 +458,11 @@ class RestaurantLLMService:
             logger.info("restaurant_llm.fast_path=true action=choose_payment")
             return self._execute(payment_method, message, language, state, trusted=True)
         if obvious_confirmation_request(message):
-            logger.info("restaurant_llm.fast_path=true action=start_payment")
+            logger.info("restaurant_llm.fast_path=true action=confirm_or_review")
             if state.step == "success":
                 return RestaurantChatOutcome(say(language, "payment"), [], state)
-            return self._execute(CompactAction(action="start_payment"), message, language, state, trusted=True)
+            action = "start_payment" if state.step == "review" else "review_order"
+            return self._execute(CompactAction(action=action), message, language, state, trusted=True)
         progress = obvious_progress_request(message)
         if progress:
             logger.info("restaurant_llm.fast_path=true action=%s", "review_order" if progress == "review" else "start_order")
@@ -822,7 +826,8 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
     payment_intent = bool(re.search(r"\b(pay\w*|card|cash|pagar\w*|tarjeta|efectivo|payer\w*|carte|especes|"
                                     r"zahl\w*|karte|bargeld|cartao|dinheiro|od\w*|kart|nakit)\b", folded))
     if tool == "start_payment":
-        return state.step == "review" and (payment_intent or obvious_confirmation_request(message) or
+        return state.step == "review" and (semantic_navigation_request(message, language, state.step) == CompactAction(action="start_payment") or
+                payment_intent or obvious_confirmation_request(message) or
                 bool(re.search(r"\b(confirm\w*|confirmed)\b", folded)))
     if tool == "start_new_order":
         return state.step == "success" and semantic_new_order_request(message)
@@ -832,7 +837,7 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
             "cash", "efectivo", "especes", "bargeld", "dinheiro", "nakit")
         return payment_intent and any(re.search(rf"\b{word}\b", folded) for word in words)
     if tool == "review_order":
-        return bool(re.search(r"\b(review\w*|done|everything|continue|check|revis\w*|listo|"
+        return semantic_navigation_request(message, language, state.step) == CompactAction(action="review_order") or bool(re.search(r"\b(review\w*|done|everything|continue|check|revis\w*|listo|"
                               r"verif\w*|fini|termin\w*|pruf\w*|fertig|weiter|rever|pronto|"
                               r"incele\w*|bitti|tamam)\b", folded)) or payment_intent
     if tool == "go_back_to_menu":

@@ -55,7 +55,8 @@ def test_language_actions_change_real_state(language, menu, category, add, remov
     assert restored.state.order.quantity("pizza") == 2
     assert any(action.type == "SELECT_ITEM" for action in restored.actions)
     asked = service.chat_with_tools(question, language, [], restored.state)
-    assert asked.actions == []
+    assert asked.state.step == "review"
+    assert [action.type for action in asked.actions] == ["REVIEW_ORDER"]
     expected_quantity = "two Pizzas" if language == "en" else "iki pizza" if language == "tr" else "2 Pizza"
     assert expected_quantity in asked.reply
     reviewed = service.chat_with_tools(review, language, [], restored.state)

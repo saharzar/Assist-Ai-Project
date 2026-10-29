@@ -430,7 +430,7 @@ class RestaurantToolEngine:
             if not has_main_dish(self.snapshot.order):
                 self._category("mains")
                 return ToolResult(ok=False, reason="main_required")
-            if self.snapshot.step not in ("menu", "alternative"):
+            if self.snapshot.step not in ("menuCover", "alternativeCover", "menu", "alternative"):
                 return ToolResult(ok=False, reason="review_unavailable")
             self.snapshot.step = "review"
             self._action("REVIEW_ORDER")

@@ -326,6 +326,48 @@ def semantic_review_request(message: str) -> bool:
                           normalized) and re.search(r"\b(order|commande|pedido|bestellung|siparis\w*)\b", normalized))
 
 
+# Broad intent cues cover natural spoken variations; the current scenario step decides
+# whether proceeding means inspecting an order or confirming an inspected one.
+_NAVIGATION_CUES = {
+    "en": (r"\b(order\w*|choosing)\b", r"\b(see|show|check|review|ordered|have i ordered|what s in)\b",
+           r"\b(confirm|pay|payment|proceed|continue|ready|done|finished|that s all|that s everything|that s my order|nothing else|don t want anything else|everything looks good|everything is correct)\b"),
+    "fr": (r"\bcommande\b", r"\b(voir|montre\w*|verifi\w*|revoir|command\w*)\b",
+           r"\b(confirm\w*|payer|paiement|continu\w*|suite|pret\w*|termin\w*|fini|c est tout|rien d autre)\b"),
+    "de": (r"\b(bestellung|bestellt)\b", r"\b(sehen|zeig\w*|pruf\w*|uberpruf\w*|bestellt|was ist)\b",
+           r"\b(bestatig\w*|bezahl\w*|zahl\w*|weiter\w*|bereit|fertig|das ist alles|nichts mehr|passt)\b"),
+    "es": (r"\bpedido\b", r"\b(ver|muestra\w*|revisa\w*|comproba\w*|he pedido|que hay)\b",
+           r"\b(confirm\w*|pagar|pago|continu\w*|seguir|listo|termin\w*|eso es todo|nada mas|esta bien)\b"),
+    "pt": (r"\b(pedido|pedi)\b", r"\b(ver|mostr\w*|rever|verifica\w*|pedi|o que esta)\b",
+           r"\b(confirm\w*|pagar|pagamento|continu\w*|seguir|pronto|terminei|e tudo|mais nada|esta correto)\b"),
+    "tr": (r"\bsiparis\w*\b", r"\b(gor\w*|goster\w*|kontrol\w*|gozden\w*|ettim|ne var)\b",
+           r"\b(onay\w*|ode\w*|odeme\w*|devam\w*|hazir\w*|bitir\w*|bitti|bu kadar|baska bir sey istemiyorum|dogru)\b"),
+}
+
+
+def semantic_navigation_request(message: str, language: str, step: str) -> CompactAction | None:
+    """Resolve order inspection and progress against the current page."""
+    if step not in ("menuCover", "alternativeCover", "menu", "alternative", "review"):
+        return None
+    normalized = _simple(message)
+    order_pattern, inspect_pattern, proceed_pattern = _NAVIGATION_CUES[language]
+    order = bool(re.search(order_pattern, normalized))
+    inspect = bool(re.search(inspect_pattern, normalized))
+    proceed = bool(re.search(proceed_pattern, normalized))
+    if step == "review" and normalized in ("looks good", "sounds good"):
+        proceed = True
+    # A food item or category still belongs to ordering, even when the sentence
+    # contains words such as "want" or "order".
+    if step == "review":
+        if proceed:
+            return CompactAction(action="start_payment")
+        if order and inspect:
+            return CompactAction(action="get_order")
+        return None
+    if proceed or (order and inspect) or (language == "en" and re.search(r"\b(order now|place my order|place the order)\b", normalized)):
+        return CompactAction(action="review_order")
+    return None
+
+
 NUMBER_WORDS = {
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
