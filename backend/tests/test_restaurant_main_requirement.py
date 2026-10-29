@@ -266,11 +266,11 @@ def test_generic_review_edit_preserves_order_and_asks_one_question():
 def test_review_adds_two_coffees_directly_and_opens_drinks():
     current = state(("pizza", 1), step="review")
     outcome = service().chat_with_tools("I want to add two coffees.", "en", [], current)
-    assert outcome.state.step == "alternative"
-    assert outcome.state.category == "drinks"
+    assert outcome.state.step == "review"
+    assert outcome.state.category == "mains"
     assert outcome.state.order.quantity("pizza") == 1
     assert outcome.state.order.quantity("coffee") == 2
-    assert [action.type for action in outcome.actions] == ["CHANGE_ORDER", "SHOW_MENU_CATEGORY", "SELECT_ITEM"]
+    assert [action.type for action in outcome.actions] == ["SELECT_ITEM"]
     assert "coffee" in outcome.reply.lower() and "?" not in outcome.reply
 
 
@@ -333,7 +333,7 @@ def test_generic_edit_reply_rotates_without_llm_call():
 def test_review_adds_another_main_directly_in_all_languages(language, phrase):
     current = state(("pizza", 1), step="review")
     outcome = service().chat_with_tools(phrase, language, [], current)
-    assert outcome.state.step == "alternative"
+    assert outcome.state.step == "review"
     assert outcome.state.category == "mains"
     assert outcome.state.order.quantity("pizza") == 2
 
@@ -358,7 +358,7 @@ def test_review_missing_category_opens_it_without_losing_order(language, phrase,
 def test_french_review_can_add_two_coffees_without_clarification():
     current = state(("pizza", 1), step="review")
     outcome = service().chat_with_tools("Je voudrais deux cafés de plus.", "fr", [], current)
-    assert outcome.state.category == "drinks"
+    assert outcome.state.category == "mains"
     assert outcome.state.order.quantity("coffee") == 2
     assert "?" not in outcome.reply
 

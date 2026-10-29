@@ -24,7 +24,7 @@ export type RestaurantAction = { type: "openMenu" } | { type: "closeMenu" } | { 
   | { type: "setQuantity"; category: MenuCategory; id: string; quantity: number }
   | { type: "reviewOrder" } | { type: "changeOrder" } | { type: "confirmOrder" };
 export function restaurantReducer(state: RestaurantState, action: RestaurantAction): RestaurantState {
-  if (action.type === "selectItem" && (state.step === "menu" || state.step === "alternative")) {
+  if (action.type === "selectItem" && (state.step === "menu" || state.step === "alternative" || state.step === "review")) {
     if (!restaurantMenuItems.some((item) => item.category === action.category && item.id === action.id) && !(action.category === "drinks" && action.id === "none")) return state;
     if (action.category === "mains" && action.id === state.unavailable) return state;
     if (action.category === "mains" && state.unavailable === null) return { ...state, step: "alternative", category: "mains", unavailable: action.id as Meal };
@@ -37,20 +37,24 @@ export function restaurantReducer(state: RestaurantState, action: RestaurantActi
       : [...state.order.lines, { item_id: action.id, quantity }];
     return { ...state, order: { ...state.order, [action.category]: action.id, lines }, selected: action.category === "mains" ? action.id as Meal : state.selected, fullMenu: action.category === "mains" ? true : state.fullMenu };
   }
-  if (action.type === "setQuantity" && (state.step === "menu" || state.step === "alternative") && Number.isInteger(action.quantity) && action.quantity >= 0 && action.quantity <= 99) {
+  if (action.type === "setQuantity" && (state.step === "menu" || state.step === "alternative" || state.step === "review") && Number.isInteger(action.quantity) && action.quantity >= 0 && action.quantity <= 99) {
     const current = state.order.lines.find((line) => line.item_id === action.id);
     if (!current || !restaurantMenuItems.some((item) => item.category === action.category && item.id === action.id)) return state;
     const lines = action.quantity
       ? state.order.lines.map((line) => line.item_id === action.id ? { ...line, quantity: action.quantity } : line)
       : state.order.lines.filter((line) => line.item_id !== action.id);
     const remaining = lines.filter((line) => restaurantMenuItems.some((item) => item.category === action.category && item.id === line.item_id));
-    return { ...state, order: { ...state.order, lines, [action.category]: remaining[remaining.length - 1]?.item_id ?? null },
+    const order = { ...state.order, lines, [action.category]: remaining[remaining.length - 1]?.item_id ?? null };
+    const leaveReview = state.step === "review" && !hasMainDish(order);
+    return { ...state, step: leaveReview ? (state.unavailable ? "alternative" : "menu") : state.step, category: leaveReview ? "mains" : state.category, order,
       selected: action.category === "mains" ? (remaining[remaining.length - 1]?.item_id as Meal | undefined) ?? null : state.selected };
   }
-  if (action.type === "removeItem" && (state.step === "menu" || state.step === "alternative") && menuCategories.includes(action.category)) {
+  if (action.type === "removeItem" && (state.step === "menu" || state.step === "alternative" || state.step === "review") && menuCategories.includes(action.category)) {
     const lines = state.order.lines.filter((line) => action.id ? line.item_id !== action.id : !restaurantMenuItems.some((item) => item.category === action.category && item.id === line.item_id));
     const remaining = lines.filter((line) => restaurantMenuItems.some((item) => item.category === action.category && item.id === line.item_id));
-    return { ...state, order: { ...state.order, lines, [action.category]: remaining[remaining.length - 1]?.item_id ?? null },
+    const order = { ...state.order, lines, [action.category]: remaining[remaining.length - 1]?.item_id ?? null };
+    const leaveReview = state.step === "review" && !hasMainDish(order);
+    return { ...state, step: leaveReview ? (state.unavailable ? "alternative" : "menu") : state.step, category: leaveReview ? "mains" : state.category, order,
       selected: action.category === "mains" ? (remaining[remaining.length - 1]?.item_id as Meal | undefined) ?? null : state.selected };
   }
   if (action.type === "reviewOrder" && (state.step === "menu" || state.step === "alternative") && hasMainDish(state.order))

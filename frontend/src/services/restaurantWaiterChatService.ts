@@ -5,7 +5,7 @@ import { apiRequest } from "./api";
 
 export type RestaurantWaiterTurn = { role: "user" | "assistant"; content: string };
 export type RestaurantPendingClarification = {
-  action: "add_item" | "remove_item" | "replace_item" | "describe_item" | "set_quantity";
+  action: "add_item" | "remove_item" | "replace_item" | "describe_item" | "set_quantity" | "decrease_quantity";
   item_query: string;
   quantity?: number | null;
   replacement_query?: string | null;

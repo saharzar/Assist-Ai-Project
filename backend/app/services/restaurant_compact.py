@@ -29,7 +29,7 @@ class CompactAction(BaseModel):
 
 class PendingClarification(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["add_item", "remove_item", "replace_item", "describe_item", "set_quantity"]
+    action: Literal["add_item", "remove_item", "replace_item", "describe_item", "set_quantity", "decrease_quantity"]
     item_query: str = Field(min_length=1, max_length=120)
     quantity: int | None = Field(default=None, ge=1, le=99)
     replacement_query: str | None = Field(default=None, max_length=120)
@@ -250,7 +250,7 @@ def obvious_order_change(message: str, *, review: bool = False) -> CompactAction
     if review and re.fullmatch(prefix + r"(?:change|edit|modify|update|adjust)(?: (?:my|the|our))?"
                                r"(?: order| something| an? item| an? dish)?(?: please)?", normalized):
         return CompactAction(action="back_to_menu")
-    replace = re.fullmatch(prefix + r"(?:replace|change|switch|swap|edit) (.+?) (?:with|for|to|into) (.+)", normalized)
+    replace = re.fullmatch(prefix + r"(?:replace|change|switch|swap|edit|remplace\w*|ersetz\w*|sustitu\w*|troqu\w*|substit\w*) (.+?) (?:with|for|to|into|par|durch|por) (.+)", normalized)
     if replace:
         old = re.sub(r"^(?:the|my|our) ", "", replace.group(1))
         new = re.sub(r"(?: in (?:my|the) order| please| instead)+$", "", replace.group(2))
@@ -375,6 +375,13 @@ NUMBER_WORDS = {
     "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
     "um": 1, "uma": 1, "dois": 2, "duas": 2, "quatro": 4,
     "bir": 1, "iki": 2, "uc": 3, "dort": 4, "bes": 5,
+    "an": 1, "einen": 1, "einem": 1, "einer": 1, "ikiye": 2, "uce": 3,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "sept": 7, "huit": 8, "neuf": 9, "dix": 10,
+    "sechs": 6, "sieben": 7, "acht": 8, "neun": 9, "zehn": 10,
+    "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
+    "sete": 7, "oito": 8, "nove": 9, "dez": 10,
+    "alti": 6, "yedi": 7, "sekiz": 8, "dokuz": 9, "on": 10,
 }
 
 
@@ -423,8 +430,46 @@ def semantic_menu_request(message: str, language: str) -> CompactAction | None:
     return None
 
 
+def quantity_operation(message: str) -> str | None:
+    """Choose the operation before resolving an item or interpreting a number."""
+    value = _simple(message)
+    if re.search(r"\b(replace|swap|switch|remplac\w*|ersetz\w*|substit\w*)\b|\bchange .+ (?:with|for)\b", value):
+        return None  # Replacement extraction retains its own two-item validation.
+    if re.search(r"\b(only|just|seulement|nur|solo|apenas|sadece|n(?:e)? .+ que)\b", value) and requested_quantity(message):
+        return "set_quantity"
+    if re.search(r"\b(make|set|change|mettez|mettre|passe|mach\w*|cambi\w*|deja\w*|deixe|yap|olsun|dusur\w*)\b", value) and requested_quantity(message):
+        return "set_quantity"
+    if re.search(r"\b(reduc\w*|redui\w*|decreas\w*|less|moins|weniger|reduzier\w*|reduz\w*|menos|azalt\w*|daha az)\b", value):
+        return "decrease_quantity"
+    if re.search(r"\b(remove|delete|cancel|forget|drop|retir\w*|enlev\w*|supprim\w*|annul\w*|entfern\w*|quit\w*|elimin\w*|remov\w*|tirar|cikar\w*|kaldir\w*|sil|iptal)\b|\btake .+ off\b", value):
+        return "decrease_quantity" if requested_quantity(message) else "remove_item"
+    if re.search(r"\b(don t want|do not want|changed my mind|ne veux plus|change d avis|nicht mehr|meinung geandert|ya no quiero|cambiado de opinion|nao quero|mudei de ideia|istemiyorum|fikrimi degistirdim|vazgectim)\b", value):
+        return "remove_item"
+    if re.search(r"\b(increas\w*|increment\w*|augment\w*|erhoh\w*|aument\w*|artir\w*)\b", value):
+        return "add_item"  # The shared additive action also represents an increase.
+    return None
+
+
+def contextual_quantity_reference(message: str) -> bool:
+    """Only generic references can borrow a prior item; unknown food names cannot."""
+    words = _simple(message).split()
+    allowed = set("em by have habe he machen dejalo die den sadece reduzieren reduza reduisez menos olsun i we would like want to please can could you actually it that this one another more less only just my changed mind about the off from order quantity make set change take remove reduce decrease delete cancel forget don t do not anymore two three four five je j ai n ne en veux que plus le la les un une deux trois quantite mettez retirez retire avis d ich sie einen eine ein nur zwei daraus menge meine meinung geandert mochte weniger wir quiero solo dos uno una un el lo cantidad quita reduce cambiado de opinion ya no quero um uma a o os apenas dois tres quantidade retire deixe mudei ideia nao mais nada bir iki uc tane miktari sayiyi ikiye yap dusur fikrimi degistirdim siparisimden istemiyorum bunu azalt cikar artik daha az istiyorum".split())
+    return bool(words) and all(word in allowed or word in NUMBER_WORDS or word.isdecimal() for word in words)
+
+
 def semantic_order_request(message: str, language: str, selected: OrderSnapshot) -> CompactAction | None:
     normalized = _simple(message)
+    if re.search(r"\b(replace|swap|switch|remplac\w*|ersetz\w*|sustitu\w*|substit\w*|troqu\w*|yerine)\b", normalized):
+        return None
+    operation = quantity_operation(message)
+    if operation:
+        found = resolve_menu_item(message, language)
+        query = CATALOG[found["item_id"]]["names"][language] if found["status"] == "found" else None
+        if query is None and len(selected.lines) == 1:
+            # Use cart context only for pronouns/generic quantity requests, never a named unknown item.
+            if contextual_quantity_reference(message):
+                query = CATALOG[selected.lines[0].item_id]["names"][language]
+        return CompactAction(action=operation, item_query=query, quantity=(requested_quantity(message, last=operation == "set_quantity") or 1) if operation != "remove_item" else None)
     if re.search(r"\b(?:i think you should|you should|perhaps you could|maybe you could)\b", normalized):
         return None
     if re.search(r"\b(do you have|what .* do you have|is there|are there|vous avez|avez vous|haben sie|"

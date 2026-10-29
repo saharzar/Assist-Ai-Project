@@ -244,6 +244,7 @@ def resolve_menu_item(query: str, language: str, category: str | None = None,
     if not isinstance(query, str) or not query.strip() or len(query) > 120:
         return {"status": "not_found"}
     needle = _normalize_name(query)
+    needle = re.sub(r"\bsuyun[ua]\b", "suyu", needle)
     # Speech often mixes a localized food name with an English catalog word.
     localized_aliases = {
         "tavuk wrap": _normalize_name(CATALOG["wrap"]["names"]["tr"]),
@@ -286,14 +287,14 @@ def resolve_menu_item(query: str, language: str, category: str | None = None,
                     if len(label.split()) == 1:
                         before = source.split(f" {label} ", 1)[0].split()
                         if before and before[-1] not in {
-                            "a", "an", "the", "la", "le", "die", "der", "das", "el", "los", "las", "one", "two", "three", "four", "five", "1", "2", "3", "4", "5",
-                            "un", "une", "deux", "trois", "eine", "ein", "zwei", "drei", "uno", "una", "dos",
+                            "a", "an", "the", "la", "le", "die", "der", "das", "den", "el", "los", "las", "one", "two", "three", "four", "five", "1", "2", "3", "4", "5",
+                            "un", "une", "deux", "trois", "eine", "ein", "einen", "einem", "zwei", "drei", "uno", "una", "dos",
                             "uma", "um", "duas", "dua", "dois", "bir", "iki", "uc", "dort", "tane", "want", "like", "have", "take",
                             "get", "add", "order", "need", "me", "for", "commander", "veux", "voudrais",
                             "mochte", "quiero", "quero", "istiyorum", "ben", "please", "another", "autre", "otra", "outro", "outra", "more", "daha",
                             "many", "combien", "cuantos", "quantos", "viele", "kac", "de",
                             "show", "ajoute", "ajouter", "fuge", "anade", "adiciona", "ekle",
-                            "remove", "retirez", "retirer", "entferne", "quita", "quitar", "remova", "remover", "cikar"}:
+                            "increase", "increment", "augmentez", "erhohen", "aumenta", "artir", "reduce", "decrease", "delete", "cancel", "forget", "less", "only", "just", "set", "make", "reduisez", "reduire", "enlevez", "supprimez", "annulez", "reduzieren", "entfernen", "weniger", "reduza", "retire", "elimina", "remove", "retirez", "retirer", "entferne", "quita", "quitar", "remova", "remover", "cikar"}:
                             continue
                     spans.append((len(label), item_id))
         if spans:
@@ -483,6 +484,8 @@ class RestaurantToolEngine:
             item_id = args["item_id"]
             if not self.snapshot.order.quantity(item_id):
                 return ToolResult(ok=False, reason="not_selected")
+            if name == "decrease_order_quantity" and args["quantity"] > self.snapshot.order.quantity(item_id):
+                return ToolResult(ok=False, reason="insufficient_quantity")
         if name == "replace_order_item":
             old_id, new_id = args["old_item_id"], args["new_item_id"]
             if not self.snapshot.order.quantity(old_id):
@@ -492,19 +495,17 @@ class RestaurantToolEngine:
         if name == "add_order_item" and args["item_id"] == self.snapshot.unavailable:
             self._category("mains")
             return ToolResult(ok=False, reason="item_unavailable")
-        if self.snapshot.step == "review":
+        if self.snapshot.step == "review" and name == "replace_order_item":
             self.snapshot.step = "alternative" if self.snapshot.unavailable else "menu"
             self._action("CHANGE_ORDER")
         if self.snapshot.step in ("menuCover", "alternativeCover"):
             self._open()
-        if self.snapshot.step not in ("menu", "alternative"):
+        if self.snapshot.step not in ("menu", "alternative", "review"):
             return ToolResult(ok=False, reason="order_locked")
         if name == "add_order_item":
             item_id = args["item_id"]
             quantity = args["quantity"]
             category = CATALOG[item_id]["category"]
-            if was_review:
-                self._category(category)
             if category == "mains" and self.snapshot.unavailable is None:
                 self.snapshot.unavailable = item_id
                 self.snapshot.step = "alternative"
@@ -519,20 +520,22 @@ class RestaurantToolEngine:
             return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))
         if name in ("set_order_quantity", "decrease_order_quantity"):
             item_id, amount = args["item_id"], args["quantity"]
-            if was_review:
-                self._category(CATALOG[item_id]["category"])
             current = self.snapshot.order.quantity(item_id)
             desired = amount if name == "set_order_quantity" else max(0, current - amount)
             self.snapshot.order.set_quantity(item_id, desired)
+            if was_review and not has_main_dish(self.snapshot.order):
+                self.snapshot.step = "alternative" if self.snapshot.unavailable else "menu"
+                self.snapshot.category = "mains"
             self._action("SET_QUANTITY", category=CATALOG[item_id]["category"], item_id=item_id,
                          quantity=desired)
             return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))
         if name == "remove_order_item":
             item_id = args["item_id"]
             category = CATALOG[item_id]["category"]
-            if was_review:
-                self._category(category)
             self.snapshot.order.set_quantity(item_id, 0)
+            if was_review and not has_main_dish(self.snapshot.order):
+                self.snapshot.step = "alternative" if self.snapshot.unavailable else "menu"
+                self.snapshot.category = "mains"
             self._action("REMOVE_ITEM", category=category, item_id=item_id)
             return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))
         old_id, new_id = args["old_item_id"], args["new_item_id"]
@@ -551,4 +554,7 @@ class RestaurantToolEngine:
             return ToolResult(ok=False, reason="first_main_unavailable", data={"item": item_summary(new_id, self.language, new_id)})
         self.snapshot.order.set_quantity(new_id, 1)
         self._action("SELECT_ITEM", category=new_category, item_id=new_id)
+        if was_review and has_main_dish(self.snapshot.order):
+            self.snapshot.step = "review"
+            self._action("REVIEW_ORDER")
         return ToolResult(ok=True, data=order_summary(self.snapshot, self.language))

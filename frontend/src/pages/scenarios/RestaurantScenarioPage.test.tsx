@@ -244,7 +244,7 @@ describe("restaurant book and order", () => {
     expect(html()).toContain("€12.00 × 2 = €24.00");
     click("Review order");
     click(restaurantOrderTranslations.en.decrease.replace("{item}", "Pizza"));
-    expect(state.current?.step).toBe("alternative");
+    expect(state.current?.step).toBe("review");
     expect(getOrderTotalCents(state.current!.order, "en")).toBe(1400);
     click(restaurantOrderTranslations.en.decrease.replace("{item}", "Pizza"));
     expect(state.current?.order.lines.find((line) => line.item_id === "pizza")).toBeUndefined();

@@ -21,7 +21,8 @@ from app.services.restaurant_compact import (CompactAction, PendingClarification
                                              resolve_action_item, requested_quantity, semantic_menu_request,
                                              semantic_order_request, semantic_review_request, semantic_food_query,
                                              semantic_edit_request, semantic_compound_order_request,
-                                             semantic_new_order_request, semantic_navigation_request)
+                                             semantic_new_order_request, semantic_navigation_request, quantity_operation,
+                                             contextual_quantity_reference)
 from app.services.restaurant_tools import (
     CATALOG, TOOL_SCHEMAS, ApprovedAction, RestaurantSnapshot, RestaurantToolEngine,
 )
@@ -42,6 +43,8 @@ WAITER_SYSTEM_PROMPT = (
     "Reply in the requested language with one to three short sentences and one question at a time. "
     "Use restaurant_action for menu facts or changes. For category questions choose show_category, not answer_only. "
     "For explicit food requests choose add_item with quantity; for edits choose set_quantity or decrease_quantity. "
+    "Resolve the operation before item/quantity: remove without an amount removes all, remove N/decrease/reduce by N subtracts N (default one), only want N/make it N sets the total. "
+    "A failed removal never becomes add_item. Use recent item context for pronouns and clarify ambiguity. "
     "Interpret the whole utterance in its language before choosing the canonical action. "
     "Wanting to get a dish, including Turkish 'Lazanya almak istiyorum', is add_item, never remove_item. "
     "Use remove_item only when the learner actually asks to remove, cancel, or stop wanting a selected dish. "
@@ -336,6 +339,9 @@ class RestaurantLLMService:
         if pending:
             folded = _fold(message).strip(" .!?؟")
             affirmative = _is_affirmative(folded)
+            if pending.action == "decrease_quantity" and len(pending.matches) == 1 and requested_quantity(message) and len(folded.split()) == 1:
+                return self._execute(CompactAction(action="decrease_quantity", item_query=name(pending.matches[0], language),
+                                                   quantity=requested_quantity(message)), message, language, state, trusted=True)
             if folded in ("no", "no thanks", "no thank you", "no gracias", "nein", "non", "nao", "hayir"):
                 return RestaurantChatOutcome(say(language, "cancelled"), [], state)
             if pending.action == "describe_item":
@@ -395,7 +401,7 @@ class RestaurantLLMService:
                                          message, language, state, trusted=True)
             elif pending and affirmative:
                 return self._execute(CompactAction(action=pending.action, item_query=pending.item_query,
-                                                   replacement_query=pending.replacement_query),
+                                                   replacement_query=pending.replacement_query, quantity=pending.quantity),
                                      message, language, state, trusted=True)
         quantity_follow_up = _fold(message).strip(" .!?؟")
         if len(state.order.lines) > 1 and re.fullmatch(r"(?:bir|iki|uc|dort|bes|\d+) tane olsun", quantity_follow_up):
@@ -427,8 +433,16 @@ class RestaurantLLMService:
                 current = outcome.state
             return RestaurantChatOutcome(" ".join(outcome.reply for outcome in outcomes),
                                          [action for outcome in outcomes for action in outcome.actions], current)
+        replacement = obvious_order_change(message, review=state.step == "review")
+        if replacement and replacement.action == "replace_item" and replacement.replacement_query and not quantity_operation(message):
+            return self._execute(replacement, message, language, state, trusted=True)
         semantic_order = semantic_order_request(message, language, state.order)
         if semantic_order:
+            if not semantic_order.item_query and quantity_operation(message) and contextual_quantity_reference(message):
+                recent = next((turn["content"] for turn in reversed(history) if turn.get("role") == "user"), "")
+                referent = resolve_action_item(recent, language, order=state.order) if recent else {}
+                if referent.get("status") == "found" and not re.search(r"\b(some things|some items|quelques|einige)\b", _fold(message)):
+                    semantic_order.item_query = name(referent["item_id"], language)
             return self._execute(semantic_order, message, language, state, trusted=True)
         if state.step == "review":
             edit_request = semantic_edit_request(message, language)
@@ -613,20 +627,20 @@ class RestaurantLLMService:
             args = {"method": action.payment_method}
         elif tool in ("show_menu_item", "add_order_item", "set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item"):
             if not action.item_query:
-                if tool == "remove_order_item":
+                if tool in ("remove_order_item", "decrease_order_quantity", "set_order_quantity"):
                     selected_ids = [line.item_id for line in state.order.lines]
                     if selected_ids:
                         return self._clarify(language, state, PendingClarification(
-                            action="remove_item", item_query="item", matches=selected_ids))
+                            action=action.action, item_query="item", quantity=action.quantity, matches=selected_ids))
                     return RestaurantChatOutcome(say(language, "empty"), [], state)
                 return RestaurantChatOutcome(say(language, "unclear"), [], state)
             selected = state.order if tool in ("set_order_quantity", "decrease_order_quantity", "remove_order_item", "replace_order_item") else None
             found = resolve_action_item(action.item_query, language, order=selected)
             if selected is not None and found["status"] == "not_found":
                 category = mentioned_category(action.item_query)
-                selected_id = getattr(selected, category) if category else None
-                if selected_id:
-                    found = {"status": "found", "item_id": selected_id}
+                ids = [line.item_id for line in selected.lines if CATALOG[line.item_id]["category"] == category]
+                if ids:
+                    found = {"status": "found", "item_id": ids[0]} if len(ids) == 1 else {"status": "ambiguous", "matches": ids}
             if selected is not None and found["status"] == "not_found":
                 found = resolve_action_item(action.item_query, language)
             if found["status"] == "ambiguous":
@@ -656,6 +670,8 @@ class RestaurantLLMService:
                 args = {"old_item_id": found["item_id"], "new_item_id": replacement["item_id"]}
         if not trusted and not _intent_allowed(message, [], language, tool, args, state):
             if tool == "add_order_item" and args.get("item_id"):
+                if quantity_operation(message) not in (None, "add_item"):
+                    return RestaurantChatOutcome(say(language, "unclear"), [], state)
                 pending = PendingClarification(action="add_item", item_query=action.item_query)
                 return RestaurantChatOutcome(say(language, "confirm_add", item=name(args["item_id"], language)),
                                              [], state, pending)
@@ -668,7 +684,15 @@ class RestaurantLLMService:
                          next(_diagnostic_request_ids), language, state.step, tool,
                          args.get("category") or args.get("item_id") or args.get("method") or "-",
                          result.ok, engine.snapshot.step, ",".join(item.type for item in engine.actions) or "-")
+            item_id = args.get("item_id")
+            if item_id in CATALOG:
+                logger.debug("restaurant_quantity language=%s scenario_step=%s intent=%s item_id=%s current_quantity=%s operation=%s amount_or_target=%s new_quantity=%s validation_success=%s",
+                             language, state.step, action.action, item_id, state.order.quantity(item_id), tool,
+                             args.get("quantity"), engine.snapshot.order.quantity(item_id), result.ok)
         reply = result_reply(language, tool, args, result, engine.snapshot, message, previous_reply)
+        if result.reason == "insufficient_quantity":
+            return RestaurantChatOutcome(reply, [], state, PendingClarification(action="decrease_quantity",
+                                         item_query=name(args["item_id"], language), matches=[args["item_id"]]))
         if result.ok and tool == "get_current_order":
             asked_item = resolve_action_item(message, language, order=engine.snapshot.order)
             if asked_item["status"] == "found":
@@ -859,6 +883,8 @@ def _intent_allowed(message: str, history: list[dict[str, str]], language: str,
         return bool(target in CATALOG and state.order.quantity(target) and requested_quantity(message)
                     and resolve_action_item(message, language, order=state.order).get("item_id") == target)
     if tool == "add_order_item":
+        if quantity_operation(message) not in (None, "add_item"):
+            return False
         explicit = re.search(r"\b(add|take|want|give me|have|anad\w*|agreg\w*|quier\w*|"
                              r"ajout\w*|prend\w*|voudr\w*|fug\w*|hinzu\w*|nehm\w*|mocht\w*|"
                              r"adicion\w*|quer\w*|ekle\w*|istiyor\w*|istiyom|almak|alayim|alabilir\w*|siparis\w*|bana|lutfen)\b", folded)

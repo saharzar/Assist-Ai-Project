@@ -219,11 +219,9 @@ export function RestaurantOrderAttempt({ onOrderAgain, restarted = false }: { on
     return true;
   };
   const updateLineQuantity = (category: MenuCategory, id: string, quantity: number) => {
-    if (state.step === "review") dispatch({ type: "changeOrder" });
     dispatch({ type: "setQuantity", category, id, quantity });
   };
   const removeOrderLine = (category: MenuCategory, id: string) => {
-    if (state.step === "review") dispatch({ type: "changeOrder" });
     dispatch({ type: "removeItem", category, id });
   };
   return <RestaurantShell message={message} menuComment={openBook ? menuComment : null} waiterContext={restaurantWaiterSnapshot(state, payment)} onApprovedActions={onApprovedActions} menuBook={menuBook} review={state.step === "review"} receipt={state.step === "success" && payment.phase === "receipt"} onWaiterMessageSettled={onWaiterMessageSettled} orderTray={openBook ? <RestaurantOrderTicket order={state.order} language={language} onRemove={removeOrderLine} onQuantityChange={updateLineQuantity} onReview={() => dispatch({ type: "reviewOrder" })} /> : undefined} leaveAction={<Link to="/scenarios" className="restaurant-leave-link" aria-label={text.leave}><LogOut className="restaurant-exit-icon h-5 w-5 shrink-0" aria-hidden="true" />{text.leave}</Link>} confirmation={state.step === "success"} preview={<AdminFaceTrackingPreview active={active} scenario="restaurant-ordering" getFrame={tracking.getPreviewFrame} compactPopup />}>

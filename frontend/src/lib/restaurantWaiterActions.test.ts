@@ -96,3 +96,17 @@ describe("validated Restaurant waiter action projection", () => {
     expect(result?.snapshot.order.lines.map((line) => line.quantity)).toEqual([3, 3, 1, 1]);
   });
 });
+
+it("applies waiter quantity edits on review through the same reducer as buttons", () => {
+  const current = { ...ready(), step: "review" as const };
+  const increased = preview(current, [{ type: "SET_QUANTITY", category: "drinks", item_id: "water", quantity: 4 }]);
+  expect(increased?.snapshot.step).toBe("review");
+  expect(increased?.snapshot.order.lines.find((line) => line.item_id === "water")?.quantity).toBe(4);
+  const removed = preview(current, [{ type: "REMOVE_ITEM", category: "drinks", item_id: "water" }]);
+  expect(removed?.snapshot.step).toBe("review");
+  expect(removed?.snapshot.order.drinks).toBeNull();
+  const missingMain = preview(current, [{ type: "SET_QUANTITY", category: "mains", item_id: "pizza", quantity: 0 }]);
+  expect(missingMain?.snapshot.step).toBe("alternative");
+  expect(missingMain?.snapshot.category).toBe("mains");
+  expect(missingMain?.snapshot.order.mains).toBeNull();
+});

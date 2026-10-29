@@ -236,6 +236,16 @@ def result_reply(language: str, tool: str, args: dict, result: ToolResult,
                  snapshot: RestaurantSnapshot, user_message: str, previous_reply: str = "") -> str:
     if not result.ok:
         reason = result.reason or "generic"
+        if reason == "insufficient_quantity":
+            item = quantity_text(name(args["item_id"], language), snapshot.order.quantity(args["item_id"]), language)
+            return {
+                "en": "You only have {item}. How many would you like to remove?",
+                "fr": "Vous avez seulement {item}. Combien voulez-vous en retirer ?",
+                "de": "Du hast nur {item}. Wie viele möchtest du entfernen?",
+                "es": "Solo tienes {item}. ¿Cuántos quieres quitar?",
+                "pt": "Só tens {item}. Quantos queres retirar?",
+                "tr": "Siparişinde yalnızca {item} var. Kaç tane çıkarmak istersin?",
+            }[language].format(item=item)
         if reason == "review_required":
             return (REVIEW_SUMMARY[language].format(items=order_lines_text(snapshot, language),
                                                      total=total_text(snapshot, language))
@@ -282,6 +292,8 @@ def result_reply(language: str, tool: str, args: dict, result: ToolResult,
     if tool == "show_menu_item":
         return say(language, "item", item=name(args["item_id"], language))
     if tool == "add_order_item":
+        if snapshot.order.quantity(args["item_id"]) > args["quantity"]:
+            return say(language, "order", items=quantity_text(name(args["item_id"], language), snapshot.order.quantity(args["item_id"]), language))
         item = quantity_text(name(args["item_id"], language), args["quantity"], language)
         if language == "tr":
             return f"Tamam, {item} ekledim." if args["quantity"] > 1 else f"{name(args['item_id'], language)} siparişine eklendi."
@@ -292,13 +304,24 @@ def result_reply(language: str, tool: str, args: dict, result: ToolResult,
         quantity = snapshot.order.quantity(args["item_id"])
         if quantity == 0:
             return say(language, "removed", item=name(args["item_id"], language))
-        return say(language, "added", item=quantity_text(name(args["item_id"], language), quantity, language))
+        item = quantity_text(name(args["item_id"], language), quantity, language)
+        templates = {
+            "en": ("I've reduced the quantity. You now have {item}.", "I've set the quantity. You now have {item}."),
+            "fr": ("J'ai réduit la quantité à {item}.", "J'ai fixé la quantité à {item}."),
+            "de": ("Ich habe die Menge auf {item} reduziert.", "Ich habe die Menge auf {item} gesetzt."),
+            "es": ("He reducido la cantidad a {item}.", "He ajustado la cantidad a {item}."),
+            "pt": ("Reduzi a quantidade para {item}.", "Defini a quantidade para {item}."),
+            "tr": ("Miktarı azalttım. Siparişinde artık {item} var.", "Miktarı güncelledim. Siparişinde artık {item} var."),
+        }
+        return templates[language][0 if tool == "decrease_order_quantity" else 1].format(item=item)
     if tool == "remove_order_item":
         return say(language, "removed", item=name(args["item_id"], language))
     if tool == "replace_order_item":
         return say(language, "replaced", old=name(args["old_item_id"], language), item=name(args["new_item_id"], language))
     if tool == "get_current_order":
         items = order_lines_text(snapshot, language)
+        if snapshot.step == "review":
+            return REVIEW_SUMMARY[language].format(items=items, total=total_text(snapshot, language))
         return say(language, "order", items=items) if items else say(language, "empty")
     if tool == "get_order_total":
         return say(language, "total", total=total_text(snapshot, language))
